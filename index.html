@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#f97316">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
@@ -12,8 +12,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-        // Shim for process.env to prevent ReferenceError on production deployments like Vercel
+        // Enhanced shim to ensure process.env survives bundler optimization
         window.process = window.process || { env: {} };
+        if (!window.process.env) window.process.env = {};
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
@@ -22,6 +23,7 @@
             background-color: #0f172a;
             color: #f8fafc;
             -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
         }
         .font-brand {
             font-family: 'Orbitron', sans-serif;
@@ -31,8 +33,17 @@
         .animate-slideUp { animation: slideUp 0.4s ease-out; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
-        /* Smooth scrolling for mobile */
-        * { scroll-behavior: smooth; }
+        /* Custom scrollbar for a darker look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 <script type="importmap">
 {
