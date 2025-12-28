@@ -3,16 +3,25 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <title>MotoSpirit - AI Rider Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Shim for process.env to prevent ReferenceError on production deployments like Vercel
+        window.process = window.process || { env: {} };
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #0f172a;
             color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
         }
         .font-brand {
             font-family: 'Orbitron', sans-serif;
@@ -21,6 +30,9 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-slideUp { animation: slideUp 0.4s ease-out; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* Smooth scrolling for mobile */
+        * { scroll-behavior: smooth; }
     </style>
 <script type="importmap">
 {

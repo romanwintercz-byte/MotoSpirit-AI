@@ -2,14 +2,19 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Motorcycle, MaintenanceRecord } from "../types";
 
-// Helper to get fresh AI instance
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+// Helper to get fresh AI instance safely
+const getAI = () => {
+  const apiKey = (window as any).process?.env?.API_KEY || "";
+  if (!apiKey) {
+    console.warn("MotoSpirit: API_KEY is missing in environment variables. AI features will not work.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export const getBikerAdvice = async (prompt: string, history: {role: 'user' | 'model', text: string}[]) => {
   const ai = getAI();
   const model = "gemini-3-flash-preview";
   
-  // Convert history to the format expected by the SDK
   const formattedHistory = history.map(msg => ({
     role: msg.role,
     parts: [{ text: msg.text }]
@@ -38,7 +43,8 @@ export const planTripWithGrounding = async (
   location?: { lat: number; lng: number }
 ) => {
   const ai = getAI();
-  const model = "gemini-2.5-flash-preview"; // Enhanced for grounding
+  // Using gemini-2.5-flash as specified for Google Maps grounding
+  const model = "gemini-2.5-flash"; 
   
   const contents = `Naplánuj vyjížďku na motorce začínající v ${origin}. Preference: ${preferences}. Najdi zajímavé zastávky, vyhlídky a motorkářské hospody v okolí.`;
 
