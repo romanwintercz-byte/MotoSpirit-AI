@@ -10,35 +10,48 @@ import Navbar from './components/Navbar';
 const ApiKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [status, setStatus] = useState<'checking' | 'authorized' | 'unauthorized'>('checking');
 
-  const checkStatus = async () => {
-    // If key exists in process.env, we are good
-    if (process.env.API_KEY && process.env.API_KEY !== 'undefined') {
-      setStatus('authorized');
-      return;
-    }
-
-    // @ts-ignore
-    if (window.aistudio) {
-      // @ts-ignore
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      setStatus(hasKey ? 'authorized' : 'unauthorized');
-    } else {
-      setStatus('authorized'); // Dev mode
-    }
-  };
-
   useEffect(() => {
-    checkStatus();
-    // Re-check more frequently for PWA state changes
-    const interval = setInterval(checkStatus, 3000);
-    return () => clearInterval(interval);
+    const init = async () => {
+      // Pokud jsme na Vercelu a klíč je v env, rovnou pustíme
+      if (process.env.API_KEY && process.env.API_KEY !== 'undefined' && process.env.API_KEY.length > 5) {
+        setStatus('authorized');
+        return;
+      }
+
+      // V PWA režimu zkontrolujeme bridge
+      try {
+        // @ts-ignore
+        if (window.aistudio) {
+          // @ts-ignore
+          const hasKey = await window.aistudio.hasSelectedApiKey();
+          if (hasKey) {
+            setStatus('authorized');
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("AI Bridge check failed, showing auth button.");
+      }
+      setStatus('unauthorized');
+    };
+    init();
   }, []);
 
   const handleConnect = async () => {
-    // @ts-ignore
-    if (window.aistudio) {
+    console.log("Triggering AI Authorization...");
+    try {
       // @ts-ignore
-      await window.aistudio.openSelectKey();
+      if (window.aistudio && window.aistudio.openSelectKey) {
+        // @ts-ignore
+        await window.aistudio.openSelectKey();
+      } else {
+        console.error("Bridge 'window.aistudio' not found!");
+        alert("Chyba: AI Studio Bridge nebyl nalezen. Zkuste aplikaci otevřít v prohlížeči, ne z plochy.");
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+    } finally {
+      // Kritické: Vždy pustíme uživatele dál, abychom předešli zaseknutí (race condition)
       setStatus('authorized');
     }
   };
@@ -47,7 +60,7 @@ const ApiKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center space-y-4">
         <i className="fas fa-motorcycle fa-bounce text-orange-500 text-5xl"></i>
-        <p className="text-slate-400 font-brand text-sm">NAČÍTÁNÍ...</p>
+        <p className="text-slate-400 font-brand text-sm">PŘÍPRAVA STROJE...</p>
       </div>
     );
   }
@@ -55,18 +68,21 @@ const ApiKeyGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (status === 'unauthorized') {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-8">
-          <div className="bg-slate-700 w-24 h-24 rounded-full mx-auto flex items-center justify-center border-4 border-slate-900">
-            <i className="fas fa-plug-circle-xmark text-orange-500 text-4xl"></i>
+        <div className="max-w-md w-full bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] shadow-2xl space-y-8 animate-fadeIn">
+          <div className="bg-slate-700/50 w-24 h-24 rounded-full mx-auto flex items-center justify-center border-4 border-slate-900">
+            <i className="fas fa-key text-orange-500 text-4xl"></i>
           </div>
-          <h1 className="text-3xl font-bold font-brand uppercase">AI <span className="text-orange-500">Offline</span></h1>
-          <p className="text-slate-400">V režimu na ploše (PWA) je nutné manuálně aktivovat spojení s AI studiem.</p>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold font-brand uppercase">AUTORIZACE</h1>
+            <p className="text-slate-400 text-sm">Pro běh AI na Vercelu/ploše je nutné vybrat váš API klíč.</p>
+          </div>
           <button 
             onClick={handleConnect}
             className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-5 rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3"
           >
-            AKTIVOVAT AI
+            NASTAVIT API KLÍČ
           </button>
+          <p className="text-[10px] text-slate-500 italic">Poznámka: Pokud se po kliknutí nic nestane, otevřete aplikaci v Safari/Chrome a nikoliv jako PWA.</p>
         </div>
       </div>
     );

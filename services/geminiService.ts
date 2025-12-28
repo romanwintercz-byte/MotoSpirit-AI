@@ -3,32 +3,33 @@ import { GoogleGenAI } from "@google/genai";
 import { Motorcycle, MaintenanceRecord } from "../types";
 
 /**
- * Získá API klíč s maximální odolností vůči prostředí (Vercel/PWA)
+ * Získá klíč s prioritou pro aktuální session.
  */
-const getApiKey = (): string | undefined => {
-  // Zkusíme všechny možné cesty, kde by klíč mohl být schovaný
-  return (window as any).process?.env?.API_KEY || 
-         (process.env as any).API_KEY || 
-         undefined;
+const getActiveKey = (): string => {
+  // 1. Zkusíme process.env (Vercel injection)
+  const envKey = process.env.API_KEY;
+  if (envKey && envKey !== 'undefined' && envKey.length > 5) return envKey;
+
+  // 2. Zkusíme globální window bridge (AI Studio)
+  const windowKey = (window as any).process?.env?.API_KEY;
+  if (windowKey && windowKey !== 'undefined' && windowKey.length > 5) return windowKey;
+
+  return '';
 };
 
-const getAiInstance = () => {
-  const apiKey = getApiKey();
-  if (!apiKey || apiKey === 'undefined') {
-    console.error("MotoSpirit: API klíč nenalezen v systému.");
-    throw new Error("MISSING_API_KEY");
-  }
-  return new GoogleGenAI({ apiKey });
+const createClient = () => {
+  const key = getActiveKey();
+  if (!key) throw new Error("NO_KEY_AVAILABLE");
+  return new GoogleGenAI({ apiKey: key });
 };
 
-const handleRequestError = async (error: any) => {
-  console.error("MotoSpirit AI Error Detail:", error);
+const handleApiError = async (error: any) => {
+  console.error("MotoSpirit Engine Error:", error);
   
-  // Pokud je chyba v autorizaci, zkusíme vyvolat dialog klíče
-  if (error.message === "MISSING_API_KEY" || error?.status === 401 || error?.status === 404) {
+  // Pokud entita nebyla nalezena (častá chyba po vypršení session), zkusíme re-auth
+  if (error?.message?.includes("Requested entity was not found") || error?.status === 404) {
     // @ts-ignore
     if (window.aistudio?.openSelectKey) {
-      console.warn("Pokouším se o re-autorizaci přes most...");
       // @ts-ignore
       await window.aistudio.openSelectKey();
     }
@@ -38,11 +39,11 @@ const handleRequestError = async (error: any) => {
 
 export const getBikerAdvice = async (prompt: string, history: {role: 'user' | 'model', text: string}[]) => {
   try {
-    const ai = getAiInstance();
+    const ai = createClient();
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
-        systemInstruction: "Jsi MotoSpirit, inteligentní asistent pro motorkáře. Odpovídej česky, stručně a technicky správně. Používej motorkářský slang, ale zůstaň profesionální.",
+        systemInstruction: "Jsi MotoSpirit, riderův asistent. Odpovídej česky, stručně, motorkářsky.",
       },
       history: history.map(msg => ({ role: msg.role, parts: [{ text: msg.text }] })),
     });
@@ -50,14 +51,14 @@ export const getBikerAdvice = async (prompt: string, history: {role: 'user' | 'm
     const response = await chat.sendMessage({ message: prompt });
     return response.text;
   } catch (error) {
-    return handleRequestError(error);
+    return handleApiError(error);
   }
 };
 
 export const planTripWithGrounding = async (origin: string, preferences: string, location?: { lat: number; lng: number }) => {
   try {
-    const ai = getAiInstance();
-    const contents = `Naplánuj vyjížďku na motorce začínající v: ${origin}. Preference: ${preferences}. Najdi konkrétní silnice a zastávky.`;
+    const ai = createClient();
+    const contents = `Trasa z: ${origin}. Preference: ${preferences}.`;
     
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -71,19 +72,19 @@ export const planTripWithGrounding = async (origin: string, preferences: string,
     });
 
     return {
-      text: response.text || "Omlouvám se, trasa nebyla vygenerována.",
+      text: response.text || "Zkus to znovu, motor AI vynechal.",
       links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
     };
   } catch (error) {
-    return handleRequestError(error);
+    return handleApiError(error);
   }
 };
 
 export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceRecord[]) => {
   try {
-    const ai = getAiInstance();
+    const ai = createClient();
     const recordsText = records.map(r => `${r.date}: ${r.type}`).join(', ');
-    const prompt = `Motorka: ${bike.brand} ${bike.model}, rok ${bike.year}, nájezd ${bike.mileage}km. Předchozí servis: ${recordsText || 'žádné záznamy'}. Jaké úkony údržby doporučuješ v nejbližší době?`;
+    const prompt = `Motorka: ${bike.brand} ${bike.model}, nájezd ${bike.mileage}km. Servis: ${recordsText}. Doporučení?`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -92,6 +93,6 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
 
     return response.text;
   } catch (error) {
-    return handleRequestError(error);
+    return handleApiError(error);
   }
 };

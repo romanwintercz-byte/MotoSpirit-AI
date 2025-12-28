@@ -12,9 +12,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-        // Enhanced shim to ensure process.env survives bundler optimization
+        // Stabilizace prostředí pro Vercel
         window.process = window.process || { env: {} };
-        if (!window.process.env) window.process.env = {};
+        window.onerror = function(msg, url, line, col, error) {
+            console.error("GLOBAL ERROR:", msg, "at", line, ":", col);
+            return false;
+        };
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600;700&display=swap');
@@ -25,15 +28,12 @@
             -webkit-tap-highlight-color: transparent;
             overflow-x: hidden;
         }
-        .font-brand {
-            font-family: 'Orbitron', sans-serif;
-        }
+        .font-brand { font-family: 'Orbitron', sans-serif; }
         .animate-fadeIn { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-slideUp { animation: slideUp 0.4s ease-out; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
-        /* Custom scrollbar for a darker look */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
