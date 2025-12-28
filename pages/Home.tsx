@@ -1,101 +1,68 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
-  const [aiStatus, setAiStatus] = useState<'connected' | 'error' | 'checking'>('checking');
-
-  useEffect(() => {
-    const check = () => {
-      const key = (window as any).process?.env?.API_KEY || (process.env as any).API_KEY;
-      setAiStatus(key && key !== 'undefined' ? 'connected' : 'error');
-    };
-    check();
-    const inv = setInterval(check, 5000);
-    return () => clearInterval(inv);
-  }, []);
-
-  const handleReconnect = async () => {
-    // @ts-ignore
-    if (window.aistudio?.openSelectKey) {
-      // @ts-ignore
-      await window.aistudio.openSelectKey();
-    }
-  };
-
   const stats = [
-    { label: 'Ujeto letos', value: '3,450 km', icon: 'fa-road', color: 'bg-blue-500' },
-    { label: 'Náklady', value: '12,500 Kč', icon: 'fa-coins', color: 'bg-green-500' },
-    { label: 'Servis za', value: '1,200 km', icon: 'fa-tools', color: 'bg-orange-500' },
+    { label: 'Ujeto letos', value: '3,450 km', icon: 'fa-road', color: 'border-blue-500/50' },
+    { label: 'Náklady', value: '12,500 Kč', icon: 'fa-coins', color: 'border-green-500/50' },
+    { label: 'Příští servis', value: '1,200 km', icon: 'fa-tools', color: 'border-orange-500/50' },
   ];
 
   return (
-    <div className="space-y-8 animate-fadeIn pb-10">
-      {/* AI Engine Status - Critical for user visibility */}
-      <div className="flex items-center justify-between bg-slate-800/50 border border-slate-700 p-3 rounded-2xl">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${aiStatus === 'connected' ? 'bg-green-500 animate-pulse' : aiStatus === 'error' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
-          <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            AI Engine: {aiStatus === 'connected' ? 'Připojen' : aiStatus === 'error' ? 'Odpojen' : 'Kontrola...'}
-          </span>
-        </div>
-        {aiStatus === 'error' && (
-          <button 
-            onClick={handleReconnect}
-            className="text-[10px] bg-orange-600/20 text-orange-500 border border-orange-500/50 px-3 py-1 rounded-lg font-bold hover:bg-orange-600 hover:text-white transition-all"
-          >
-            AKTIVOVAT AI
-          </button>
-        )}
-      </div>
-
-      <section className="relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-2xl">
+    <div className="space-y-10 animate-fadeIn pb-10">
+      {/* Hero Section */}
+      <section className="relative h-[400px] rounded-[3rem] overflow-hidden shadow-2xl border border-slate-700">
         <img 
-          src="https://images.unsplash.com/photo-1558981403-c5f91cbba527?auto=format&fit=crop&w=1200&q=80" 
-          alt="Biker" 
-          className="w-full h-full object-cover brightness-[0.4]"
+          src="https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?auto=format&fit=crop&w=1200&q=80" 
+          alt="Motorcycle lifestyle" 
+          className="w-full h-full object-cover brightness-[0.3]"
         />
-        <div className="absolute inset-0 flex flex-col justify-center px-8">
-          <h1 className="font-brand text-2xl md:text-4xl font-bold mb-2">
-            MOTO<span className="text-orange-500">SPIRIT</span>
+        <div className="absolute inset-0 flex flex-col justify-center px-10 md:px-16">
+          <div className="inline-block bg-orange-600 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-4 w-fit tracking-widest uppercase">
+            Rider Companion 1.0
+          </div>
+          <h1 className="font-brand text-4xl md:text-6xl font-bold mb-4 leading-tight">
+            ŽIJ <span className="text-orange-500 italic">SVOJI</span><br/>CESTU
           </h1>
-          <p className="text-slate-300 text-sm md:text-base max-w-sm mb-6">
-            Váš inteligentní parťák na cestách i v garáži. Všechna data zůstávají ve vašem mobilu.
+          <p className="text-slate-400 text-sm md:text-lg max-w-md mb-8 leading-relaxed">
+            MotoSpirit je tvůj inteligentní deník a mechanik v kapse. Všechna data o tvých strojích máš bezpečně u sebe.
           </p>
-          <div className="flex gap-3">
-            <Link to="/planner" className="bg-orange-600 hover:bg-orange-700 px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
-              Plánovat
+          <div className="flex flex-wrap gap-4">
+            <Link to="/planner" className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-orange-900/20 active:scale-95">
+              PLÁNOVAT TRASU
             </Link>
-            <Link to="/assistant" className="bg-slate-700 hover:bg-slate-600 px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
-              AI Chat
+            <Link to="/garage" className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-2xl font-bold transition-all border border-slate-700 active:scale-95">
+              MOJE GARÁŽ
             </Link>
           </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-slate-800 p-5 rounded-2xl border border-slate-700 flex items-center gap-4">
-            <div className={`${stat.color} p-3 rounded-xl`}>
-              <i className={`fas ${stat.icon} text-lg text-white`}></i>
+          <div key={i} className={`bg-slate-800/40 p-8 rounded-[2rem] border-l-4 ${stat.color} backdrop-blur-sm hover:bg-slate-800/60 transition-all`}>
+            <div className="flex justify-between items-start mb-4">
+              <i className={`fas ${stat.icon} text-slate-500 text-xl`}></i>
             </div>
-            <div>
-              <p className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">{stat.label}</p>
-              <p className="text-xl font-bold">{stat.value}</p>
-            </div>
+            <p className="text-slate-500 text-xs uppercase font-bold tracking-widest mb-1">{stat.label}</p>
+            <p className="text-3xl font-brand font-bold">{stat.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <i className="fas fa-map-location-dot text-6xl"></i>
+      {/* Info Card */}
+      <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-8 rounded-[2.5rem] border border-slate-700 flex flex-col md:flex-row items-center gap-8">
+        <div className="bg-orange-600/10 w-20 h-20 rounded-3xl flex items-center justify-center shrink-0">
+          <i className="fas fa-shield-halved text-orange-500 text-3xl"></i>
         </div>
-        <h2 className="text-lg font-bold mb-4">Lokální data & Soukromí</h2>
-        <p className="text-sm text-slate-400 leading-relaxed">
-          Tato aplikace ukládá vaše motorky a servisní historii přímo do paměti tohoto zařízení. 
-          AI model Gemini využíváme pouze pro analýzy a plánování, vaše osobní data neopouštějí telefon.
-        </p>
+        <div>
+          <h3 className="text-xl font-bold mb-2">Soukromí na prvním místě</h3>
+          <p className="text-slate-400 text-sm">
+            MotoSpirit neukládá tvé trasy ani data o motorce na žádný server. Vše zůstává v tvém prohlížeči. AI slouží pouze jako tvůj rádce v reálném čase.
+          </p>
+        </div>
       </div>
     </div>
   );

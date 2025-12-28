@@ -2,39 +2,20 @@
 import { GoogleGenAI } from "@google/genai";
 import { Motorcycle, MaintenanceRecord } from "../types";
 
-/**
- * Získá klíč s prioritou pro aktuální session.
- */
-const getActiveKey = (): string => {
-  // 1. Zkusíme process.env (Vercel injection)
-  const envKey = process.env.API_KEY;
-  if (envKey && envKey !== 'undefined' && envKey.length > 5) return envKey;
-
-  // 2. Zkusíme globální window bridge (AI Studio)
-  const windowKey = (window as any).process?.env?.API_KEY;
-  if (windowKey && windowKey !== 'undefined' && windowKey.length > 5) return windowKey;
-
-  return '';
-};
-
 const createClient = () => {
-  const key = getActiveKey();
-  if (!key) throw new Error("NO_KEY_AVAILABLE");
+  const key = process.env.API_KEY;
+  if (!key || key === 'undefined' || key.length < 10) {
+    throw new Error("MISSING_KEY");
+  }
   return new GoogleGenAI({ apiKey: key });
 };
 
-const handleApiError = async (error: any) => {
-  console.error("MotoSpirit Engine Error:", error);
-  
-  // Pokud entita nebyla nalezena (častá chyba po vypršení session), zkusíme re-auth
-  if (error?.message?.includes("Requested entity was not found") || error?.status === 404) {
-    // @ts-ignore
-    if (window.aistudio?.openSelectKey) {
-      // @ts-ignore
-      await window.aistudio.openSelectKey();
-    }
+const handleGeneralError = (err: any) => {
+  console.error("MotoSpirit API Error:", err);
+  if (err.message === "MISSING_KEY") {
+    return "⚠️ API klíč není nastaven ve Vercelu (Environment Variables).";
   }
-  throw error;
+  return "❌ AI vyžaduje Google Cloud projekt s aktivovaným Billingem (platbami) pro provoz mimo Studio.";
 };
 
 export const getBikerAdvice = async (prompt: string, history: {role: 'user' | 'model', text: string}[]) => {
@@ -43,7 +24,7 @@ export const getBikerAdvice = async (prompt: string, history: {role: 'user' | 'm
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
-        systemInstruction: "Jsi MotoSpirit, riderův asistent. Odpovídej česky, stručně, motorkářsky.",
+        systemInstruction: "Jsi MotoSpirit, drsný ale férový motorkářský asistent. Mluv česky, stručně, používej motorkářský slang.",
       },
       history: history.map(msg => ({ role: msg.role, parts: [{ text: msg.text }] })),
     });
@@ -51,18 +32,16 @@ export const getBikerAdvice = async (prompt: string, history: {role: 'user' | 'm
     const response = await chat.sendMessage({ message: prompt });
     return response.text;
   } catch (error) {
-    return handleApiError(error);
+    return handleGeneralError(error);
   }
 };
 
 export const planTripWithGrounding = async (origin: string, preferences: string, location?: { lat: number; lng: number }) => {
   try {
     const ai = createClient();
-    const contents = `Trasa z: ${origin}. Preference: ${preferences}.`;
-    
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents,
+      contents: `Navrhni motorkářskou trasu z ${origin}. Chci: ${preferences}.`,
       config: {
         tools: [{ googleMaps: {} }],
         toolConfig: location ? {
@@ -72,27 +51,29 @@ export const planTripWithGrounding = async (origin: string, preferences: string,
     });
 
     return {
-      text: response.text || "Zkus to znovu, motor AI vynechal.",
+      text: response.text || "Nepodařilo se vygenerovat trasu.",
       links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
     };
   } catch (error) {
-    return handleApiError(error);
+    return { text: handleGeneralError(error), links: [] };
   }
 };
 
 export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceRecord[]) => {
   try {
     const ai = createClient();
-    const recordsText = records.map(r => `${r.date}: ${r.type}`).join(', ');
-    const prompt = `Motorka: ${bike.brand} ${bike.model}, nájezd ${bike.mileage}km. Servis: ${recordsText}. Doporučení?`;
-
+    const recordsText = records.length > 0 
+      ? `Historie: ${records.map(r => r.type).join(", ")}` 
+      : "Žádná historie údržby.";
+    
+    const prompt = `Motorka: ${bike.brand} ${bike.model}, rok ${bike.year}, nájezd ${bike.mileage}km. ${recordsText}. Co bys doporučil zkontrolovat?`;
+    
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
     });
-
     return response.text;
   } catch (error) {
-    return handleApiError(error);
+    return handleGeneralError(error);
   }
 };
