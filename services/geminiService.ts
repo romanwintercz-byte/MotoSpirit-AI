@@ -1,26 +1,31 @@
 
-import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { Motorcycle, MaintenanceRecord } from "../types";
 
 /**
- * Creates a fresh instance of GoogleGenAI using the current environment key.
- * In AI Studio/Vercel environments, this key is managed by the platform.
+ * Creates a fresh instance of GoogleGenAI.
+ * Fetches the API key from process.env.API_KEY at runtime.
  */
 const createClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
-    throw new Error("API_KEY_MISSING");
+    // If the guard somehow let us through but the key is gone (common in some PWA contexts)
+    console.error("MotoSpirit: API_KEY is undefined at runtime.");
+    throw new Error("API_KEY_NOT_FOUND");
   }
   return new GoogleGenAI({ apiKey });
 };
 
 /**
- * Handles common API errors, specifically requesting a key re-selection if needed.
+ * Handles common API errors.
  */
 const handleApiError = async (error: any) => {
   console.error("Gemini API Error:", error);
-  if (error?.message?.includes("Requested entity was not found") || error?.message?.includes("API_KEY_INVALID")) {
+  // Specifically handle the "entity not found" error which often means the key is invalid or lost in PWA transition
+  if (error?.message?.includes("Requested entity was not found") || error?.status === 404) {
+    // @ts-ignore
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      // @ts-ignore
       await window.aistudio.openSelectKey();
     }
   }
