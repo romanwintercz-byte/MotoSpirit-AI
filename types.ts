@@ -1,4 +1,12 @@
 
+export interface UserProfile {
+  name: string;
+  nickname: string;
+  experienceYears: number;
+  ridingStyle: string;
+  avatar?: string;
+}
+
 export interface Motorcycle {
   id: string;
   brand: string;
