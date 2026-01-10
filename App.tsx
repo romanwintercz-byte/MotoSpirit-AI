@@ -8,73 +8,61 @@ import Assistant from './pages/Assistant';
 import Navbar from './components/Navbar';
 
 const App: React.FC = () => {
-  const [hasKey, setHasKey] = useState<boolean>(true);
+  const [hasKey, setHasKey] = useState<boolean>(false);
   const [checking, setChecking] = useState<boolean>(true);
   const [isActivating, setIsActivating] = useState<boolean>(false);
-  const [showDirectLink, setShowDirectLink] = useState<boolean>(false);
 
-  // Fix: Pomocná funkce pro kontrolu stavu klíče pomocí type assertion pro potlačení chyb v typu Window
-  const checkKeyStatus = async () => {
-    try {
-      // 1. Priorita: Environmentální proměnná (pokud je nastavena ve Vercelu)
+  useEffect(() => {
+    const checkKey = async () => {
+      // 1. Pokud je klíč přímo v environmentu (Vercel), hned pouštíme
       const envKey = process.env.API_KEY;
-      if (envKey && envKey !== 'undefined' && envKey.length > 5) {
-        console.log("API Key detekován v prostředí.");
+      if (envKey && envKey.length > 10 && envKey !== 'undefined') {
+        console.log("MotoSpirit: Klíč nalezen v prostředí.");
         setHasKey(true);
         setChecking(false);
         return;
       }
 
-      // 2. Kontrola skrze aistudio (pro platformy vyžadující dynamický výběr)
+      // 2. Pokus o detekci aistudio dialogu
       const aiWin = window as any;
-      if (aiWin.aistudio && typeof aiWin.aistudio.hasSelectedApiKey === 'function') {
-        const selected = await aiWin.aistudio.hasSelectedApiKey();
-        setHasKey(selected);
-      } else {
-        // Pokud není klíč ani aistudio, zkoušíme nechat uživatele projít
-        console.warn("aistudio rozhraní není dostupné, zkouším výchozí přístup.");
-        setHasKey(true); 
+      try {
+        if (aiWin.aistudio && typeof aiWin.aistudio.hasSelectedApiKey === 'function') {
+          const selected = await aiWin.aistudio.hasSelectedApiKey();
+          setHasKey(selected);
+        } else {
+          // Pokud rozhraní neexistuje, nebudeme uživatele blokovat, 
+          // ale zkusíme volat API přímo (klíč může být vložen jinak)
+          setHasKey(true);
+        }
+      } catch (e) {
+        setHasKey(true);
       }
-    } catch (e) {
-      console.error("Chyba při kontrole klíče:", e);
-      setHasKey(false);
-    } finally {
       setChecking(false);
-    }
-  };
+    };
 
-  useEffect(() => {
-    checkKeyStatus();
-    // Po 5 sekundách ukážeme nouzový odkaz, pokud se nic neděje
-    const timer = setTimeout(() => setShowDirectLink(true), 5000);
-    return () => clearTimeout(timer);
+    checkKey();
   }, []);
 
-  const handleOpenKeySelector = async () => {
+  const handleManualActivate = async () => {
     setIsActivating(true);
+    const aiWin = window as any;
     try {
-      const aiWin = window as any;
-      if (aiWin.aistudio && typeof aiWin.aistudio.openSelectKey === 'function') {
+      if (aiWin.aistudio?.openSelectKey) {
         await aiWin.aistudio.openSelectKey();
-        // Guideline: Assume key selection was successful to avoid race conditions
-        setHasKey(true);
-      } else {
-        console.error("aistudio.openSelectKey není dostupné.");
-        setHasKey(true);
       }
-    } catch (err) {
-      console.error("Chyba při otevírání dialogu:", err);
-      setHasKey(true); // Bypass i při chybě
-    } finally {
-      setIsActivating(false);
+    } catch (e) {
+      console.warn("MotoSpirit: Nepodařilo se otevřít systémový dialog, pokračuji v režimu Direct.");
     }
+    // Vždy pustíme uživatele dál po kliknutí, abychom předešli "zaseknutí"
+    setHasKey(true);
+    setIsActivating(false);
   };
 
   if (checking) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center font-brand">
         <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <div className="text-orange-500 animate-pulse tracking-widest uppercase">Kontrola paliva...</div>
+        <div className="text-orange-500 animate-pulse tracking-widest uppercase">Zahřívám motor...</div>
       </div>
     );
   }
@@ -84,40 +72,22 @@ const App: React.FC = () => {
       <div className="min-h-screen flex flex-col bg-slate-900 text-slate-100 selection:bg-orange-500/30">
         {!hasKey && (
           <div className="fixed inset-0 z-[100] bg-slate-900/98 backdrop-blur-xl flex items-center justify-center p-6 text-center animate-fadeIn">
-            <div className="max-w-md bg-slate-800/50 p-10 rounded-[3rem] border-2 border-orange-600/50 shadow-2xl shadow-orange-900/40 transition-all">
+            <div className="max-w-md bg-slate-800/50 p-10 rounded-[3rem] border-2 border-orange-600/50 shadow-2xl shadow-orange-900/40">
               <div className="w-20 h-20 bg-orange-600/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-                <i className="fas fa-plug text-3xl text-orange-500"></i>
+                <i className="fas fa-key text-3xl text-orange-500"></i>
               </div>
-              <h2 className="text-2xl font-brand font-bold mb-4 uppercase tracking-tighter">Systém uzamčen</h2>
-              <p className="text-slate-400 mb-8 leading-relaxed text-sm">
-                Pro aktivaci AI funkcí je nutné vybrat váš <span className="text-white font-bold">API klíč</span>. Pokud jste jej již nastavili v Google Console, zkuste aplikaci odemknout tlačítkem níže.
+              <h2 className="text-2xl font-brand font-bold mb-4 uppercase">Aktivace Systému</h2>
+              <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+                Klíč nebyl automaticky detekován. Pokud jej máte nastavený v Google Cloud Console nebo Vercelu, klikněte na tlačítko níže pro spuštění aplikace.
               </p>
               <button 
-                onClick={handleOpenKeySelector}
+                onClick={handleManualActivate}
                 disabled={isActivating}
-                className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 text-white py-5 rounded-2xl font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 group"
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-5 rounded-2xl font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3"
               >
-                {isActivating ? (
-                  <i className="fas fa-circle-notch animate-spin"></i>
-                ) : (
-                  <i className="fas fa-bolt group-hover:animate-pulse"></i>
-                )}
-                {isActivating ? 'AKTIVUJI...' : 'AKTIVOVAT MOTO SPIRIT'}
+                {isActivating ? <i className="fas fa-circle-notch animate-spin"></i> : <i className="fas fa-bolt"></i>}
+                {isActivating ? 'AKTIVUJI...' : 'SPUSTIT MOTO SPIRIT'}
               </button>
-              
-              {showDirectLink && (
-                <button 
-                  onClick={() => setHasKey(true)}
-                  className="mt-6 text-[10px] text-slate-500 uppercase underline hover:text-slate-300 tracking-widest"
-                >
-                  Přeskočit kontrolu (mám klíč v prostředí)
-                </button>
-              )}
-              
-              <p className="mt-8 text-[10px] text-slate-500 uppercase tracking-widest leading-relaxed">
-                Ujistěte se, že máte povolené vyskakovací okno a nastavený Billing na <br/>
-                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="text-orange-500 underline hover:text-orange-400">ai.google.dev</a>
-              </p>
             </div>
           </div>
         )}
