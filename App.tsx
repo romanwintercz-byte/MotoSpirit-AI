@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Garage from './pages/Garage';
@@ -7,10 +7,54 @@ import TripPlanner from './pages/TripPlanner';
 import Assistant from './pages/Assistant';
 import Navbar from './components/Navbar';
 
+declare global {
+  interface Window {
+    // Fix: Subsequent property declarations must have the same type. Property 'aistudio' must be of type 'AIStudio'
+    aistudio: any;
+  }
+}
+
 const App: React.FC = () => {
+  const [hasKey, setHasKey] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      // Priorita 1: Kontrola přes aistudio API (pokud je k dispozici)
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected);
+      } else {
+        // Priorita 2: Environmentální proměnná
+        const envKey = process.env.API_KEY;
+        setHasKey(!!(envKey && envKey !== 'undefined' && envKey.length > 10));
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      await window.aistudio.openSelectKey();
+      // Guideline: Assume the key selection was successful after triggering openSelectKey()
+      setHasKey(true);
+    }
+  };
+
   return (
     <HashRouter>
       <div className="min-h-screen flex flex-col bg-slate-900 text-slate-100">
+        {!hasKey && window.aistudio && (
+          <div className="bg-orange-600 text-white p-3 text-center text-sm font-bold flex justify-center items-center gap-4 animate-fadeIn">
+            <span>⚠️ AI funkce vyžadují nastavení API klíče.</span>
+            <button 
+              onClick={handleOpenKeySelector}
+              className="bg-white text-orange-600 px-3 py-1 rounded-full text-xs uppercase hover:bg-slate-100 transition-colors"
+            >
+              Nastavit nyní
+            </button>
+          </div>
+        )}
+        
         <Navbar />
         <main className="flex-grow container mx-auto px-4 py-6 mb-20 md:mb-6">
           <Routes>
