@@ -3,16 +3,15 @@ import { GoogleGenAI } from "@google/genai";
 import { Motorcycle, MaintenanceRecord, ChatMessage } from "../types";
 
 /**
- * Pro produkční nasazení doporučujeme gemini-2.5-flash, 
- * který je nejvíce kompatibilní se všemi typy klíčů.
+ * Pro Maps Grounding je nutné použít řadu 2.5.
  */
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const MODEL_2_5 = 'gemini-2.5-flash-preview-09-2025';
+const MODEL_3_FLASH = 'gemini-3-flash-preview';
 
 const getAI = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-    // Pro lokální vývoj, pokud zapomeneš na .env
-    console.error("MotoSpirit: API_KEY nebyl nalezen v process.env");
+    console.error("MotoSpirit: API_KEY nebyl nalezen");
     throw new Error("API_KEY_MISSING");
   }
   return new GoogleGenAI({ apiKey });
@@ -24,14 +23,9 @@ const handleApiError = (error: any) => {
   console.groupEnd();
   
   const msg = error.message || error.toString();
-  
-  if (msg.includes("404") || msg.includes("not found")) {
-    return "❌ Model nenalezen. Zkuste v nastavení Vercelu zkontrolovat API_KEY.";
-  }
-  if (msg.includes("403") || msg.includes("permission")) {
-    return "❌ Chyba 403: Klíč nemá oprávnění. Zkontrolujte Google AI Studio.";
-  }
-  return "❌ Chyba: " + msg.substring(0, 100);
+  if (msg.includes("404")) return "❌ Model nenalezen. Zkontrolujte API_KEY.";
+  if (msg.includes("403")) return "❌ Chyba 403: Nedostatečná oprávnění klíče.";
+  return "❌ Došlo k chybě při komunikaci s AI.";
 };
 
 export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceRecord[]): Promise<string> => {
@@ -39,8 +33,8 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
     const ai = getAI();
     const recordsText = records.map(r => `- ${r.date}: ${r.type}`).join('\n');
     const response = await ai.models.generateContent({
-      model: DEFAULT_MODEL,
-      contents: `Jsi mechanik. Analyzuj stav motorky: ${bike.brand} ${bike.model}, najeto ${bike.mileage}km. Předchozí servis: ${recordsText || 'žádný'}. Buď stručný a věcný.`,
+      model: MODEL_3_FLASH,
+      contents: `Jsi mechanik. Analyzuj stav motorky: ${bike.brand} ${bike.model}, najeto ${bike.mileage}km. Předchozí servis: ${recordsText || 'žádný'}. Buď stručný a věcný v češtině.`,
     });
     return response.text || "Zkus to později.";
   } catch (error) {
@@ -51,9 +45,10 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
 export const planTripWithGrounding = async (origin: string, preferences: string): Promise<{ text: string, links: any[] }> => {
   try {
     const ai = getAI();
+    // Maps grounding vyžaduje řadu 2.5
     const response = await ai.models.generateContent({
-      model: DEFAULT_MODEL,
-      contents: `Navrhni motovýlet z: ${origin}. Preference: ${preferences}. Najdi reálné trasy a body zájmu pro motorkáře.`,
+      model: MODEL_2_5,
+      contents: `Navrhni detailní motovýlet z místa: ${origin}. Moje preference jsou: ${preferences}. Najdi reálné trasy, vyhlídky a motorkářské zastávky. Odpovídej v češtině.`,
       config: {
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
       },
@@ -72,10 +67,10 @@ export const getBikerAdvice = async (message: string, history: ChatMessage[]): P
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: DEFAULT_MODEL,
+      model: MODEL_3_FLASH,
       contents: message,
       config: {
-        systemInstruction: "Jsi MotoSpirit, český biker asistent. Mluv k věci, používej slang, ale buď užitečný."
+        systemInstruction: "Jsi MotoSpirit, zkušený český biker. Odpovídej kamarádsky, používej motorkářský slang, buď užitečný a stručný."
       }
     });
     return response.text || "Teď mi to nějak vynechává, zkus to znovu.";

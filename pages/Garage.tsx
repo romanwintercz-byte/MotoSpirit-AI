@@ -7,12 +7,11 @@ const Garage: React.FC = () => {
   // --- STATE ---
   const [user, setUser] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('motospirit_user');
-    return saved ? JSON.parse(saved) : { name: '', nickname: 'Rider', experienceYears: 0, ridingStyle: 'Road' };
+    return saved ? JSON.parse(saved) : { name: '', nickname: 'Rider', experienceYears: 0, ridingStyle: 'Road', avatar: '' };
   });
 
   const [bikes, setBikes] = useState<Motorcycle[]>(() => {
     const saved = localStorage.getItem('motospirit_bikes');
-    // Pokud nic není uloženo, začínáme s prázdnou garáží (BMW odstraněno)
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -31,7 +30,12 @@ const Garage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // --- PERSISTENCE ---
-  useEffect(() => localStorage.setItem('motospirit_user', JSON.stringify(user)), [user]);
+  useEffect(() => {
+    localStorage.setItem('motospirit_user', JSON.stringify(user));
+    // Dispatch custom event to notify Navbar and other components
+    window.dispatchEvent(new Event('storage'));
+  }, [user]);
+
   useEffect(() => localStorage.setItem('motospirit_bikes', JSON.stringify(bikes)), [bikes]);
   useEffect(() => localStorage.setItem('motospirit_records', JSON.stringify(records)), [records]);
 
@@ -80,42 +84,70 @@ const Garage: React.FC = () => {
       {/* Rider Profile Section */}
       <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2.5rem] border border-slate-700 p-8 shadow-xl">
         <div className="flex flex-col md:flex-row items-center gap-8">
-          <div className="relative">
-            <div className="w-24 h-24 rounded-3xl bg-orange-600 flex items-center justify-center text-4xl font-bold shadow-lg shadow-orange-900/40">
-              {user.name ? user.name[0].toUpperCase() : <i className="fas fa-user"></i>}
+          <div className="relative group">
+            <div className="w-28 h-28 rounded-3xl bg-slate-700 flex items-center justify-center text-4xl font-bold shadow-lg shadow-black/40 overflow-hidden border-2 border-orange-500/30">
+              {user.avatar ? (
+                <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-orange-500">{user.name ? user.name[0].toUpperCase() : <i className="fas fa-user"></i>}</span>
+              )}
             </div>
             <button 
               onClick={() => setIsProfileEditing(!isProfileEditing)}
-              className="absolute -bottom-2 -right-2 bg-slate-700 hover:bg-slate-600 w-8 h-8 rounded-full border border-slate-600 flex items-center justify-center transition-colors"
+              className="absolute -bottom-2 -right-2 bg-orange-600 hover:bg-orange-500 w-10 h-10 rounded-2xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg scale-90 hover:scale-100"
             >
-              <i className="fas fa-pen text-xs"></i>
+              <i className={`fas ${isProfileEditing ? 'fa-check' : 'fa-camera'} text-white text-sm`}></i>
             </button>
           </div>
           
           <div className="flex-grow text-center md:text-left">
             {isProfileEditing ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
-                <input 
-                  className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                  placeholder="Tvé jméno" 
-                  value={user.name} 
-                  onChange={e => setUser({...user, name: e.target.value})}
-                />
-                <input 
-                  className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                  placeholder="Styl jízdy (např. Enduro, Kochačka)" 
-                  value={user.ridingStyle} 
-                  onChange={e => setUser({...user, ridingStyle: e.target.value})}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn max-w-2xl">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Jméno</label>
+                  <input 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                    placeholder="Tvé jméno" 
+                    value={user.name} 
+                    onChange={e => setUser({...user, name: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Přezdívka</label>
+                  <input 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                    placeholder="Nickname" 
+                    value={user.nickname} 
+                    onChange={e => setUser({...user, nickname: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">URL Fotky</label>
+                  <input 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                    placeholder="https://..." 
+                    value={user.avatar || ''} 
+                    onChange={e => setUser({...user, avatar: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Styl jízdy</label>
+                  <input 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                    placeholder="Např. Enduro" 
+                    value={user.ridingStyle} 
+                    onChange={e => setUser({...user, ridingStyle: e.target.value})}
+                  />
+                </div>
               </div>
             ) : (
               <>
-                <h2 className="text-2xl font-brand font-bold tracking-tight">
-                  {user.name || 'Biker bez jména'} <span className="text-orange-500">"{user.nickname}"</span>
+                <h2 className="text-3xl font-brand font-bold tracking-tight">
+                  {user.name || 'Neznámý'} <span className="text-orange-500">"{user.nickname || 'Rider'}"</span>
                 </h2>
-                <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-2 text-sm text-slate-400 font-semibold uppercase tracking-wider">
-                  <span><i className="fas fa-helmet-safety text-orange-500 mr-2"></i>{user.ridingStyle}</span>
-                  <span><i className="fas fa-calendar-check text-orange-500 mr-2"></i>{user.experienceYears} let v sedle</span>
+                <div className="flex flex-wrap justify-center md:justify-start gap-6 mt-3 text-sm text-slate-400 font-semibold uppercase tracking-wider">
+                  <span className="flex items-center gap-2"><i className="fas fa-helmet-safety text-orange-500"></i>{user.ridingStyle || 'Road Rider'}</span>
+                  <span className="flex items-center gap-2"><i className="fas fa-calendar-check text-orange-500"></i>{user.experienceYears} let v sedle</span>
                 </div>
               </>
             )}
@@ -127,13 +159,13 @@ const Garage: React.FC = () => {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold font-brand uppercase tracking-tighter">MOJE <span className="text-orange-500">MAŠINY</span></h1>
-          <p className="text-slate-500 text-sm">Celkem strojů: {bikes.length}</p>
+          <p className="text-slate-500 text-sm">Garáž hostí {bikes.length} strojů</p>
         </div>
         <button 
           onClick={() => setIsAddModalOpen(true)}
           className="bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-2xl flex items-center gap-2 font-bold transition-all shadow-lg active:scale-95"
         >
-          <i className="fas fa-plus"></i> PŘIDAT STROJ
+          <i className="fas fa-plus"></i> PŘIDAT
         </button>
       </div>
 
@@ -142,7 +174,7 @@ const Garage: React.FC = () => {
         <div className="bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[2.5rem] py-20 text-center space-y-4">
           <i className="fas fa-motorcycle text-6xl text-slate-700"></i>
           <p className="text-slate-500 font-bold uppercase tracking-widest">Garáž je zatím prázdná</p>
-          <button onClick={() => setIsAddModalOpen(true)} className="text-orange-500 hover:underline font-bold">Přidej svou první motorku</button>
+          <button onClick={() => setIsAddModalOpen(true)} className="text-orange-500 hover:underline font-bold">Zaparkuj tu první mašinu</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -170,7 +202,7 @@ const Garage: React.FC = () => {
                       onChange={(e) => updateMileage(bike.id, parseInt(e.target.value) || 0)}
                       className="bg-slate-900 border border-slate-700 rounded-lg py-1 px-3 text-orange-500 font-bold text-xl text-right w-32 outline-none focus:border-orange-500"
                     />
-                    <p className="text-[10px] text-slate-500 font-bold mt-1">NAJETO KM</p>
+                    <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">Stav Tachometru</p>
                   </div>
                 </div>
 
@@ -184,7 +216,7 @@ const Garage: React.FC = () => {
                 </button>
 
                 <div className="space-y-3">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Servisní historie (lokální)</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Servisní historie</p>
                   {records.filter(r => r.bikeId === bike.id).length === 0 ? (
                     <p className="text-sm text-slate-400 italic bg-slate-900/50 p-4 rounded-xl border border-slate-700">Zatím žádné záznamy o servisu.</p>
                   ) : (
@@ -202,7 +234,7 @@ const Garage: React.FC = () => {
         </div>
       )}
 
-      {/* AI Analysis Overlay */}
+      {/* Modals are unchanged below */}
       {analysis && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-2xl rounded-[2.5rem] border border-orange-500/50 shadow-2xl overflow-hidden animate-slideUp">
@@ -225,7 +257,6 @@ const Garage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Bike Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-slideUp overflow-hidden">
@@ -273,28 +304,18 @@ const Garage: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">URL Fotky (nepovinné)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">URL Fotky</label>
                 <input 
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-xs" 
-                  placeholder="https://images.unsplash..." 
+                  placeholder="https://..." 
                   value={newBike.image} 
                   onChange={e => setNewBike({...newBike, image: e.target.value})}
                 />
               </div>
             </div>
             <div className="p-8 bg-slate-900/50 flex gap-4">
-              <button 
-                onClick={() => setIsAddModalOpen(false)}
-                className="flex-1 bg-slate-700 py-4 rounded-2xl font-bold"
-              >
-                ZRUŠIT
-              </button>
-              <button 
-                onClick={handleAddBike}
-                className="flex-1 bg-orange-600 py-4 rounded-2xl font-bold"
-              >
-                ULOŽIT
-              </button>
+              <button onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-slate-700 py-4 rounded-2xl font-bold">ZRUŠIT</button>
+              <button onClick={handleAddBike} className="flex-1 bg-orange-600 py-4 rounded-2xl font-bold">ULOŽIT</button>
             </div>
           </div>
         </div>

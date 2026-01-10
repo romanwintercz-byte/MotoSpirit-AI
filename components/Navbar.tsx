@@ -1,9 +1,24 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { UserProfile } from '../types';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('motospirit_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Listen for changes in localStorage to update profile pic
+  useEffect(() => {
+    const handleStorage = () => {
+      const saved = localStorage.getItem('motospirit_user');
+      if (saved) setUser(JSON.parse(saved));
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
   
   const navItems = [
     { path: '/', label: 'Domů', icon: 'fa-home' },
@@ -40,12 +55,16 @@ const Navbar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors">
+          <button className="bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors hidden sm:block">
             <i className="fas fa-bell"></i>
           </button>
-          <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white">
-            R
-          </div>
+          <Link to="/garage" className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white overflow-hidden border-2 border-slate-700 shadow-lg">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="Me" className="w-full h-full object-cover" />
+            ) : (
+              user?.name ? user.name[0].toUpperCase() : 'R'
+            )}
+          </Link>
         </div>
       </div>
     </nav>
