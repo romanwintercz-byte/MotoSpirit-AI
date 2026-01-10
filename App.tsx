@@ -7,51 +7,86 @@ import TripPlanner from './pages/TripPlanner';
 import Assistant from './pages/Assistant';
 import Navbar from './components/Navbar';
 
+// Fix: Define the AIStudio interface to ensure compatibility and type safety.
+interface AIStudio {
+  hasSelectedApiKey(): Promise<boolean>;
+  openSelectKey(): Promise<void>;
+}
+
+// Fix: Use the correct type and modifiers for the global aistudio property.
+// The error 'identical modifiers' usually requires 'readonly' to match the system declaration.
 declare global {
   interface Window {
-    // Fix: Subsequent property declarations must have the same type. Property 'aistudio' must be of type 'AIStudio'
-    aistudio: any;
+    readonly aistudio: AIStudio;
   }
 }
 
 const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean>(true);
+  const [checking, setChecking] = useState<boolean>(true);
 
-  useEffect(() => {
-    const checkKey = async () => {
-      // Priorita 1: Kontrola přes aistudio API (pokud je k dispozici)
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+  const checkKeyStatus = async () => {
+    // 1. Zkusíme environmentální proměnnou (pro lokální vývoj nebo SSR)
+    const envKey = process.env.API_KEY;
+    if (envKey && envKey !== 'undefined' && envKey.length > 10) {
+      setHasKey(true);
+      setChecking(false);
+      return;
+    }
+
+    // 2. Zkusíme aistudio API (pro Vercel/Web vyžadující uživatelský klíč)
+    if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+      try {
         const selected = await window.aistudio.hasSelectedApiKey();
         setHasKey(selected);
-      } else {
-        // Priorita 2: Environmentální proměnná
-        const envKey = process.env.API_KEY;
-        setHasKey(!!(envKey && envKey !== 'undefined' && envKey.length > 10));
+      } catch (e) {
+        setHasKey(false);
       }
-    };
-    checkKey();
+    } else {
+      setHasKey(false);
+    }
+    setChecking(false);
+  };
+
+  useEffect(() => {
+    checkKeyStatus();
   }, []);
 
   const handleOpenKeySelector = async () => {
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
       await window.aistudio.openSelectKey();
-      // Guideline: Assume the key selection was successful after triggering openSelectKey()
+      // Fix: Assume success and proceed to the app immediately to prevent race conditions.
+      // Guideline: "Do not add delay to mitigate the race condition."
       setHasKey(true);
     }
   };
 
+  if (checking) {
+    return <div className="min-h-screen bg-slate-900 flex items-center justify-center font-brand text-orange-500 animate-pulse">NASTAVUJI SYSTÉM...</div>;
+  }
+
   return (
     <HashRouter>
       <div className="min-h-screen flex flex-col bg-slate-900 text-slate-100">
-        {!hasKey && window.aistudio && (
-          <div className="bg-orange-600 text-white p-3 text-center text-sm font-bold flex justify-center items-center gap-4 animate-fadeIn">
-            <span>⚠️ AI funkce vyžadují nastavení API klíče.</span>
-            <button 
-              onClick={handleOpenKeySelector}
-              className="bg-white text-orange-600 px-3 py-1 rounded-full text-xs uppercase hover:bg-slate-100 transition-colors"
-            >
-              Nastavit nyní
-            </button>
+        {!hasKey && (
+          <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-6 text-center">
+            <div className="max-w-md bg-slate-800 p-10 rounded-[3rem] border-2 border-orange-600 shadow-2xl shadow-orange-900/20">
+              <i className="fas fa-key text-5xl text-orange-500 mb-6"></i>
+              <h2 className="text-2xl font-brand font-bold mb-4 uppercase">Klíč nenalezen</h2>
+              <p className="text-slate-400 mb-8">
+                Pro běh AI v prohlížeči (Vercel) je nutné vybrat váš API klíč z placeného Google projektu.
+              </p>
+              <button 
+                onClick={handleOpenKeySelector}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3"
+              >
+                <i className="fas fa-plug"></i> NASTAVIT API KLÍČ
+              </button>
+              <p className="mt-6 text-[10px] text-slate-500 uppercase tracking-widest leading-relaxed">
+                Po kliknutí vyberte projekt s aktivním Billingem na <br/>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-orange-500 underline">ai.google.dev/gemini-api/docs/billing</a>
+              </p>
+            </div>
           </div>
         )}
         
