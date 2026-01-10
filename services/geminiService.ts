@@ -3,54 +3,46 @@ import { GoogleGenAI } from "@google/genai";
 import { Motorcycle, MaintenanceRecord, ChatMessage } from "../types";
 
 /**
- * Dynamická inicializace klienta.
+ * Pro produkční nasazení doporučujeme gemini-2.5-flash, 
+ * který je nejvíce kompatibilní se všemi typy klíčů.
  */
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+
 const getAI = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+    // Pro lokální vývoj, pokud zapomeneš na .env
+    console.error("MotoSpirit: API_KEY nebyl nalezen v process.env");
     throw new Error("API_KEY_MISSING");
   }
   return new GoogleGenAI({ apiKey });
 };
 
-/**
- * Detailní ošetření chyb.
- */
 const handleApiError = (error: any) => {
-  console.group("MotoSpirit AI Error Diagnostic");
-  console.error("Original Error Object:", error);
-  const msg = error.message || error.toString();
-  console.log("Error Message:", msg);
+  console.group("MotoSpirit AI Diagnostic");
+  console.error(error);
   console.groupEnd();
-
-  if (msg.includes("Requested entity was not found.")) {
-    return "❌ Klíč nebyl v projektu nalezen (404). Ujistěte se, že Gemini API je v daném projektu aktivní.";
+  
+  const msg = error.message || error.toString();
+  
+  if (msg.includes("404") || msg.includes("not found")) {
+    return "❌ Model nenalezen. Zkuste v nastavení Vercelu zkontrolovat API_KEY.";
   }
-
-  if (msg === "API_KEY_MISSING") {
-    return "❌ API klíč chybí v konfiguraci aplikace (process.env).";
+  if (msg.includes("403") || msg.includes("permission")) {
+    return "❌ Chyba 403: Klíč nemá oprávnění. Zkontrolujte Google AI Studio.";
   }
-
-  if (msg.toLowerCase().includes("api key not valid")) {
-    return "❌ API klíč je neplatný. Zkontrolujte, zda jste jej zkopírovali správně.";
-  }
-
-  if (msg.toLowerCase().includes("restricted") || msg.includes("403")) {
-    return "❌ Přístup zamítnut. Pravděpodobně nemáte v Google Console povolenou adresu vaší aplikace (Referrer restriction).";
-  }
-
-  return "❌ Problém s AI: " + (msg.length > 60 ? msg.substring(0, 60) + "..." : msg);
+  return "❌ Chyba: " + msg.substring(0, 100);
 };
 
 export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceRecord[]): Promise<string> => {
   try {
     const ai = getAI();
-    const recordsText = records.map(r => `- ${r.date}: ${r.type} (${r.description})`).join('\n');
+    const recordsText = records.map(r => `- ${r.date}: ${r.type}`).join('\n');
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Jako motorkářský mechanik analyzuj stav stroje ${bike.brand} ${bike.model} (${bike.mileage} km) na základě: ${recordsText || 'žádné záznamy'}. Buď stručný, mluv česky a motorkářským slangem.`,
+      model: DEFAULT_MODEL,
+      contents: `Jsi mechanik. Analyzuj stav motorky: ${bike.brand} ${bike.model}, najeto ${bike.mileage}km. Předchozí servis: ${recordsText || 'žádný'}. Buď stručný a věcný.`,
     });
-    return response.text || "Mechanik má plné ruce práce, zkus to později.";
+    return response.text || "Zkus to později.";
   } catch (error) {
     return handleApiError(error);
   }
@@ -60,14 +52,17 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Naplánuj motovýlet z: ${origin}. Preference: ${preferences}. Najdi reálné zajímavé body na trase.`,
-      config: { tools: [{ googleSearch: {} }] },
+      model: DEFAULT_MODEL,
+      contents: `Navrhni motovýlet z: ${origin}. Preference: ${preferences}. Najdi reálné trasy a body zájmu pro motorkáře.`,
+      config: {
+        tools: [{ googleSearch: {} }, { googleMaps: {} }],
+      },
     });
-    return {
-      text: response.text || "Trasu se nepodařilo naplánovat.",
-      links: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
-    };
+
+    const text = response.text || "";
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    
+    return { text, links: chunks };
   } catch (error) {
     throw new Error(handleApiError(error));
   }
@@ -77,13 +72,13 @@ export const getBikerAdvice = async (message: string, history: ChatMessage[]): P
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Uživatel píše: ${message}`,
+      model: DEFAULT_MODEL,
+      contents: message,
       config: {
-        systemInstruction: "Jsi MotoSpirit, drsný český motorkář. Raď riderům s technikou a stroji. Buď stručný."
+        systemInstruction: "Jsi MotoSpirit, český biker asistent. Mluv k věci, používej slang, ale buď užitečný."
       }
     });
-    return response.text || "Něco mi vletělo do helmy, napiš to znovu.";
+    return response.text || "Teď mi to nějak vynechává, zkus to znovu.";
   } catch (error) {
     return handleApiError(error);
   }
