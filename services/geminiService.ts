@@ -3,9 +3,10 @@ import { GoogleGenAI } from "@google/genai";
 import { Motorcycle, MaintenanceRecord, ChatMessage } from "../types";
 
 /**
- * Pro Maps Grounding je nutné použít řadu 2.5.
+ * Pro Maps Grounding je nutné použít řadu 2.5. 
+ * Použijeme stabilní název 'gemini-2.5-flash', který má nástroje povolené.
  */
-const MODEL_2_5 = 'gemini-2.5-flash-preview-09-2025';
+const MODEL_2_5 = 'gemini-2.5-flash';
 const MODEL_3_FLASH = 'gemini-3-flash-preview';
 
 const getAI = () => {
@@ -25,6 +26,7 @@ const handleApiError = (error: any) => {
   const msg = error.message || error.toString();
   if (msg.includes("404")) return "❌ Model nenalezen. Zkontrolujte API_KEY.";
   if (msg.includes("403")) return "❌ Chyba 403: Nedostatečná oprávnění klíče.";
+  if (msg.includes("400")) return "❌ Chyba 400: Neplatný požadavek (zkuste jiný model nebo dotaz).";
   return "❌ Došlo k chybě při komunikaci s AI.";
 };
 
@@ -45,7 +47,7 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
 export const planTripWithGrounding = async (origin: string, preferences: string): Promise<{ text: string, links: any[] }> => {
   try {
     const ai = getAI();
-    // Maps grounding vyžaduje řadu 2.5
+    // Maps grounding vyžaduje řadu 2.5. Používáme gemini-2.5-flash.
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
       contents: `Navrhni detailní motovýlet z místa: ${origin}. Moje preference jsou: ${preferences}. Najdi reálné trasy, vyhlídky a motorkářské zastávky. Odpovídej v češtině.`,

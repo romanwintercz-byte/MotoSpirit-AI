@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
 
@@ -28,11 +28,11 @@ const Garage: React.FC = () => {
 
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- PERSISTENCE ---
   useEffect(() => {
     localStorage.setItem('motospirit_user', JSON.stringify(user));
-    // Dispatch custom event to notify Navbar and other components
     window.dispatchEvent(new Event('storage'));
   }, [user]);
 
@@ -40,6 +40,17 @@ const Garage: React.FC = () => {
   useEffect(() => localStorage.setItem('motospirit_records', JSON.stringify(records)), [records]);
 
   // --- HANDLERS ---
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUser(prev => ({ ...prev, avatar: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAnalyze = async (bike: Motorcycle) => {
     setLoading(true);
     try {
@@ -92,65 +103,89 @@ const Garage: React.FC = () => {
                 <span className="text-orange-500">{user.name ? user.name[0].toUpperCase() : <i className="fas fa-user"></i>}</span>
               )}
             </div>
+            
+            {/* Input pro nahrání souboru */}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleAvatarFileChange} 
+            />
+            
             <button 
-              onClick={() => setIsProfileEditing(!isProfileEditing)}
+              onClick={() => isProfileEditing ? fileInputRef.current?.click() : setIsProfileEditing(true)}
               className="absolute -bottom-2 -right-2 bg-orange-600 hover:bg-orange-500 w-10 h-10 rounded-2xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg scale-90 hover:scale-100"
+              title={isProfileEditing ? "Nahrát fotku z disku" : "Upravit profil"}
             >
-              <i className={`fas ${isProfileEditing ? 'fa-check' : 'fa-camera'} text-white text-sm`}></i>
+              <i className={`fas ${isProfileEditing ? 'fa-upload' : 'fa-camera'} text-white text-sm`}></i>
             </button>
           </div>
           
           <div className="flex-grow text-center md:text-left">
-            {isProfileEditing ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn max-w-2xl">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Jméno</label>
-                  <input 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                    placeholder="Tvé jméno" 
-                    value={user.name} 
-                    onChange={e => setUser({...user, name: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Přezdívka</label>
-                  <input 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                    placeholder="Nickname" 
-                    value={user.nickname} 
-                    onChange={e => setUser({...user, nickname: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">URL Fotky</label>
-                  <input 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                    placeholder="https://..." 
-                    value={user.avatar || ''} 
-                    onChange={e => setUser({...user, avatar: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Styl jízdy</label>
-                  <input 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                    placeholder="Např. Enduro" 
-                    value={user.ridingStyle} 
-                    onChange={e => setUser({...user, ridingStyle: e.target.value})}
-                  />
-                </div>
+            <div className="flex justify-between items-start">
+              <div className="flex-grow">
+                {isProfileEditing ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn max-w-2xl">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Jméno</label>
+                      <input 
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                        placeholder="Tvé jméno" 
+                        value={user.name} 
+                        onChange={e => setUser({...user, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Přezdívka</label>
+                      <input 
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                        placeholder="Nickname" 
+                        value={user.nickname} 
+                        onChange={e => setUser({...user, nickname: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Styl jízdy</label>
+                      <input 
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                        placeholder="Např. Enduro" 
+                        value={user.ridingStyle} 
+                        onChange={e => setUser({...user, ridingStyle: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Zkušenosti (roky)</label>
+                      <input 
+                        type="number"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
+                        value={user.experienceYears} 
+                        onChange={e => setUser({...user, experienceYears: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-3xl font-brand font-bold tracking-tight">
+                      {user.name || 'Neznámý'} <span className="text-orange-500">"{user.nickname || 'Rider'}"</span>
+                    </h2>
+                    <div className="flex flex-wrap justify-center md:justify-start gap-6 mt-3 text-sm text-slate-400 font-semibold uppercase tracking-wider">
+                      <span className="flex items-center gap-2"><i className="fas fa-helmet-safety text-orange-500"></i>{user.ridingStyle || 'Road Rider'}</span>
+                      <span className="flex items-center gap-2"><i className="fas fa-calendar-check text-orange-500"></i>{user.experienceYears} let v sedle</span>
+                    </div>
+                  </>
+                )}
               </div>
-            ) : (
-              <>
-                <h2 className="text-3xl font-brand font-bold tracking-tight">
-                  {user.name || 'Neznámý'} <span className="text-orange-500">"{user.nickname || 'Rider'}"</span>
-                </h2>
-                <div className="flex flex-wrap justify-center md:justify-start gap-6 mt-3 text-sm text-slate-400 font-semibold uppercase tracking-wider">
-                  <span className="flex items-center gap-2"><i className="fas fa-helmet-safety text-orange-500"></i>{user.ridingStyle || 'Road Rider'}</span>
-                  <span className="flex items-center gap-2"><i className="fas fa-calendar-check text-orange-500"></i>{user.experienceYears} let v sedle</span>
-                </div>
-              </>
-            )}
+              
+              {isProfileEditing && (
+                <button 
+                  onClick={() => setIsProfileEditing(false)}
+                  className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold transition-all ml-4"
+                >
+                  HOTOVO
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -234,7 +269,7 @@ const Garage: React.FC = () => {
         </div>
       )}
 
-      {/* Modals are unchanged below */}
+      {/* AI Analysis Overlay */}
       {analysis && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-2xl rounded-[2.5rem] border border-orange-500/50 shadow-2xl overflow-hidden animate-slideUp">
@@ -257,6 +292,7 @@ const Garage: React.FC = () => {
         </div>
       )}
 
+      {/* Add Bike Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-slideUp overflow-hidden">
