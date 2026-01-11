@@ -80,18 +80,22 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
   try {
     const ai = getAI();
     
-    // Maximálně detailní instrukce pro hustotu a přesnost bodů
-    const systemInstruction = `Jsi profesionální plánovač motocyklových tras. 
-    Tvým úkolem je navrhnout trasu, která se vyhýbá dálnicím a hledá nejzajímavější okresky (zatáčky, vyhlídky).
-    MUSÍŠ vrátit minimálně 25 až 40 GPS souřadnic, které přesně kopírují reálný průběh silnice (včetně průjezdních bodů v zatáčkách), aby výsledná čára na mapě nebyla zubatá, ale plynulá.
+    const systemInstruction = `Jsi elitní motocyklový navigátor a kartograf. Tvým cílem je vytvořit TRASU S EXTRÉMNÍ PŘESNOSTÍ.
     
-    Formát odpovědi:
-    1. Textový popis výletu (itinerář, tipy na jídlo, zajímavosti).
-    2. Sekce "GPS_DATA" obsahující seznam souřadnic ve formátu: [lat, lon], [lat, lon], ...`;
+    PRAVIDLA PRO TRASOVÁNÍ:
+    1. Musíš vrátit VELKÉ MNOŽSTVÍ GPS BODŮ (60 až 100 bodů), které plynule kopírují reálnou geometrii silnic (zatáčky, křižovatky, objezdy).
+    2. Body nesmí být jen v cílech, ale hustě po celé délce cesty, aby výsledná čára na mapě přesně seděla na silnice.
+    3. Preferuj vyhlášené motorkářské okresky s minimem dálnic.
+    
+    FORMÁT ODPOVĚDI:
+    1. Detailní itinerář (popis trasy, zajímavosti, tipy na zastávky).
+    2. Sekce "GPS_DATA" obsahující POUZE seznam souřadnic ve formátu: [lat, lon], [lat, lon], ... (vše v hranatých závorkách, oddělené čárkou).
+    
+    Ujisti se, že souřadnice jsou platné (např. v ČR se lat pohybuje kolem 49-50 a lon kolem 13-18).`;
 
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
-      contents: `Navrhni detailní motovýlet z: ${origin}. Preference: ${preferences}.`,
+      contents: `Naplánuj vysoce precizní trasu z: ${origin}. Tvoje preference jsou: ${preferences}. Vygeneruj co nejhustší seznam navigačních bodů.`,
       config: {
         systemInstruction,
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
@@ -105,24 +109,18 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
     
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     
-    // Extrakce souřadnic pomocí regexu
     const waypoints: [number, number][] = [];
-    // Regex hledá [číslo.číslo, číslo.číslo]
-    const coordRegex = /\[(\d+\.\d+),\s*(\d+\.\d+)\]/g;
+    // Robustnější regex pro zachycení různých variant mezer
+    const coordRegex = /\[\s*(\d+\.\d+)\s*,\s*(\d+\.\d+)\s*\]/g;
+    
     let match;
-    while ((match = coordRegex.exec(gpsPart || fullText)) !== null) {
-      waypoints.push([parseFloat(match[1]), parseFloat(match[2])]);
-    }
-
-    // Pokud AI vrátilo málo bodů, zkusíme prohledat celý text odpovědi
-    if (waypoints.length < 5) {
-      const backupMatch = fullText.matchAll(/\[(\d+\.\d+),\s*(\d+\.\d+)\]/g);
-      for (const m of backupMatch) {
-         const lat = parseFloat(m[1]);
-         const lon = parseFloat(m[2]);
-         if (!waypoints.some(w => w[0] === lat && w[1] === lon)) {
-           waypoints.push([lat, lon]);
-         }
+    const searchArea = gpsPart || fullText;
+    while ((match = coordRegex.exec(searchArea)) !== null) {
+      const lat = parseFloat(match[1]);
+      const lon = parseFloat(match[2]);
+      // Základní validace souřadnic pro Evropu (přibližně)
+      if (lat > 30 && lat < 75 && lon > -10 && lon < 45) {
+        waypoints.push([lat, lon]);
       }
     }
 
