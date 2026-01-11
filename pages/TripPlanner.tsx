@@ -10,14 +10,13 @@ const TripPlanner: React.FC = () => {
   const [viewMode, setViewMode] = useState<'text' | 'map'>('text');
   const [result, setResult] = useState<{ text: string, links: any[], waypoints: [number, number][] } | null>(null);
   
-  // Fix: Use 'any' for Leaflet types as they are not defined in the project's TypeScript configuration
   const mapRef = useRef<any | null>(null);
   const polylineRef = useRef<any | null>(null);
   const markersRef = useRef<any[]>([]);
 
   const handlePlan = async (overriddenPreferences?: string) => {
     setLoading(true);
-    setViewMode('map'); // Automaticky přepnout na mapu při generování
+    setViewMode('map'); 
     try {
       const plan = await planTripWithGrounding(origin, overriddenPreferences || preferences);
       setResult(plan);
@@ -47,26 +46,39 @@ const TripPlanner: React.FC = () => {
     recognition.start();
   };
 
-  // Inicializace mapy
+  // Inicializace mapy (pouze jednou)
   useEffect(() => {
-    if (viewMode === 'map' && !mapRef.current) {
-      const L = (window as any).L;
-      if (!L) return;
+    const L = (window as any).L;
+    if (!L || mapRef.current) return;
 
-      mapRef.current = L.map('trip-map', {
-        zoomControl: false,
-        attributionControl: false
-      }).setView([50.0755, 14.4378], 8);
+    const mapInstance = L.map('trip-map', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([50.0755, 14.4378], 7);
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19
-      }).addTo(mapRef.current);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19
+    }).addTo(mapInstance);
 
-      L.control.zoom({ position: 'bottomright' }).addTo(mapRef.current);
+    L.control.zoom({ position: 'bottomright' }).addTo(mapInstance);
+    mapRef.current = mapInstance;
+  }, []);
+
+  // Aktualizace trasy a oprava velikosti při přepnutí
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Fix pro Leaflet: přepočítat velikost, když se div zviditelní
+    if (viewMode === 'map') {
+      setTimeout(() => {
+        mapRef.current.invalidateSize();
+        if (polylineRef.current) {
+          mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
+        }
+      }, 100);
     }
 
-    // Vykreslení trasy, pokud jsou data
-    if (result?.waypoints && result.waypoints.length > 0 && mapRef.current) {
+    if (result?.waypoints && result.waypoints.length > 0) {
       const L = (window as any).L;
       
       // Vyčistit starou trasu
@@ -95,8 +107,9 @@ const TripPlanner: React.FC = () => {
         markersRef.current.push(marker);
       });
 
-      // Fit bounds
-      mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
+      if (viewMode === 'map') {
+        mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
+      }
     }
   }, [viewMode, result]);
 
@@ -127,7 +140,6 @@ const TripPlanner: React.FC = () => {
       </div>
 
       <div className="bg-slate-800/80 p-6 md:p-8 rounded-[2.5rem] border border-slate-700 shadow-xl space-y-6 backdrop-blur-md relative overflow-hidden">
-        {/* Dekorace na pozadí */}
         <i className="fas fa-route absolute -bottom-10 -right-10 text-[12rem] text-white/[0.03] rotate-12 pointer-events-none"></i>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
@@ -191,55 +203,54 @@ const TripPlanner: React.FC = () => {
         </div>
       )}
 
-      {result && (
-        <div className="space-y-6 animate-slideUp">
-          {viewMode === 'map' ? (
-            <div className="bg-slate-800 p-4 rounded-[2.5rem] border border-slate-700 shadow-2xl relative overflow-hidden">
-              <div id="trip-map" className="w-full h-[500px] z-0"></div>
-              {/* Overlay info o bodech */}
-              {result.waypoints.length > 0 && (
-                <div className="absolute top-8 left-8 z-10 bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-xl max-w-[200px] hidden sm:block">
-                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Statistika trasy</p>
-                  <p className="text-white font-bold text-xs flex items-center gap-2">
-                    <i className="fas fa-route text-orange-500"></i> {result.waypoints.length} kontrolních bodů
-                  </p>
-                </div>
-              )}
+      {/* Map Container - Vždy v DOMu, jen schovaný */}
+      <div className={`space-y-6 animate-slideUp ${viewMode === 'map' && result ? '' : 'hidden'}`}>
+        <div className="bg-slate-800 p-4 rounded-[2.5rem] border border-slate-700 shadow-2xl relative overflow-hidden">
+          <div id="trip-map" className="w-full h-[500px] z-0"></div>
+          {result?.waypoints && result.waypoints.length > 0 && (
+            <div className="absolute top-8 left-8 z-10 bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-xl max-w-[200px] hidden sm:block">
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Statistika trasy</p>
+              <p className="text-white font-bold text-xs flex items-center gap-2">
+                <i className="fas fa-route text-orange-500"></i> {result.waypoints.length} bodů trasy
+              </p>
             </div>
-          ) : (
-            <div className="bg-slate-800 p-8 rounded-[2.5rem] border border-orange-500/20 space-y-6 shadow-2xl">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold font-brand text-white flex items-center gap-3 uppercase">
-                  <i className="fas fa-route text-orange-500"></i> Itinerář výletu
-                </h2>
-              </div>
-              <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap bg-slate-900/50 p-6 rounded-2xl border border-slate-700">
-                {result.text}
-              </div>
+          )}
+        </div>
+      </div>
 
-              {result.links.length > 0 && (
-                <div className="pt-4 border-t border-slate-700">
-                  <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Ověřené zdroje a místa</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {result.links.map((chunk: any, i: number) => {
-                      const data = chunk.web || chunk.maps;
-                      if (!data) return null;
-                      return (
-                        <a 
-                          key={i} 
-                          href={data.uri} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="bg-slate-900 hover:bg-orange-600/20 border border-slate-700 hover:border-orange-500/50 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-slate-300"
-                        >
-                          <i className="fas fa-external-link-alt text-orange-500 text-[10px]"></i>
-                          {data.title || 'Místo'}
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+      {/* Text Itinerary - Zobrazí se jen když není mapa */}
+      {viewMode === 'text' && result && (
+        <div className="bg-slate-800 p-8 rounded-[2.5rem] border border-orange-500/20 space-y-6 shadow-2xl animate-slideUp">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold font-brand text-white flex items-center gap-3 uppercase">
+              <i className="fas fa-route text-orange-500"></i> Itinerář výletu
+            </h2>
+          </div>
+          <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap bg-slate-900/50 p-6 rounded-2xl border border-slate-700">
+            {result.text}
+          </div>
+
+          {result.links.length > 0 && (
+            <div className="pt-4 border-t border-slate-700">
+              <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Ověřené zdroje a místa</h3>
+              <div className="flex flex-wrap gap-2">
+                {result.links.map((chunk: any, i: number) => {
+                  const data = chunk.web || chunk.maps;
+                  if (!data) return null;
+                  return (
+                    <a 
+                      key={i} 
+                      href={data.uri} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="bg-slate-900 hover:bg-orange-600/20 border border-slate-700 hover:border-orange-500/50 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-slate-300"
+                    >
+                      <i className="fas fa-external-link-alt text-orange-500 text-[10px]"></i>
+                      {data.title || 'Místo'}
+                    </a>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
