@@ -4,21 +4,35 @@ import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
 
 const Garage: React.FC = () => {
+  // --- POMOCNÉ FUNKCE PRO BEZPEČNÝ LOCALSTORAGE ---
+  const safeGetItem = (key: string, defaultValue: string) => {
+    try {
+      return localStorage.getItem(key) || defaultValue;
+    } catch (e) {
+      return defaultValue;
+    }
+  };
+
+  const safeParse = (data: string, fallback: any) => {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return fallback;
+    }
+  };
+
   // --- STATE ---
-  const [user, setUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('motospirit_user');
-    return saved ? JSON.parse(saved) : { name: '', nickname: 'Rider', experienceYears: 0, ridingStyle: 'Road', avatar: '' };
-  });
+  const [user, setUser] = useState<UserProfile>(() => 
+    safeParse(safeGetItem('motospirit_user', ''), { name: '', nickname: 'Rider', experienceYears: 0, ridingStyle: 'Road', avatar: '' })
+  );
 
-  const [bikes, setBikes] = useState<Motorcycle[]>(() => {
-    const saved = localStorage.getItem('motospirit_bikes');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [bikes, setBikes] = useState<Motorcycle[]>(() => 
+    safeParse(safeGetItem('motospirit_bikes', '[]'), [])
+  );
 
-  const [records, setRecords] = useState<MaintenanceRecord[]>(() => {
-    const saved = localStorage.getItem('motospirit_records');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [records, setRecords] = useState<MaintenanceRecord[]>(() => 
+    safeParse(safeGetItem('motospirit_records', '[]'), [])
+  );
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isProfileEditing, setIsProfileEditing] = useState(false);
@@ -34,18 +48,29 @@ const Garage: React.FC = () => {
 
   // --- PERSISTENCE ---
   useEffect(() => {
-    localStorage.setItem('motospirit_user', JSON.stringify(user));
-    window.dispatchEvent(new Event('storage'));
+    try {
+      localStorage.setItem('motospirit_user', JSON.stringify(user));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) { console.error("Storage error", e); }
   }, [user]);
 
-  useEffect(() => localStorage.setItem('motospirit_bikes', JSON.stringify(bikes)), [bikes]);
-  useEffect(() => localStorage.setItem('motospirit_records', JSON.stringify(records)), [records]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('motospirit_bikes', JSON.stringify(bikes));
+    } catch (e) { console.error("Storage error", e); }
+  }, [bikes]);
 
-  // Listen for storage changes (to sync mileage from Logbook)
+  useEffect(() => {
+    try {
+      localStorage.setItem('motospirit_records', JSON.stringify(records));
+    } catch (e) { console.error("Storage error", e); }
+  }, [records]);
+
+  // Synchronizace nájezdu z Logbooku
   useEffect(() => {
     const sync = () => {
-      const savedBikes = localStorage.getItem('motospirit_bikes');
-      if (savedBikes) setBikes(JSON.parse(savedBikes));
+      const savedBikes = safeGetItem('motospirit_bikes', '[]');
+      setBikes(safeParse(savedBikes, []));
     };
     window.addEventListener('storage', sync);
     return () => window.removeEventListener('storage', sync);
@@ -55,6 +80,11 @@ const Garage: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'user' | 'bike') => {
     const file = e.target.files?.[0];
     if (file) {
+      // Omezení velikosti na cca 2MB pro base64 (localStorage má limit 5-10MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Fotka je příliš velká. Vyber prosím menší soubor (do 2MB).");
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
@@ -82,37 +112,45 @@ const Garage: React.FC = () => {
   };
 
   const handleAddBike = () => {
-    if (!newBike.brand || !newBike.model) return;
+    if (!newBike.brand?.trim() || !newBike.model?.trim()) {
+      alert("Vyplň prosím aspoň značku a model.");
+      return;
+    }
+    
+    // Ochrana proti NaN hodnotám
+    const yearVal = parseInt(String(newBike.year)) || new Date().getFullYear();
+    const mileageVal = parseInt(String(newBike.mileage)) || 0;
+
     const bikeToAdd: Motorcycle = {
       id: Date.now().toString(),
-      brand: newBike.brand || '',
-      model: newBike.model || '',
-      year: Number(newBike.year) || 2024,
-      mileage: Number(newBike.mileage) || 0,
+      brand: newBike.brand.trim(),
+      model: newBike.model.trim(),
+      year: yearVal,
+      mileage: mileageVal,
       image: newBike.image || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=800&q=80'
     };
-    setBikes([...bikes, bikeToAdd]);
+    
+    setBikes(prev => [...prev, bikeToAdd]);
     setNewBike({ brand: '', model: '', year: 2024, mileage: 0, image: '' });
     setIsAddModalOpen(false);
   };
 
   const deleteBike = (id: string) => {
     if (window.confirm("Opravdu chceš tuhle mašinu vyřadit z garáže?")) {
-      const updatedBikes = bikes.filter(b => b.id !== id);
-      setBikes(updatedBikes);
-      const updatedRecords = records.filter(r => r.bikeId !== id);
-      setRecords(updatedRecords);
+      setBikes(prev => prev.filter(b => b.id !== id));
+      setRecords(prev => prev.filter(r => r.bikeId !== id));
     }
   };
 
-  const updateMileage = (id: string, newMileage: number) => {
-    setBikes(prev => prev.map(b => b.id === id ? { ...b, mileage: newMileage } : b));
+  const updateMileage = (id: string, val: string) => {
+    const num = parseInt(val) || 0;
+    setBikes(prev => prev.map(b => b.id === id ? { ...b, mileage: num } : b));
   };
 
   return (
-    <div className="space-y-6 pb-24 md:pb-12">
+    <div className="space-y-6 pb-32 md:pb-12">
       {/* Rider Profile Section */}
-      <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] border border-slate-700 p-6 shadow-xl">
+      <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] border border-slate-700 p-6 shadow-xl relative z-10">
         <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="relative group">
             <div className="w-24 h-24 rounded-3xl bg-slate-700 flex items-center justify-center text-3xl font-bold shadow-lg overflow-hidden border-2 border-orange-500/30">
@@ -188,7 +226,7 @@ const Garage: React.FC = () => {
       </section>
 
       {/* Header Section */}
-      <div className="flex justify-between items-center px-2">
+      <div className="flex justify-between items-center px-2 relative z-10">
         <div>
           <h1 className="text-2xl font-bold font-brand uppercase tracking-tighter">MOJE <span className="text-orange-500">MAŠINY</span></h1>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Garáž hostí {bikes.length} strojů</p>
@@ -201,24 +239,24 @@ const Garage: React.FC = () => {
         </button>
       </div>
 
-      {/* Mobile Floating Action Button */}
+      {/* Mobile Floating Action Button - Prominentní z-index */}
       <button 
         onClick={() => setIsAddModalOpen(true)}
-        className="sm:hidden fixed bottom-24 right-6 w-14 h-14 bg-orange-600 hover:bg-orange-700 rounded-full shadow-2xl flex items-center justify-center text-white z-[60] active:scale-90 transition-all border-4 border-slate-900"
+        className="sm:hidden fixed bottom-28 right-6 w-16 h-16 bg-orange-600 hover:bg-orange-700 rounded-full shadow-[0_10px_30px_rgba(249,115,22,0.4)] flex items-center justify-center text-white z-[99] active:scale-90 transition-all border-4 border-slate-900"
         aria-label="Přidat motorku"
       >
-        <i className="fas fa-plus text-xl"></i>
+        <i className="fas fa-plus text-2xl"></i>
       </button>
 
       {/* Bike Grid */}
       {bikes.length === 0 ? (
-        <div className="bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[2rem] py-16 text-center space-y-4 px-6">
+        <div className="bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[2rem] py-16 text-center space-y-4 px-6 relative z-10">
           <i className="fas fa-motorcycle text-5xl text-slate-700"></i>
           <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Garáž je zatím prázdná</p>
           <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-800 px-6 py-3 rounded-xl border border-slate-700 text-orange-500 font-bold text-sm">ZAPARKUJ TU PRVNÍ MAŠINU</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
           {bikes.map(bike => (
             <div key={bike.id} className="bg-slate-800 rounded-[2rem] overflow-hidden border border-slate-700 group shadow-lg hover:border-orange-500/50 transition-all">
               <div className="h-48 relative overflow-hidden">
@@ -228,7 +266,7 @@ const Garage: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => deleteBike(bike.id)}
-                  className="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 p-2.5 rounded-xl backdrop-blur-md transition-all sm:opacity-0 group-hover:opacity-100"
+                  className="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 w-10 h-10 rounded-xl backdrop-blur-md transition-all sm:opacity-0 group-hover:opacity-100 flex items-center justify-center"
                 >
                   <i className="fas fa-trash-can text-white text-sm"></i>
                 </button>
@@ -241,7 +279,7 @@ const Garage: React.FC = () => {
                        <input 
                         type="number"
                         value={bike.mileage}
-                        onChange={(e) => updateMileage(bike.id, parseInt(e.target.value) || 0)}
+                        onChange={(e) => updateMileage(bike.id, e.target.value)}
                         className="bg-transparent text-orange-500 font-bold text-lg w-24 outline-none focus:text-white transition-colors"
                       />
                       <span className="text-[10px] text-slate-600">KM</span>
@@ -282,14 +320,14 @@ const Garage: React.FC = () => {
 
       {/* AI Analysis Overlay */}
       {analysis && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-2xl rounded-[2.5rem] border border-orange-500/50 shadow-2xl overflow-hidden animate-slideUp">
             <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
               <div className="flex items-center gap-3">
                 <i className="fas fa-robot text-orange-500"></i>
-                <h2 className="text-lg font-brand font-bold uppercase tracking-tight">AI DOPORUČENÍ</h2>
+                <h2 className="text-lg font-brand font-bold uppercase tracking-tight text-white">AI DOPORUČENÍ</h2>
               </div>
-              <button onClick={() => setAnalysis(null)} className="text-slate-500 hover:text-white transition-colors">
+              <button onClick={() => setAnalysis(null)} className="text-slate-500 hover:text-white transition-colors p-2">
                 <i className="fas fa-times text-xl"></i>
               </button>
             </div>
@@ -297,7 +335,7 @@ const Garage: React.FC = () => {
               {analysis}
             </div>
             <div className="p-6 bg-slate-900/50 flex justify-center">
-              <button onClick={() => setAnalysis(null)} className="w-full bg-orange-600 hover:bg-orange-700 py-4 rounded-xl font-bold transition-all shadow-lg">ZAVŘÍT</button>
+              <button onClick={() => setAnalysis(null)} className="w-full bg-orange-600 hover:bg-orange-700 py-4 rounded-xl font-bold transition-all shadow-lg text-white">ZAVŘÍT</button>
             </div>
           </div>
         </div>
@@ -305,17 +343,17 @@ const Garage: React.FC = () => {
 
       {/* Add Bike Modal - Mobile Optimized */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-slideUp overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] border-t sm:border border-slate-700 shadow-2xl animate-slideUp overflow-hidden flex flex-col max-h-[95vh]">
             <div className="p-6 border-b border-slate-700 flex justify-between items-center shrink-0">
-              <h2 className="text-lg font-brand font-bold uppercase tracking-tight">NOVÁ <span className="text-orange-500">MAŠINA</span></h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-500 hover:text-white p-2"><i className="fas fa-times text-xl"></i></button>
+              <h2 className="text-lg font-brand font-bold uppercase tracking-tight text-white">NOVÁ <span className="text-orange-500">MAŠINA</span></h2>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-500 hover:text-white p-2"><i className="fas fa-times text-2xl"></i></button>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto flex-grow">
+            <div className="p-6 space-y-4 overflow-y-auto flex-grow bg-slate-800">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Značka</label>
                 <input 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
                   placeholder="Yamaha, Honda, BMW..." 
                   value={newBike.brand} 
                   onChange={e => setNewBike({...newBike, brand: e.target.value})}
@@ -324,7 +362,7 @@ const Garage: React.FC = () => {
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Model</label>
                 <input 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
                   placeholder="Ténéré, Africa Twin..." 
                   value={newBike.model} 
                   onChange={e => setNewBike({...newBike, model: e.target.value})}
@@ -335,18 +373,18 @@ const Garage: React.FC = () => {
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Rok</label>
                   <input 
                     type="number"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
                     value={newBike.year} 
-                    onChange={e => setNewBike({...newBike, year: parseInt(e.target.value)})}
+                    onChange={e => setNewBike({...newBike, year: parseInt(e.target.value) || 0})}
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Nájezd (km)</label>
                   <input 
                     type="number"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
                     value={newBike.mileage} 
-                    onChange={e => setNewBike({...newBike, mileage: parseInt(e.target.value)})}
+                    onChange={e => setNewBike({...newBike, mileage: parseInt(e.target.value) || 0})}
                   />
                 </div>
               </div>
@@ -355,14 +393,14 @@ const Garage: React.FC = () => {
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka stroje</label>
                 <div 
                   onClick={() => bikeFileInputRef.current?.click()}
-                  className="w-full h-32 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all"
+                  className="w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all"
                 >
                   {newBike.image ? (
                     <img src={newBike.image} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <>
-                      <i className="fas fa-camera text-2xl text-slate-600 mb-1 group-hover:text-orange-500 transition-colors"></i>
-                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Klikni a foť / vyber soubor</span>
+                      <i className="fas fa-camera text-3xl text-slate-600 mb-2 group-hover:text-orange-500 transition-colors"></i>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center px-4">Klikni a foť / vyber soubor</span>
                     </>
                   )}
                 </div>
@@ -375,9 +413,9 @@ const Garage: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="p-6 bg-slate-900/50 flex gap-3 shrink-0">
-              <button onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-slate-700 py-4 rounded-xl font-bold text-xs uppercase tracking-widest">ZRUŠIT</button>
-              <button onClick={handleAddBike} className="flex-1 bg-orange-600 py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-orange-900/20 active:scale-95 transition-all">ULOŽIT MAŠINU</button>
+            <div className="p-6 bg-slate-900/80 border-t border-slate-700 flex gap-3 shrink-0 pb-10 sm:pb-6">
+              <button onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white transition-all">ZRUŠIT</button>
+              <button onClick={handleAddBike} className="flex-1 bg-orange-600 hover:bg-orange-500 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white shadow-lg shadow-orange-900/20 active:scale-95 transition-all">ULOŽIT MAŠINU</button>
             </div>
           </div>
         </div>
