@@ -79,13 +79,21 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
 export const planTripWithGrounding = async (origin: string, preferences: string): Promise<{ text: string, links: any[], waypoints: [number, number][] }> => {
   try {
     const ai = getAI();
-    // Zpřísněný prompt pro souřadnice
+    
+    // Maximálně detailní instrukce pro hustotu a přesnost bodů
+    const systemInstruction = `Jsi profesionální plánovač motocyklových tras. 
+    Tvým úkolem je navrhnout trasu, která se vyhýbá dálnicím a hledá nejzajímavější okresky (zatáčky, vyhlídky).
+    MUSÍŠ vrátit minimálně 25 až 40 GPS souřadnic, které přesně kopírují reálný průběh silnice (včetně průjezdních bodů v zatáčkách), aby výsledná čára na mapě nebyla zubatá, ale plynulá.
+    
+    Formát odpovědi:
+    1. Textový popis výletu (itinerář, tipy na jídlo, zajímavosti).
+    2. Sekce "GPS_DATA" obsahující seznam souřadnic ve formátu: [lat, lon], [lat, lon], ...`;
+
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
-      contents: `Navrhni motovýlet z: ${origin}. Preference: ${preferences}. 
-      DŮLEŽITÉ: Na konec odpovědi vlož sekci "GPS_DATA" a do ní vypiš přesné souřadnice trasy jako prostý seznam v hranatých závorkách, např.: [50.1, 14.4], [50.2, 14.5].
-      Vytvoř trasu o délce aspoň 5-10 bodů.`,
+      contents: `Navrhni detailní motovýlet z: ${origin}. Preference: ${preferences}.`,
       config: {
+        systemInstruction,
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
       },
     });
@@ -97,12 +105,25 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
     
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     
-    // Lepší regex pro zachycení souřadnic
+    // Extrakce souřadnic pomocí regexu
     const waypoints: [number, number][] = [];
+    // Regex hledá [číslo.číslo, číslo.číslo]
     const coordRegex = /\[(\d+\.\d+),\s*(\d+\.\d+)\]/g;
     let match;
     while ((match = coordRegex.exec(gpsPart || fullText)) !== null) {
       waypoints.push([parseFloat(match[1]), parseFloat(match[2])]);
+    }
+
+    // Pokud AI vrátilo málo bodů, zkusíme prohledat celý text odpovědi
+    if (waypoints.length < 5) {
+      const backupMatch = fullText.matchAll(/\[(\d+\.\d+),\s*(\d+\.\d+)\]/g);
+      for (const m of backupMatch) {
+         const lat = parseFloat(m[1]);
+         const lon = parseFloat(m[2]);
+         if (!waypoints.some(w => w[0] === lat && w[1] === lon)) {
+           waypoints.push([lat, lon]);
+         }
+      }
     }
 
     return { text, links: chunks, waypoints };
