@@ -10,7 +10,6 @@ const Navbar: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Listen for changes in localStorage to update profile pic
   useEffect(() => {
     const handleStorage = () => {
       const saved = localStorage.getItem('motospirit_user');
@@ -23,6 +22,7 @@ const Navbar: React.FC = () => {
   const navItems = [
     { path: '/', label: 'Domů', icon: 'fa-home' },
     { path: '/garage', label: 'Garáž', icon: 'fa-motorcycle' },
+    { path: '/logbook', label: 'Kniha jízd', icon: 'fa-book' },
     { path: '/planner', label: 'Plánovač', icon: 'fa-map-location-dot' },
     { path: '/assistant', label: 'AI Asistent', icon: 'fa-robot' },
   ];
@@ -39,12 +39,12 @@ const Navbar: React.FC = () => {
           </span>
         </Link>
         
-        <div className="hidden md:flex gap-8">
+        <div className="hidden lg:flex gap-6">
           {navItems.map(item => (
             <Link 
               key={item.path}
               to={item.path} 
-              className={`flex items-center gap-2 font-semibold transition-colors ${
+              className={`flex items-center gap-2 font-semibold transition-colors text-sm ${
                 location.pathname === item.path ? 'text-orange-500' : 'text-slate-300 hover:text-white'
               }`}
             >
@@ -55,9 +55,10 @@ const Navbar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors hidden sm:block">
-            <i className="fas fa-bell"></i>
-          </button>
+          <Link to="/logbook" className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 px-4 rounded-xl transition-colors items-center gap-2 text-xs font-bold">
+            <i className="fas fa-gas-pump text-orange-500"></i>
+            TANKOVAT
+          </Link>
           <Link to="/garage" className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white overflow-hidden border-2 border-slate-700 shadow-lg">
             {user?.avatar ? (
               <img src={user.avatar} alt="Me" className="w-full h-full object-cover" />

@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Garage from './pages/Garage';
 import TripPlanner from './pages/TripPlanner';
 import Assistant from './pages/Assistant';
+import Logbook from './pages/Logbook';
 import Navbar from './components/Navbar';
 
 const App: React.FC = () => {
@@ -17,13 +18,10 @@ const App: React.FC = () => {
       if (apiKey && apiKey !== 'undefined' && apiKey.length > 10) {
         setHasKey(true);
       } else {
-        // Kontrola systémového dialogu
         const aiWin = window as any;
         if (aiWin.aistudio?.hasSelectedApiKey) {
           aiWin.aistudio.hasSelectedApiKey().then((val: boolean) => setHasKey(val));
         } else {
-          // Pokud jsme na Vercelu a není nastavená proměnná, zatím pustíme dál
-          // aby mohl uživatel vidět chyby v konzoli
           setHasKey(true); 
         }
       }
@@ -44,6 +42,7 @@ const App: React.FC = () => {
             <Route path="/garage" element={<Garage />} />
             <Route path="/planner" element={<TripPlanner />} />
             <Route path="/assistant" element={<Assistant />} />
+            <Route path="/logbook" element={<Logbook />} />
           </Routes>
         </main>
         
@@ -51,6 +50,7 @@ const App: React.FC = () => {
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800/90 backdrop-blur-md border-t border-slate-700 flex justify-around py-3 z-50">
           <NavLink to="/" icon="fa-home" label="Domů" />
           <NavLink to="/garage" icon="fa-motorcycle" label="Garáž" />
+          <NavLink to="/logbook" icon="fa-book" label="Kniha" />
           <NavLink to="/planner" icon="fa-map-location-dot" label="Trasy" />
           <NavLink to="/assistant" icon="fa-robot" label="AI" />
         </div>

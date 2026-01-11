@@ -1,11 +1,7 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Motorcycle, MaintenanceRecord, ChatMessage } from "../types";
 
-/**
- * Pro Maps Grounding je nutné použít řadu 2.5. 
- * Použijeme stabilní název 'gemini-2.5-flash', který má nástroje povolené.
- */
 const MODEL_2_5 = 'gemini-2.5-flash';
 const MODEL_3_FLASH = 'gemini-3-flash-preview';
 
@@ -26,8 +22,52 @@ const handleApiError = (error: any) => {
   const msg = error.message || error.toString();
   if (msg.includes("404")) return "❌ Model nenalezen. Zkontrolujte API_KEY.";
   if (msg.includes("403")) return "❌ Chyba 403: Nedostatečná oprávnění klíče.";
-  if (msg.includes("400")) return "❌ Chyba 400: Neplatný požadavek (zkuste jiný model nebo dotaz).";
+  if (msg.includes("400")) return "❌ Chyba 400: Neplatný požadavek.";
   return "❌ Došlo k chybě při komunikaci s AI.";
+};
+
+/**
+ * AI extrakce dat z účtenky (obrázek nebo hlas)
+ */
+export const processReceiptAI = async (input: { base64?: string, mimeType?: string, text?: string }): Promise<any> => {
+  try {
+    const ai = getAI();
+    const parts: any[] = [];
+    
+    if (input.base64 && input.mimeType) {
+      parts.push({
+        inlineData: { data: input.base64, mimeType: input.mimeType }
+      });
+    }
+    
+    const prompt = input.text 
+      ? `Z tohoto hlasového popisu nebo textu extrahuj data o výdaji na motorku: "${input.text}".`
+      : `Z této účtenky extrahuj data o výdaji.`;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_3_FLASH,
+      contents: { parts: [...parts, { text: `${prompt} Vrať JSON s poli: type (fuel/service/other), cost (number), liters (number, jen u fuel), mileage (number, pokud je uveden), date (YYYY-MM-DD), description (string). Pokud něco chybí, dej null.` }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING },
+            cost: { type: Type.NUMBER },
+            liters: { type: Type.NUMBER },
+            mileage: { type: Type.NUMBER },
+            date: { type: Type.STRING },
+            description: { type: Type.STRING }
+          }
+        }
+      }
+    });
+
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("AI Receipt Error:", error);
+    return null;
+  }
 };
 
 export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceRecord[]): Promise<string> => {
@@ -47,7 +87,6 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
 export const planTripWithGrounding = async (origin: string, preferences: string): Promise<{ text: string, links: any[] }> => {
   try {
     const ai = getAI();
-    // Maps grounding vyžaduje řadu 2.5. Používáme gemini-2.5-flash.
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
       contents: `Navrhni detailní motovýlet z místa: ${origin}. Moje preference jsou: ${preferences}. Najdi reálné trasy, vyhlídky a motorkářské zastávky. Odpovídej v češtině.`,
@@ -55,10 +94,8 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
       },
     });
-
     const text = response.text || "";
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    
     return { text, links: chunks };
   } catch (error) {
     throw new Error(handleApiError(error));

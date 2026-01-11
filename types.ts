@@ -25,6 +25,18 @@ export interface MaintenanceRecord {
   description: string;
   mileage: number;
   cost: number;
+  receiptImage?: string;
+}
+
+export interface FuelRecord {
+  id: string;
+  bikeId: string;
+  date: string;
+  mileage: number;
+  liters: number;
+  cost: number;
+  isFull: boolean; // Předpokládáme true podle zadání
+  receiptImage?: string;
 }
 
 export interface RouteSuggestion {
