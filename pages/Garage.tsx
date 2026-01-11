@@ -4,6 +4,37 @@ import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
 
 const Garage: React.FC = () => {
+  // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
+  const resizeImage = (file: File, maxWidth: number = 800): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = (maxWidth / width) * height;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            // Uložíme jako JPEG s kvalitou 0.7 pro maximální úsporu místa
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          }
+        };
+      };
+    });
+  };
+
   // --- POMOCNÉ FUNKCE PRO BEZPEČNÝ LOCALSTORAGE ---
   const safeGetItem = (key: string, defaultValue: string) => {
     try {
@@ -77,24 +108,23 @@ const Garage: React.FC = () => {
   }, []);
 
   // --- HANDLERS ---
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'user' | 'bike') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'user' | 'bike') => {
     const file = e.target.files?.[0];
     if (file) {
-      // Omezení velikosti na cca 2MB pro base64 (localStorage má limit 5-10MB)
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Fotka je příliš velká. Vyber prosím menší soubor (do 2MB).");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
+      setLoading(true);
+      try {
+        const compressedBase64 = await resizeImage(file);
         if (target === 'user') {
-          setUser(prev => ({ ...prev, avatar: base64 }));
+          setUser(prev => ({ ...prev, avatar: compressedBase64 }));
         } else {
-          setNewBike(prev => ({ ...prev, image: base64 }));
+          setNewBike(prev => ({ ...prev, image: compressedBase64 }));
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Image processing failed", err);
+        alert("Nepodařilo se zpracovat obrázek.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -117,7 +147,6 @@ const Garage: React.FC = () => {
       return;
     }
     
-    // Ochrana proti NaN hodnotám
     const yearVal = parseInt(String(newBike.year)) || new Date().getFullYear();
     const mileageVal = parseInt(String(newBike.mileage)) || 0;
 
@@ -197,7 +226,7 @@ const Garage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <h2 className="text-2xl font-brand font-bold tracking-tight">
+                    <h2 className="text-2xl font-brand font-bold tracking-tight text-white">
                       {user.name || 'Neznámý'} <span className="text-orange-500">"{user.nickname || 'Rider'}"</span>
                     </h2>
                     <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
@@ -215,7 +244,7 @@ const Garage: React.FC = () => {
               {isProfileEditing && (
                 <button 
                   onClick={() => setIsProfileEditing(false)}
-                  className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold transition-all text-xs"
+                  className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold transition-all text-xs text-white"
                 >
                   ULOŽIT PROFIL
                 </button>
@@ -228,18 +257,18 @@ const Garage: React.FC = () => {
       {/* Header Section */}
       <div className="flex justify-between items-center px-2 relative z-10">
         <div>
-          <h1 className="text-2xl font-bold font-brand uppercase tracking-tighter">MOJE <span className="text-orange-500">MAŠINY</span></h1>
+          <h1 className="text-2xl font-bold font-brand uppercase tracking-tighter text-white">MOJE <span className="text-orange-500">MAŠINY</span></h1>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Garáž hostí {bikes.length} strojů</p>
         </div>
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="hidden sm:flex bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-xl items-center gap-2 font-bold transition-all shadow-lg active:scale-95"
+          className="hidden sm:flex bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-xl items-center gap-2 font-bold transition-all shadow-lg active:scale-95 text-white"
         >
           <i className="fas fa-plus"></i> PŘIDAT
         </button>
       </div>
 
-      {/* Mobile Floating Action Button - Prominentní z-index */}
+      {/* Mobile Floating Action Button */}
       <button 
         onClick={() => setIsAddModalOpen(true)}
         className="sm:hidden fixed bottom-28 right-6 w-16 h-16 bg-orange-600 hover:bg-orange-700 rounded-full shadow-[0_10px_30px_rgba(249,115,22,0.4)] flex items-center justify-center text-white z-[99] active:scale-90 transition-all border-4 border-slate-900"
@@ -306,7 +335,7 @@ const Garage: React.FC = () => {
                   ) : (
                     records.filter(r => r.bikeId === bike.id).slice(0, 2).map(record => (
                       <div key={record.id} className="flex justify-between text-[11px] bg-slate-900/50 p-3 rounded-xl border border-slate-700">
-                        <span className="font-bold truncate max-w-[120px]">{record.type}</span>
+                        <span className="font-bold truncate max-w-[120px] text-white">{record.type}</span>
                         <span className="text-slate-500">{record.date}</span>
                       </div>
                     ))
@@ -315,6 +344,13 @@ const Garage: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modals and Overlays */}
+      {loading && !isAddModalOpen && (
+        <div className="fixed top-20 right-6 z-[100] bg-orange-600 text-white px-6 py-3 rounded-2xl shadow-2xl animate-fadeIn flex items-center gap-3 font-bold text-xs uppercase tracking-widest">
+           <i className="fas fa-sync-alt animate-spin"></i> Zpracovávám...
         </div>
       )}
 
@@ -341,7 +377,7 @@ const Garage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Bike Modal - Mobile Optimized */}
+      {/* Add Bike Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] border-t sm:border border-slate-700 shadow-2xl animate-slideUp overflow-hidden flex flex-col max-h-[95vh]">
@@ -392,10 +428,15 @@ const Garage: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka stroje</label>
                 <div 
-                  onClick={() => bikeFileInputRef.current?.click()}
-                  className="w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all"
+                  onClick={() => !loading && bikeFileInputRef.current?.click()}
+                  className={`w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all ${loading ? 'opacity-50' : ''}`}
                 >
-                  {newBike.image ? (
+                  {loading ? (
+                    <div className="flex flex-col items-center">
+                      <i className="fas fa-sync-alt animate-spin text-2xl text-orange-500 mb-2"></i>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase">Zmenšuji fotku...</span>
+                    </div>
+                  ) : newBike.image ? (
                     <img src={newBike.image} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <>

@@ -4,6 +4,34 @@ import { FuelRecord, MaintenanceRecord, Motorcycle } from '../types';
 import { processReceiptAI } from '../services/geminiService';
 
 const Logbook: React.FC = () => {
+  // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
+  const resizeImage = (file: File, maxWidth: number = 800): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = (maxWidth / width) * height;
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.6)); // U účtenek stačí menší kvalita
+          }
+        };
+      };
+    });
+  };
+
   const [bikes, setBikes] = useState<Motorcycle[]>(() => JSON.parse(localStorage.getItem('motospirit_bikes') || '[]'));
   const [selectedBikeId, setSelectedBikeId] = useState<string>(bikes[0]?.id || '');
   
@@ -33,7 +61,6 @@ const Logbook: React.FC = () => {
     const previous = currentBikeFuel[1];
     const distance = latest.mileage - previous.mileage;
     if (distance <= 0) return '--';
-    // Předpokládáme tankování do plné, takže spotřebované palivo je to, co jsme právě dotankovali
     return ((latest.liters / distance) * 100).toFixed(2);
   };
 
@@ -42,14 +69,17 @@ const Logbook: React.FC = () => {
     if (!file) return;
     setLoading(true);
     
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = (reader.result as string).split(',')[1];
-      const data = await processReceiptAI({ base64, mimeType: file.type });
-      if (data) applyAIData(data, reader.result as string);
+    try {
+      const compressedImage = await resizeImage(file);
+      const base64ForAI = compressedImage.split(',')[1];
+      const data = await processReceiptAI({ base64: base64ForAI, mimeType: 'image/jpeg' });
+      if (data) applyAIData(data, compressedImage);
+    } catch (err) {
+      console.error("Receipt processing failed", err);
+      alert("Nepodařilo se zpracovat účtenku.");
+    } finally {
       setLoading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleVoiceInput = () => {
@@ -107,24 +137,24 @@ const Logbook: React.FC = () => {
     });
     setBikes(updatedBikes);
     localStorage.setItem('motospirit_bikes', JSON.stringify(updatedBikes));
-    window.dispatchEvent(new Event('storage')); // Notify Garage.tsx
+    window.dispatchEvent(new Event('storage'));
   };
 
   if (bikes.length === 0) return (
-    <div className="text-center py-20 animate-fadeIn">
+    <div className="text-center py-20 animate-fadeIn px-6">
       <i className="fas fa-motorcycle text-6xl text-slate-800 mb-6"></i>
-      <h2 className="text-xl font-bold mb-4">Garáž je prázdná</h2>
-      <p className="text-slate-500 mb-8">Nejdříve si přidej motorku, abys mohl sledovat spotřebu.</p>
-      <a href="#/garage" className="bg-orange-600 px-8 py-3 rounded-xl font-bold">PŘIDAT MAŠINU</a>
+      <h2 className="text-xl font-bold mb-4 text-white uppercase font-brand">Garáž je prázdná</h2>
+      <p className="text-slate-500 mb-8 text-sm">Nejdříve si přidej motorku, abys mohl sledovat spotřebu.</p>
+      <a href="#/garage" className="bg-orange-600 px-8 py-4 rounded-xl font-bold text-white shadow-lg active:scale-95 transition-all">PŘIDAT MAŠINU</a>
     </div>
   );
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
+    <div className="space-y-6 animate-fadeIn pb-24">
       <header className="flex flex-col gap-4">
         <div className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold font-brand uppercase tracking-tighter">KNIHA <span className="text-orange-500">JÍZD</span></h1>
+            <h1 className="text-3xl font-bold font-brand uppercase tracking-tighter text-white">KNIHA <span className="text-orange-500">JÍZD</span></h1>
             <select 
               value={selectedBikeId} 
               onChange={(e) => setSelectedBikeId(e.target.value)}
@@ -136,13 +166,13 @@ const Logbook: React.FC = () => {
           <div className="flex gap-2">
             <button 
               onClick={handleVoiceInput}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700'}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white'}`}
             >
               <i className="fas fa-microphone"></i>
             </button>
             <button 
               onClick={() => fileInputRef.current?.click()}
-              className="w-12 h-12 bg-orange-600 hover:bg-orange-500 rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-orange-900/20"
+              className="w-12 h-12 bg-orange-600 hover:bg-orange-500 rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-orange-900/20 text-white"
             >
               <i className="fas fa-camera"></i>
             </button>
@@ -151,7 +181,6 @@ const Logbook: React.FC = () => {
         </div>
       </header>
 
-      {/* Stats Cards - Mobile Scrollable or Grid */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-gradient-to-br from-orange-600 to-orange-700 p-5 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between h-36">
           <p className="text-orange-200 text-[10px] font-bold uppercase tracking-widest relative z-10">ø Spotřeba</p>
@@ -159,32 +188,32 @@ const Logbook: React.FC = () => {
             <h2 className="text-3xl font-brand font-bold text-white">
               {calculateConsumption()} <span className="text-xs">l/100</span>
             </h2>
-            <p className="text-orange-200 text-[8px] mt-1 uppercase font-bold">Tankováno do plné</p>
           </div>
           <i className="fas fa-gas-pump absolute -bottom-2 -right-2 text-6xl text-black/10"></i>
         </div>
 
         <div className="bg-slate-800 p-5 rounded-[2rem] border border-slate-700 flex flex-col justify-between h-36">
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Výdaje {bikes.find(b => b.id === selectedBikeId)?.model}</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest truncate">Výdaje {bikes.find(b => b.id === selectedBikeId)?.model}</p>
           <div>
             <h2 className="text-2xl font-brand font-bold text-white">
               {(currentBikeFuel.reduce((acc, curr) => acc + curr.cost, 0) + currentBikeExpenses.reduce((acc, curr) => acc + curr.cost, 0)).toLocaleString()} <span className="text-[10px]">Kč</span>
             </h2>
-            <p className="text-slate-500 text-[8px] mt-1 uppercase font-bold">Celkem za tento stroj</p>
           </div>
         </div>
       </div>
 
       {loading && (
-        <div className="bg-slate-800/80 border border-orange-500/30 p-4 rounded-2xl flex items-center gap-4 animate-pulse">
+        <div className="bg-slate-800/80 border border-orange-500/30 p-5 rounded-2xl flex items-center gap-4 animate-pulse shadow-xl">
           <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center animate-spin">
             <i className="fas fa-sync-alt text-white"></i>
           </div>
-          <span className="font-bold text-xs uppercase tracking-widest text-orange-500">AI analyzuje účtenku...</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-xs uppercase tracking-widest text-orange-500">Zpracovávám doklad...</span>
+            <span className="text-[9px] text-slate-500 font-bold uppercase">AI analyzuje a zmenšuje obraz</span>
+          </div>
         </div>
       )}
 
-      {/* History List */}
       <div className="space-y-4">
         <div className="flex justify-between items-center px-2">
           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Historie záznamů</h3>
@@ -198,14 +227,14 @@ const Logbook: React.FC = () => {
               <div 
                 key={rec.id} 
                 onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}
-                className={`bg-slate-800/40 border border-slate-700 p-4 rounded-3xl flex items-center gap-4 transition-all active:scale-[0.98] ${rec.receiptImage ? 'cursor-pointer hover:border-orange-500/30' : ''}`}
+                className={`bg-slate-800/40 border border-slate-700 p-4 rounded-3xl flex items-center gap-4 transition-all active:scale-[0.98] ${rec.receiptImage ? 'cursor-pointer hover:border-orange-500/30 shadow-md' : ''}`}
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${'liters' in rec ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'}`}>
                   <i className={`fas ${'liters' in rec ? 'fa-gas-pump' : 'fa-tools'} text-sm`}></i>
                 </div>
                 <div className="flex-grow min-w-0">
-                  <h4 className="font-bold text-sm truncate">
-                    {'liters' in rec ? `${rec.liters} litrů paliva` : rec.type}
+                  <h4 className="font-bold text-sm truncate text-white">
+                    {'liters' in rec ? `${rec.liters} l benzínu` : rec.type}
                   </h4>
                   <div className="flex gap-2 text-[9px] text-slate-500 font-bold uppercase mt-0.5">
                     <span>{rec.date}</span>
@@ -222,17 +251,16 @@ const Logbook: React.FC = () => {
         </div>
       </div>
 
-      {/* Receipt Viewer Modal */}
       {viewingReceipt && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fadeIn">
-          <div className="relative w-full max-w-lg animate-slideUp">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-fadeIn" onClick={() => setViewingReceipt(null)}>
+          <div className="relative w-full max-w-lg animate-slideUp" onClick={e => e.stopPropagation()}>
             <button 
               onClick={() => setViewingReceipt(null)} 
-              className="absolute -top-12 right-0 text-white p-2 text-xl"
+              className="absolute -top-12 right-0 text-white p-2 text-xl font-bold flex items-center gap-2"
             >
               <i className="fas fa-times"></i> ZAVŘÍT
             </button>
-            <img src={viewingReceipt} alt="Receipt" className="w-full h-auto rounded-2xl shadow-2xl" />
+            <img src={viewingReceipt} alt="Receipt" className="w-full h-auto rounded-2xl shadow-2xl border border-slate-700" />
           </div>
         </div>
       )}
