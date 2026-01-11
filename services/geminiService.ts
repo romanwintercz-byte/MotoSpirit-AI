@@ -42,11 +42,11 @@ export const processReceiptAI = async (input: { base64?: string, mimeType?: stri
     
     const prompt = input.text 
       ? `Z tohoto hlasového popisu nebo textu extrahuj data o výdaji na motorku: "${input.text}".`
-      : `Z této účtenky extrahuj data o výdaji.`;
+      : `Z této účtenky (český daňový doklad) extrahuj data o výdaji. Zaměř se na celkovou částku, počet litrů (pokud jde o palivo) a stav tachometru (pokud je na účtence ručně dopsán nebo vytištěn).`;
 
     const response = await ai.models.generateContent({
       model: MODEL_3_FLASH,
-      contents: { parts: [...parts, { text: `${prompt} Vrať JSON s poli: type (fuel/service/other), cost (number), liters (number, jen u fuel), mileage (number, pokud je uveden), date (YYYY-MM-DD), description (string). Pokud něco chybí, dej null.` }] },
+      contents: { parts: [...parts, { text: `${prompt} Vrať JSON s poli: type (hodnoty: "fuel" pro benzín, "service" pro opravy, "other" pro zbytek), cost (číslo - celková cena v Kč), liters (číslo - počet litrů, jen u fuel), mileage (číslo - stav tachometru v km), date (YYYY-MM-DD), description (stručný český popis). Pokud hodnotu nevidíš, dej null. Buď přesný.` }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -58,7 +58,8 @@ export const processReceiptAI = async (input: { base64?: string, mimeType?: stri
             mileage: { type: Type.NUMBER },
             date: { type: Type.STRING },
             description: { type: Type.STRING }
-          }
+          },
+          required: ["type", "cost"]
         }
       }
     });
@@ -76,7 +77,7 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
     const recordsText = records.map(r => `- ${r.date}: ${r.type}`).join('\n');
     const response = await ai.models.generateContent({
       model: MODEL_3_FLASH,
-      contents: `Jsi mechanik. Analyzuj stav motorky: ${bike.brand} ${bike.model}, najeto ${bike.mileage}km. Předchozí servis: ${recordsText || 'žádný'}. Buď stručný a věcný v češtině.`,
+      contents: `Jsi zkušený motocyklový mechanik. Analyzuj stav motorky: ${bike.brand} ${bike.model}, najeto ${bike.mileage} km. Předchozí servis: ${recordsText || 'žádný záznam'}. Navrhni, co by měl majitel zkontrolovat nebo vyměnit v nejbližší době. Buď stručný, kamarádský a věcný v češtině.`,
     });
     return response.text || "Zkus to později.";
   } catch (error) {
@@ -109,7 +110,7 @@ export const getBikerAdvice = async (message: string, history: ChatMessage[]): P
       model: MODEL_3_FLASH,
       contents: message,
       config: {
-        systemInstruction: "Jsi MotoSpirit, zkušený český biker. Odpovídej kamarádsky, používej motorkářský slang, buď užitečný a stručný."
+        systemInstruction: "Jsi MotoSpirit, zkušený český biker. Odpovídej kamarádsky, používej motorkářský slang (mašina, naložit tomu, zatáčky, plexi), buď užitečný a stručný."
       }
     });
     return response.text || "Teď mi to nějak vynechává, zkus to znovu.";
