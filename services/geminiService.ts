@@ -26,27 +26,20 @@ const handleApiError = (error: any) => {
   return "❌ Došlo k chybě při komunikaci s AI.";
 };
 
-/**
- * AI extrakce dat z účtenky (obrázek nebo hlas)
- */
 export const processReceiptAI = async (input: { base64?: string, mimeType?: string, text?: string }): Promise<any> => {
   try {
     const ai = getAI();
     const parts: any[] = [];
-    
     if (input.base64 && input.mimeType) {
-      parts.push({
-        inlineData: { data: input.base64, mimeType: input.mimeType }
-      });
+      parts.push({ inlineData: { data: input.base64, mimeType: input.mimeType } });
     }
-    
     const prompt = input.text 
-      ? `Z tohoto hlasového popisu nebo textu extrahuj data o výdaji na motorku: "${input.text}".`
-      : `Z této účtenky (český daňový doklad) extrahuj data o výdaji. Zaměř se na celkovou částku, počet litrů (pokud jde o palivo) a stav tachometru (pokud je na účtence ručně dopsán nebo vytištěn).`;
+      ? `Z tohoto popisu extrahuj data o výdaji: "${input.text}".`
+      : `Z této účtenky extrahuj data o výdaji.`;
 
     const response = await ai.models.generateContent({
       model: MODEL_3_FLASH,
-      contents: { parts: [...parts, { text: `${prompt} Vrať JSON s poli: type (hodnoty: "fuel" pro benzín, "service" pro opravy, "other" pro zbytek), cost (číslo - celková cena v Kč), liters (číslo - počet litrů, jen u fuel), mileage (číslo - stav tachometru v km), date (YYYY-MM-DD), description (stručný český popis). Pokud hodnotu nevidíš, dej null. Buď přesný.` }] },
+      contents: { parts: [...parts, { text: `${prompt} Vrať JSON: type (fuel/service/other), cost, liters, mileage, date (YYYY-MM-DD), description.` }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -63,10 +56,8 @@ export const processReceiptAI = async (input: { base64?: string, mimeType?: stri
         }
       }
     });
-
     return JSON.parse(response.text);
   } catch (error) {
-    console.error("AI Receipt Error:", error);
     return null;
   }
 };
@@ -77,7 +68,7 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
     const recordsText = records.map(r => `- ${r.date}: ${r.type}`).join('\n');
     const response = await ai.models.generateContent({
       model: MODEL_3_FLASH,
-      contents: `Jsi zkušený motocyklový mechanik. Analyzuj stav motorky: ${bike.brand} ${bike.model}, najeto ${bike.mileage} km. Předchozí servis: ${recordsText || 'žádný záznam'}. Navrhni, co by měl majitel zkontrolovat nebo vyměnit v nejbližší době. Buď stručný, kamarádský a věcný v češtině.`,
+      contents: `Jsi mechanik. Analyzuj stav: ${bike.brand} ${bike.model}, ${bike.mileage} km. Servis: ${recordsText || 'žádný'}. Navrhni údržbu česky.`,
     });
     return response.text || "Zkus to později.";
   } catch (error) {
@@ -85,19 +76,36 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
   }
 };
 
-export const planTripWithGrounding = async (origin: string, preferences: string): Promise<{ text: string, links: any[] }> => {
+export const planTripWithGrounding = async (origin: string, preferences: string): Promise<{ text: string, links: any[], waypoints: [number, number][] }> => {
   try {
     const ai = getAI();
+    // Zpřísněný prompt pro souřadnice
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
-      contents: `Navrhni detailní motovýlet z místa: ${origin}. Moje preference jsou: ${preferences}. Najdi reálné trasy, vyhlídky a motorkářské zastávky. Odpovídej v češtině.`,
+      contents: `Navrhni motovýlet z: ${origin}. Preference: ${preferences}. 
+      DŮLEŽITÉ: Na konec odpovědi vlož sekci "GPS_DATA" a do ní vypiš přesné souřadnice trasy jako prostý seznam v hranatých závorkách, např.: [50.1, 14.4], [50.2, 14.5].
+      Vytvoř trasu o délce aspoň 5-10 bodů.`,
       config: {
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
       },
     });
-    const text = response.text || "";
+    
+    const fullText = response.text || "";
+    const parts = fullText.split("GPS_DATA");
+    const text = parts[0];
+    const gpsPart = parts[1] || "";
+    
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    return { text, links: chunks };
+    
+    // Lepší regex pro zachycení souřadnic
+    const waypoints: [number, number][] = [];
+    const coordRegex = /\[(\d+\.\d+),\s*(\d+\.\d+)\]/g;
+    let match;
+    while ((match = coordRegex.exec(gpsPart || fullText)) !== null) {
+      waypoints.push([parseFloat(match[1]), parseFloat(match[2])]);
+    }
+
+    return { text, links: chunks, waypoints };
   } catch (error) {
     throw new Error(handleApiError(error));
   }
@@ -110,10 +118,10 @@ export const getBikerAdvice = async (message: string, history: ChatMessage[]): P
       model: MODEL_3_FLASH,
       contents: message,
       config: {
-        systemInstruction: "Jsi MotoSpirit, zkušený český biker. Odpovídej kamarádsky, používej motorkářský slang (mašina, naložit tomu, zatáčky, plexi), buď užitečný a stručný."
+        systemInstruction: "Jsi MotoSpirit, český biker. Mluv slangem, buď stručný."
       }
     });
-    return response.text || "Teď mi to nějak vynechává, zkus to znovu.";
+    return response.text || "Chyba komunikace.";
   } catch (error) {
     return handleApiError(error);
   }
