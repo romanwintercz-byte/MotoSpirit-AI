@@ -25,7 +25,7 @@ const Logbook: React.FC = () => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.6)); // U účtenek stačí menší kvalita
+            resolve(canvas.toDataURL('image/jpeg', 0.6));
           }
         };
       };
@@ -41,6 +41,9 @@ const Logbook: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
+  
+  // State pro editaci záznamu před uložením
+  const [pendingRecord, setPendingRecord] = useState<any | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,12 +76,15 @@ const Logbook: React.FC = () => {
       const compressedImage = await resizeImage(file);
       const base64ForAI = compressedImage.split(',')[1];
       const data = await processReceiptAI({ base64: base64ForAI, mimeType: 'image/jpeg' });
-      if (data) applyAIData(data, compressedImage);
+      if (data) {
+        setPendingRecord({ ...data, receiptImage: compressedImage });
+      }
     } catch (err) {
       console.error("Receipt processing failed", err);
       alert("Nepodařilo se zpracovat účtenku.");
     } finally {
       setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -95,37 +101,48 @@ const Logbook: React.FC = () => {
     recognition.onresult = async (event: any) => {
       const text = event.results[0][0].transcript;
       setLoading(true);
-      const data = await processReceiptAI({ text });
-      if (data) applyAIData(data);
-      setLoading(false);
+      try {
+        const data = await processReceiptAI({ text });
+        if (data) {
+          setPendingRecord(data);
+        }
+      } catch (err) {
+        alert("Chyba při zpracování hlasu.");
+      } finally {
+        setLoading(false);
+      }
     };
     recognition.start();
   };
 
-  const applyAIData = (data: any, image?: string) => {
+  const saveConfirmedRecord = () => {
+    if (!pendingRecord) return;
+    
     const id = Date.now().toString();
-    const date = data.date || new Date().toISOString().split('T')[0];
-    const mileage = data.mileage || 0;
+    const date = pendingRecord.date || new Date().toISOString().split('T')[0];
+    const mileage = parseInt(pendingRecord.mileage) || 0;
+    const cost = parseFloat(pendingRecord.cost) || 0;
 
-    if (data.type === 'fuel') {
+    if (pendingRecord.type === 'fuel') {
       const newRec: FuelRecord = {
         id, bikeId: selectedBikeId, date,
-        mileage, liters: data.liters || 0, cost: data.cost || 0,
-        isFull: true, receiptImage: image
+        mileage, liters: parseFloat(pendingRecord.liters) || 0, cost,
+        isFull: true, receiptImage: pendingRecord.receiptImage
       };
       setFuelRecords([newRec, ...fuelRecords]);
       updateBikeMileage(selectedBikeId, mileage);
     } else {
       const newExp: MaintenanceRecord = {
         id, bikeId: selectedBikeId, date,
-        type: data.type === 'service' ? 'Servis' : 'Ostatní',
-        description: data.description || 'Zadáno AI',
-        mileage, cost: data.cost || 0,
-        receiptImage: image
+        type: pendingRecord.type === 'service' ? 'Servis' : 'Ostatní',
+        description: pendingRecord.description || 'Zadáno AI',
+        mileage, cost,
+        receiptImage: pendingRecord.receiptImage
       };
       setExpenses([newExp, ...expenses]);
       if (mileage > 0) updateBikeMileage(selectedBikeId, mileage);
     }
+    setPendingRecord(null);
   };
 
   const updateBikeMileage = (bikeId: string, newMileage: number) => {
@@ -166,7 +183,7 @@ const Logbook: React.FC = () => {
           <div className="flex gap-2">
             <button 
               onClick={handleVoiceInput}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white'}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white'}`}
             >
               <i className="fas fa-microphone"></i>
             </button>
@@ -208,8 +225,8 @@ const Logbook: React.FC = () => {
             <i className="fas fa-sync-alt text-white"></i>
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-xs uppercase tracking-widest text-orange-500">Zpracovávám doklad...</span>
-            <span className="text-[9px] text-slate-500 font-bold uppercase">AI analyzuje a zmenšuje obraz</span>
+            <span className="font-bold text-xs uppercase tracking-widest text-orange-500">Zpracovávám vstup...</span>
+            <span className="text-[9px] text-slate-500 font-bold uppercase">AI analyzuje data k uložení</span>
           </div>
         </div>
       )}
@@ -251,6 +268,108 @@ const Logbook: React.FC = () => {
         </div>
       </div>
 
+      {/* MODAL: Review Pending Record */}
+      {pendingRecord && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-orange-500/30 shadow-2xl overflow-hidden flex flex-col animate-slideUp">
+            <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+               <div>
+                  <h2 className="text-lg font-brand font-bold uppercase tracking-tight text-white">KONTROLA <span className="text-orange-500">ZÁZNAMU</span></h2>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Zkontroluj, co AI vyčetla</p>
+               </div>
+               <button onClick={() => setPendingRecord(null)} className="text-slate-500 hover:text-white p-2">
+                 <i className="fas fa-times text-xl"></i>
+               </button>
+            </div>
+            
+            <div className="p-6 space-y-4 overflow-y-auto bg-slate-800">
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Typ</label>
+                  <select 
+                    value={pendingRecord.type}
+                    onChange={e => setPendingRecord({...pendingRecord, type: e.target.value})}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-orange-500 text-sm text-white"
+                  >
+                    <option value="fuel">Benzín</option>
+                    <option value="service">Servis</option>
+                    <option value="other">Ostatní</option>
+                  </select>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Datum</label>
+                  <input 
+                    type="date"
+                    value={pendingRecord.date}
+                    onChange={e => setPendingRecord({...pendingRecord, date: e.target.value})}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-orange-500 text-sm text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Cena (Kč)</label>
+                  <input 
+                    type="number"
+                    value={pendingRecord.cost || ''}
+                    onChange={e => setPendingRecord({...pendingRecord, cost: e.target.value})}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-orange-500 text-sm text-white font-bold"
+                  />
+                </div>
+                {pendingRecord.type === 'fuel' && (
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Litry</label>
+                    <input 
+                      type="number"
+                      step="0.01"
+                      value={pendingRecord.liters || ''}
+                      onChange={e => setPendingRecord({...pendingRecord, liters: e.target.value})}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-orange-500 text-sm text-white"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className={`text-[9px] font-bold uppercase ml-2 ${!pendingRecord.mileage ? 'text-orange-500 animate-pulse' : 'text-slate-500'}`}>
+                  Stav tachometru (KM) {!pendingRecord.mileage && '- DOPLŇTE!'}
+                </label>
+                <input 
+                  type="number"
+                  placeholder="Zadej kilometry..."
+                  value={pendingRecord.mileage || ''}
+                  onChange={e => setPendingRecord({...pendingRecord, mileage: e.target.value})}
+                  className={`w-full bg-slate-900 border rounded-xl py-3 px-4 outline-none transition-all text-sm text-white font-bold ${!pendingRecord.mileage ? 'border-orange-500' : 'border-slate-700 focus:border-orange-500'}`}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Popis</label>
+                <textarea 
+                  rows={2}
+                  value={pendingRecord.description || ''}
+                  onChange={e => setPendingRecord({...pendingRecord, description: e.target.value})}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-orange-500 text-sm text-white resize-none"
+                />
+              </div>
+
+              {pendingRecord.receiptImage && (
+                <div className="mt-2 rounded-xl overflow-hidden border border-slate-700">
+                  <img src={pendingRecord.receiptImage} alt="Receipt Preview" className="w-full h-32 object-cover opacity-50" />
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 bg-slate-900/80 border-t border-slate-700 flex gap-3 pb-10 sm:pb-6">
+               <button onClick={() => setPendingRecord(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white transition-all">ZAHODIT</button>
+               <button onClick={saveConfirmedRecord} className="flex-1 bg-orange-600 hover:bg-orange-500 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white shadow-lg shadow-orange-900/20 active:scale-95 transition-all">POTVRDIT A ULOŽIT</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: View Receipt Image */}
       {viewingReceipt && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-fadeIn" onClick={() => setViewingReceipt(null)}>
           <div className="relative w-full max-w-lg animate-slideUp" onClick={e => e.stopPropagation()}>
