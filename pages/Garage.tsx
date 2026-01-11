@@ -28,7 +28,9 @@ const Garage: React.FC = () => {
 
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bikeFileInputRef = useRef<HTMLInputElement>(null);
 
   // --- PERSISTENCE ---
   useEffect(() => {
@@ -40,12 +42,17 @@ const Garage: React.FC = () => {
   useEffect(() => localStorage.setItem('motospirit_records', JSON.stringify(records)), [records]);
 
   // --- HANDLERS ---
-  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'user' | 'bike') => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setUser(prev => ({ ...prev, avatar: reader.result as string }));
+        const base64 = reader.result as string;
+        if (target === 'user') {
+          setUser(prev => ({ ...prev, avatar: base64 }));
+        } else {
+          setNewBike(prev => ({ ...prev, image: base64 }));
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -104,19 +111,18 @@ const Garage: React.FC = () => {
               )}
             </div>
             
-            {/* Input pro nahrání souboru */}
             <input 
               type="file" 
               ref={fileInputRef} 
               className="hidden" 
               accept="image/*" 
-              onChange={handleAvatarFileChange} 
+              onChange={(e) => handleFileChange(e, 'user')} 
             />
             
             <button 
               onClick={() => isProfileEditing ? fileInputRef.current?.click() : setIsProfileEditing(true)}
               className="absolute -bottom-2 -right-2 bg-orange-600 hover:bg-orange-500 w-10 h-10 rounded-2xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg scale-90 hover:scale-100"
-              title={isProfileEditing ? "Nahrát fotku z disku" : "Upravit profil"}
+              title={isProfileEditing ? "Nahrát fotku / Vyfotit" : "Upravit profil"}
             >
               <i className={`fas ${isProfileEditing ? 'fa-upload' : 'fa-camera'} text-white text-sm`}></i>
             </button>
@@ -127,7 +133,7 @@ const Garage: React.FC = () => {
               <div className="flex-grow">
                 {isProfileEditing ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn max-w-2xl">
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-left">
                       <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Jméno</label>
                       <input 
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
@@ -136,7 +142,7 @@ const Garage: React.FC = () => {
                         onChange={e => setUser({...user, name: e.target.value})}
                       />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-left">
                       <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Přezdívka</label>
                       <input 
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
@@ -145,7 +151,7 @@ const Garage: React.FC = () => {
                         onChange={e => setUser({...user, nickname: e.target.value})}
                       />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-left">
                       <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Styl jízdy</label>
                       <input 
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
@@ -154,7 +160,7 @@ const Garage: React.FC = () => {
                         onChange={e => setUser({...user, ridingStyle: e.target.value})}
                       />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-left">
                       <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Zkušenosti (roky)</label>
                       <input 
                         type="number"
@@ -339,13 +345,29 @@ const Garage: React.FC = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">URL Fotky</label>
+              
+              {/* Bike Photo Upload Section */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka motorky</label>
+                <div 
+                  onClick={() => bikeFileInputRef.current?.click()}
+                  className="w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all"
+                >
+                  {newBike.image ? (
+                    <img src={newBike.image} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <i className="fas fa-camera text-3xl text-slate-600 mb-2 group-hover:text-orange-500"></i>
+                      <span className="text-xs text-slate-500 font-bold uppercase">Nahrát nebo Vyfotit</span>
+                    </>
+                  )}
+                </div>
                 <input 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-xs" 
-                  placeholder="https://..." 
-                  value={newBike.image} 
-                  onChange={e => setNewBike({...newBike, image: e.target.value})}
+                  type="file" 
+                  ref={bikeFileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={(e) => handleFileChange(e, 'bike')} 
                 />
               </div>
             </div>
