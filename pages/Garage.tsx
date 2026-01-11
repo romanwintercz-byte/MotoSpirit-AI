@@ -41,6 +41,16 @@ const Garage: React.FC = () => {
   useEffect(() => localStorage.setItem('motospirit_bikes', JSON.stringify(bikes)), [bikes]);
   useEffect(() => localStorage.setItem('motospirit_records', JSON.stringify(records)), [records]);
 
+  // Listen for storage changes (to sync mileage from Logbook)
+  useEffect(() => {
+    const sync = () => {
+      const savedBikes = localStorage.getItem('motospirit_bikes');
+      if (savedBikes) setBikes(JSON.parse(savedBikes));
+    };
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+
   // --- HANDLERS ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'user' | 'bike') => {
     const file = e.target.files?.[0];
@@ -88,8 +98,10 @@ const Garage: React.FC = () => {
 
   const deleteBike = (id: string) => {
     if (window.confirm("Opravdu chceš tuhle mašinu vyřadit z garáže?")) {
-      setBikes(bikes.filter(b => b.id !== id));
-      setRecords(records.filter(r => r.bikeId !== id));
+      const updatedBikes = bikes.filter(b => b.id !== id);
+      setBikes(updatedBikes);
+      const updatedRecords = records.filter(r => r.bikeId !== id);
+      setRecords(updatedRecords);
     }
   };
 
@@ -98,12 +110,12 @@ const Garage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-6 pb-24 md:pb-12">
       {/* Rider Profile Section */}
-      <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2.5rem] border border-slate-700 p-8 shadow-xl">
-        <div className="flex flex-col md:flex-row items-center gap-8">
+      <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] border border-slate-700 p-6 shadow-xl">
+        <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="relative group">
-            <div className="w-28 h-28 rounded-3xl bg-slate-700 flex items-center justify-center text-4xl font-bold shadow-lg shadow-black/40 overflow-hidden border-2 border-orange-500/30">
+            <div className="w-24 h-24 rounded-3xl bg-slate-700 flex items-center justify-center text-3xl font-bold shadow-lg overflow-hidden border-2 border-orange-500/30">
               {user.avatar ? (
                 <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
@@ -121,63 +133,42 @@ const Garage: React.FC = () => {
             
             <button 
               onClick={() => isProfileEditing ? fileInputRef.current?.click() : setIsProfileEditing(true)}
-              className="absolute -bottom-2 -right-2 bg-orange-600 hover:bg-orange-500 w-10 h-10 rounded-2xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg scale-90 hover:scale-100"
-              title={isProfileEditing ? "Nahrát fotku / Vyfotit" : "Upravit profil"}
+              className="absolute -bottom-1 -right-1 bg-orange-600 hover:bg-orange-500 w-9 h-9 rounded-xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg active:scale-90"
             >
-              <i className={`fas ${isProfileEditing ? 'fa-upload' : 'fa-camera'} text-white text-sm`}></i>
+              <i className={`fas ${isProfileEditing ? 'fa-upload' : 'fa-camera'} text-white text-xs`}></i>
             </button>
           </div>
           
-          <div className="flex-grow text-center md:text-left">
-            <div className="flex justify-between items-start">
+          <div className="flex-grow text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-4">
               <div className="flex-grow">
                 {isProfileEditing ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn max-w-2xl">
-                    <div className="space-y-1 text-left">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Jméno</label>
-                      <input 
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                        placeholder="Tvé jméno" 
-                        value={user.name} 
-                        onChange={e => setUser({...user, name: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-1 text-left">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Přezdívka</label>
-                      <input 
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                        placeholder="Nickname" 
-                        value={user.nickname} 
-                        onChange={e => setUser({...user, nickname: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-1 text-left">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Styl jízdy</label>
-                      <input 
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                        placeholder="Např. Enduro" 
-                        value={user.ridingStyle} 
-                        onChange={e => setUser({...user, ridingStyle: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-1 text-left">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Zkušenosti (roky)</label>
-                      <input 
-                        type="number"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500" 
-                        value={user.experienceYears} 
-                        onChange={e => setUser({...user, experienceYears: parseInt(e.target.value) || 0})}
-                      />
-                    </div>
+                  <div className="grid grid-cols-1 gap-3 animate-fadeIn max-w-md mx-auto sm:mx-0">
+                    <input 
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500 text-sm" 
+                      placeholder="Jméno" 
+                      value={user.name} 
+                      onChange={e => setUser({...user, name: e.target.value})}
+                    />
+                    <input 
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500 text-sm" 
+                      placeholder="Přezdívka" 
+                      value={user.nickname} 
+                      onChange={e => setUser({...user, nickname: e.target.value})}
+                    />
                   </div>
                 ) : (
                   <>
-                    <h2 className="text-3xl font-brand font-bold tracking-tight">
+                    <h2 className="text-2xl font-brand font-bold tracking-tight">
                       {user.name || 'Neznámý'} <span className="text-orange-500">"{user.nickname || 'Rider'}"</span>
                     </h2>
-                    <div className="flex flex-wrap justify-center md:justify-start gap-6 mt-3 text-sm text-slate-400 font-semibold uppercase tracking-wider">
-                      <span className="flex items-center gap-2"><i className="fas fa-helmet-safety text-orange-500"></i>{user.ridingStyle || 'Road Rider'}</span>
-                      <span className="flex items-center gap-2"><i className="fas fa-calendar-check text-orange-500"></i>{user.experienceYears} let v sedle</span>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <span className="flex items-center gap-2 bg-slate-900/50 px-3 py-1 rounded-full border border-slate-700">
+                        <i className="fas fa-helmet-safety text-orange-500"></i> {user.ridingStyle || 'Road'}
+                      </span>
+                      <span className="flex items-center gap-2 bg-slate-900/50 px-3 py-1 rounded-full border border-slate-700">
+                        <i className="fas fa-calendar-check text-orange-500"></i> {user.experienceYears} let
+                      </span>
                     </div>
                   </>
                 )}
@@ -186,9 +177,9 @@ const Garage: React.FC = () => {
               {isProfileEditing && (
                 <button 
                   onClick={() => setIsProfileEditing(false)}
-                  className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold transition-all ml-4"
+                  className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold transition-all text-xs"
                 >
-                  HOTOVO
+                  ULOŽIT PROFIL
                 </button>
               )}
             </div>
@@ -196,74 +187,88 @@ const Garage: React.FC = () => {
         </div>
       </section>
 
-      {/* Header with Add Button */}
-      <div className="flex justify-between items-end">
+      {/* Header Section */}
+      <div className="flex justify-between items-center px-2">
         <div>
-          <h1 className="text-3xl font-bold font-brand uppercase tracking-tighter">MOJE <span className="text-orange-500">MAŠINY</span></h1>
-          <p className="text-slate-500 text-sm">Garáž hostí {bikes.length} strojů</p>
+          <h1 className="text-2xl font-bold font-brand uppercase tracking-tighter">MOJE <span className="text-orange-500">MAŠINY</span></h1>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Garáž hostí {bikes.length} strojů</p>
         </div>
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-2xl flex items-center gap-2 font-bold transition-all shadow-lg active:scale-95"
+          className="hidden sm:flex bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-xl items-center gap-2 font-bold transition-all shadow-lg active:scale-95"
         >
           <i className="fas fa-plus"></i> PŘIDAT
         </button>
       </div>
 
+      {/* Mobile Floating Action Button */}
+      <button 
+        onClick={() => setIsAddModalOpen(true)}
+        className="sm:hidden fixed bottom-24 right-6 w-14 h-14 bg-orange-600 hover:bg-orange-700 rounded-full shadow-2xl flex items-center justify-center text-white z-[60] active:scale-90 transition-all border-4 border-slate-900"
+        aria-label="Přidat motorku"
+      >
+        <i className="fas fa-plus text-xl"></i>
+      </button>
+
       {/* Bike Grid */}
       {bikes.length === 0 ? (
-        <div className="bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[2.5rem] py-20 text-center space-y-4">
-          <i className="fas fa-motorcycle text-6xl text-slate-700"></i>
-          <p className="text-slate-500 font-bold uppercase tracking-widest">Garáž je zatím prázdná</p>
-          <button onClick={() => setIsAddModalOpen(true)} className="text-orange-500 hover:underline font-bold">Zaparkuj tu první mašinu</button>
+        <div className="bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[2rem] py-16 text-center space-y-4 px-6">
+          <i className="fas fa-motorcycle text-5xl text-slate-700"></i>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Garáž je zatím prázdná</p>
+          <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-800 px-6 py-3 rounded-xl border border-slate-700 text-orange-500 font-bold text-sm">ZAPARKUJ TU PRVNÍ MAŠINU</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {bikes.map(bike => (
             <div key={bike.id} className="bg-slate-800 rounded-[2rem] overflow-hidden border border-slate-700 group shadow-lg hover:border-orange-500/50 transition-all">
-              <div className="h-56 relative overflow-hidden">
+              <div className="h-48 relative overflow-hidden">
                 <img src={bike.image} alt={bike.model} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent">
+                   <h3 className="text-xl font-bold font-brand text-white">{bike.brand} <span className="text-orange-500">{bike.model}</span></h3>
+                </div>
                 <button 
                   onClick={() => deleteBike(bike.id)}
-                  className="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 p-3 rounded-xl backdrop-blur-md transition-all opacity-0 group-hover:opacity-100"
+                  className="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 p-2.5 rounded-xl backdrop-blur-md transition-all sm:opacity-0 group-hover:opacity-100"
                 >
-                  <i className="fas fa-trash-can text-white"></i>
+                  <i className="fas fa-trash-can text-white text-sm"></i>
                 </button>
               </div>
-              <div className="p-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h3 className="text-2xl font-bold font-brand">{bike.brand} <span className="text-orange-500">{bike.model}</span></h3>
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1">Ročník {bike.year}</p>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="bg-slate-900/80 px-4 py-2 rounded-2xl border border-slate-700">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Stav tachometru</p>
+                    <div className="flex items-center gap-2">
+                       <input 
+                        type="number"
+                        value={bike.mileage}
+                        onChange={(e) => updateMileage(bike.id, parseInt(e.target.value) || 0)}
+                        className="bg-transparent text-orange-500 font-bold text-lg w-24 outline-none focus:text-white transition-colors"
+                      />
+                      <span className="text-[10px] text-slate-600">KM</span>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <input 
-                      type="number"
-                      value={bike.mileage}
-                      onChange={(e) => updateMileage(bike.id, parseInt(e.target.value) || 0)}
-                      className="bg-slate-900 border border-slate-700 rounded-lg py-1 px-3 text-orange-500 font-bold text-xl text-right w-32 outline-none focus:border-orange-500"
-                    />
-                    <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">Stav Tachometru</p>
+                    <span className="text-xs font-bold bg-slate-700/50 px-3 py-1 rounded-full text-slate-400">ROK {bike.year}</span>
                   </div>
                 </div>
 
                 <button 
                   onClick={() => handleAnalyze(bike)}
                   disabled={loading}
-                  className="w-full bg-slate-700 hover:bg-orange-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all disabled:opacity-50 mb-6"
+                  className="w-full bg-slate-900 hover:bg-orange-600/10 border border-slate-700 hover:border-orange-500/50 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all disabled:opacity-50 mb-6 text-sm"
                 >
-                  <i className="fas fa-wand-magic-sparkles"></i>
-                  {loading ? 'Hledám v dokumentaci...' : 'AI SERVISNÍ ANALÝZA'}
+                  <i className="fas fa-wand-magic-sparkles text-orange-500"></i>
+                  {loading ? 'ANALYZUJI...' : 'AI SERVISNÍ ANALÝZA'}
                 </button>
 
-                <div className="space-y-3">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Servisní historie</p>
+                <div className="space-y-2">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Poslední údržba</p>
                   {records.filter(r => r.bikeId === bike.id).length === 0 ? (
-                    <p className="text-sm text-slate-400 italic bg-slate-900/50 p-4 rounded-xl border border-slate-700">Zatím žádné záznamy o servisu.</p>
+                    <p className="text-[10px] text-slate-600 italic bg-slate-900/30 p-3 rounded-xl">Bez servisní historie.</p>
                   ) : (
-                    records.filter(r => r.bikeId === bike.id).map(record => (
-                      <div key={record.id} className="flex justify-between text-sm bg-slate-900/50 p-3 rounded-xl border border-slate-700">
-                        <span className="font-bold">{record.type}</span>
+                    records.filter(r => r.bikeId === bike.id).slice(0, 2).map(record => (
+                      <div key={record.id} className="flex justify-between text-[11px] bg-slate-900/50 p-3 rounded-xl border border-slate-700">
+                        <span className="font-bold truncate max-w-[120px]">{record.type}</span>
                         <span className="text-slate-500">{record.date}</span>
                       </div>
                     ))
@@ -279,39 +284,39 @@ const Garage: React.FC = () => {
       {analysis && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-2xl rounded-[2.5rem] border border-orange-500/50 shadow-2xl overflow-hidden animate-slideUp">
-            <div className="p-8 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+            <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="bg-orange-600 p-2 rounded-lg"><i className="fas fa-robot text-white"></i></div>
-                <h2 className="text-xl font-brand font-bold uppercase tracking-tight">Doporučení mechanika</h2>
+                <i className="fas fa-robot text-orange-500"></i>
+                <h2 className="text-lg font-brand font-bold uppercase tracking-tight">AI DOPORUČENÍ</h2>
               </div>
               <button onClick={() => setAnalysis(null)} className="text-slate-500 hover:text-white transition-colors">
-                <i className="fas fa-times text-2xl"></i>
+                <i className="fas fa-times text-xl"></i>
               </button>
             </div>
-            <div className="p-8 max-h-[60vh] overflow-y-auto text-slate-300 whitespace-pre-wrap leading-relaxed">
+            <div className="p-6 max-h-[50vh] overflow-y-auto text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
               {analysis}
             </div>
             <div className="p-6 bg-slate-900/50 flex justify-center">
-              <button onClick={() => setAnalysis(null)} className="bg-orange-600 hover:bg-orange-700 px-10 py-3 rounded-xl font-bold transition-all">ROZUMÍM</button>
+              <button onClick={() => setAnalysis(null)} className="w-full bg-orange-600 hover:bg-orange-700 py-4 rounded-xl font-bold transition-all shadow-lg">ZAVŘÍT</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add Bike Modal */}
+      {/* Add Bike Modal - Mobile Optimized */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-slideUp overflow-hidden">
-            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-              <h2 className="text-xl font-brand font-bold uppercase tracking-tight">Nová mašina</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-500 hover:text-white"><i className="fas fa-times text-xl"></i></button>
+          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl animate-slideUp overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-700 flex justify-between items-center shrink-0">
+              <h2 className="text-lg font-brand font-bold uppercase tracking-tight">NOVÁ <span className="text-orange-500">MAŠINA</span></h2>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-500 hover:text-white p-2"><i className="fas fa-times text-xl"></i></button>
             </div>
-            <div className="p-8 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-grow">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Značka</label>
                 <input 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none" 
-                  placeholder="Např. Yamaha" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
+                  placeholder="Yamaha, Honda, BMW..." 
                   value={newBike.brand} 
                   onChange={e => setNewBike({...newBike, brand: e.target.value})}
                 />
@@ -319,8 +324,8 @@ const Garage: React.FC = () => {
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Model</label>
                 <input 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none" 
-                  placeholder="Např. Ténéré 700" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
+                  placeholder="Ténéré, Africa Twin..." 
                   value={newBike.model} 
                   onChange={e => setNewBike({...newBike, model: e.target.value})}
                 />
@@ -330,35 +335,34 @@ const Garage: React.FC = () => {
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Rok</label>
                   <input 
                     type="number"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none" 
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
                     value={newBike.year} 
                     onChange={e => setNewBike({...newBike, year: parseInt(e.target.value)})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Najeto (km)</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Nájezd (km)</label>
                   <input 
                     type="number"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none" 
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm" 
                     value={newBike.mileage} 
                     onChange={e => setNewBike({...newBike, mileage: parseInt(e.target.value)})}
                   />
                 </div>
               </div>
               
-              {/* Bike Photo Upload Section */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka motorky</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka stroje</label>
                 <div 
                   onClick={() => bikeFileInputRef.current?.click()}
-                  className="w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all"
+                  className="w-full h-32 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all"
                 >
                   {newBike.image ? (
                     <img src={newBike.image} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <>
-                      <i className="fas fa-camera text-3xl text-slate-600 mb-2 group-hover:text-orange-500"></i>
-                      <span className="text-xs text-slate-500 font-bold uppercase">Nahrát nebo Vyfotit</span>
+                      <i className="fas fa-camera text-2xl text-slate-600 mb-1 group-hover:text-orange-500 transition-colors"></i>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Klikni a foť / vyber soubor</span>
                     </>
                   )}
                 </div>
@@ -371,9 +375,9 @@ const Garage: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="p-8 bg-slate-900/50 flex gap-4">
-              <button onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-slate-700 py-4 rounded-2xl font-bold">ZRUŠIT</button>
-              <button onClick={handleAddBike} className="flex-1 bg-orange-600 py-4 rounded-2xl font-bold">ULOŽIT</button>
+            <div className="p-6 bg-slate-900/50 flex gap-3 shrink-0">
+              <button onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-slate-700 py-4 rounded-xl font-bold text-xs uppercase tracking-widest">ZRUŠIT</button>
+              <button onClick={handleAddBike} className="flex-1 bg-orange-600 py-4 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-orange-900/20 active:scale-95 transition-all">ULOŽIT MAŠINU</button>
             </div>
           </div>
         </div>
