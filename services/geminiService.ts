@@ -80,27 +80,24 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
   try {
     const ai = getAI();
     
-    // Klíčová změna: Nutíme AI myslet v kontextu souřadnic regionu a omezit počet bodů na ty reálné
-    const systemInstruction = `Jsi profesionální moto-navigátor pro region Střední Evropy. 
-    Tvým úkolem je vytvořit trasu z: ${origin} podle preferencí: ${preferences}.
-
-    POSTUP PRO GPS DATA:
-    1. Identifikuj 10-15 klíčových průjezdních bodů (města, vyhlídky, přehrady), které tvoří trasu.
-    2. Pro KAŽDÝ bod použij nástroj Google Search/Maps, abys zjistil jeho SKUTEČNÉ souřadnice.
-    3. Pokud je trasa v Čechách (např. Teplice), souřadnice MUSÍ být kolem 50° severní šířky a 13-15° východní délky. 
-    4. NIKDY nesmíš vygenerovat body v Rakousku nebo jinde, pokud tam trasa nevede.
-    5. Seznam bodů vlož do sekce "GPS_ROUTE_DATA" ve formátu [lat, lon].
-    6. Piš česky, mluv jako biker.
+    const systemInstruction = `Jsi profesionální moto-navigátor. Tvým úkolem je vytvořit čistou, logickou trasu.
     
-    VÝSTUP:
-    [Itinerář s popisem cesty a zajímavostí]
+    KRITICKÁ PRAVIDLA PRO GPS DATA:
+    1. Trasa začíná v: ${origin}. Všechny body MUSÍ být v logickém okolí této lokality a cílových bodů z preferencí (${preferences}).
+    2. Vygeneruj 15-20 čistých průjezdních bodů. Vyhni se generování stovek bodů, které tvoří "zubatou" trasu nebo nesmyslné odbočky.
+    3. Body musí následovat po hlavních silnicích a logických průjezdech. 
+    4. Souřadnice [lat, lon] v sekci GPS_ROUTE_DATA musí být v regionu (např. pro Severní Čechy lat ~50.6).
+    5. NIKDY negeneruj body v jiných státech (např. Rakousko), pokud to není výslovně v zadání.
+    
+    VÝSTUP FORMÁT:
+    [Podrobný itinerář s popisem cesty]
     
     GPS_ROUTE_DATA
-    [lat1, lon1], [lat2, lon2] ...`;
+    [lat1, lon1], [lat2, lon2], ...`;
 
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
-      contents: `Naplánuj výlet z ${origin}. Preference: ${preferences}. Zkontroluj, že všechny souřadnice [lat, lon] v sekci GPS_ROUTE_DATA jsou geograficky správně a odpovídají regionu trasy.`,
+      contents: `Naplánuj trasu z ${origin}. Preference: ${preferences}. Zkontroluj geografickou správnost bodů v sekci GPS_ROUTE_DATA.`,
       config: {
         systemInstruction,
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
@@ -120,16 +117,12 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
     while ((match = coordRegex.exec(gpsPart)) !== null) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
-      
-      // Filtrace nesmyslů: Bod musí být v širším okolí ČR (přibližně 47-52 lat, 12-19 lon)
-      // Pokud uživatel plánuje Alpy, rozsah se přizpůsobí, ale toto řeší Teplice -> Rakousko halucinaci
       if (!isNaN(lat) && !isNaN(lon)) {
-          waypoints.push([lat, lon]);
+        waypoints.push([lat, lon]);
       }
     }
 
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-
     return { text: textPart, links: chunks, waypoints };
   } catch (error) {
     throw new Error(handleApiError(error));
