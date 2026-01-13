@@ -21,7 +21,6 @@ const TripPlanner: React.FC = () => {
     try {
       const plan = await planTripWithGrounding(origin, overriddenPreferences || preferences);
       setResult(plan);
-      // Pokud máme trasu, přepneme na mapu a vynutíme překreslení
       if (plan.waypoints.length > 0) {
         setViewMode('map');
       } else {
@@ -54,7 +53,38 @@ const TripPlanner: React.FC = () => {
     recognition.start();
   };
 
-  // Inicializace mapy
+  // Funkce pro generování odkazů do externích map
+  const getExternalMapLink = (type: 'google' | 'mapycz') => {
+    if (!result || result.waypoints.length === 0) return '#';
+    
+    // Pro externí mapy musíme body proředit, aby URL nebyla moc dlouhá (limit cca 10-15 bodů)
+    const pts = result.waypoints;
+    const sampleSize = 12; 
+    const sampled: [number, number][] = [];
+    
+    if (pts.length <= sampleSize) {
+      sampled.push(...pts);
+    } else {
+      sampled.push(pts[0]); // Start
+      const step = (pts.length - 2) / (sampleSize - 2);
+      for (let i = 1; i < sampleSize - 1; i++) {
+        sampled.push(pts[Math.floor(i * step)]);
+      }
+      sampled.push(pts[pts.length - 1]); // Cíl
+    }
+
+    if (type === 'google') {
+      const originStr = `${sampled[0][0]},${sampled[0][1]}`;
+      const destinationStr = `${sampled[sampled.length - 1][0]},${sampled[sampled.length - 1][1]}`;
+      const waypointsStr = sampled.slice(1, -1).map(p => `${p[0]},${p[1]}`).join('|');
+      return `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destinationStr}&waypoints=${waypointsStr}&travelmode=driving`;
+    } else {
+      // Mapy.cz formát: rc=lon_lat;lon_lat...
+      const coords = sampled.map(p => `${p[1]}_${p[0]}`).join(';');
+      return `https://mapy.cz/zakladni?planovani-trasy&rc=${coords}`;
+    }
+  };
+
   useEffect(() => {
     const L = (window as any).L;
     if (!L || mapRef.current) return;
@@ -75,11 +105,9 @@ const TripPlanner: React.FC = () => {
     setTimeout(() => mapInstance.invalidateSize(), 500);
   }, []);
 
-  // Synchronizace trasy s mapou
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Kdykoliv se změní viewMode na 'map', opravíme velikost
     if (viewMode === 'map') {
       setTimeout(() => {
         mapRef.current.invalidateSize();
@@ -92,13 +120,11 @@ const TripPlanner: React.FC = () => {
     if (result?.waypoints && result.waypoints.length > 0) {
       const L = (window as any).L;
       
-      // Vymazání starých dat
       if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
       if (polylineGlowRef.current) mapRef.current.removeLayer(polylineGlowRef.current);
       markersRef.current.forEach(m => mapRef.current?.removeLayer(m));
       markersRef.current = [];
 
-      // Vykreslení trasy
       polylineGlowRef.current = L.polyline(result.waypoints, {
         color: '#f97316',
         weight: 12,
@@ -117,7 +143,6 @@ const TripPlanner: React.FC = () => {
         smoothFactor: 1.0
       }).addTo(mapRef.current);
 
-      // Přidání markerů pro klíčové body
       const totalPoints = result.waypoints.length;
       result.waypoints.forEach((wp, idx) => {
         const isStart = idx === 0;
@@ -139,7 +164,6 @@ const TripPlanner: React.FC = () => {
         }
       });
 
-      // Automatické přiblížení na celou trasu
       const bounds = polylineRef.current.getBounds();
       if (bounds.isValid() && viewMode === 'map') {
         mapRef.current.fitBounds(bounds, { padding: [60, 60] });
@@ -250,22 +274,46 @@ const TripPlanner: React.FC = () => {
           <div id="trip-map" className="w-full h-[500px] md:h-[700px] z-0 rounded-[2rem]"></div>
           
           {result && (
-            <div className="absolute top-6 left-6 z-10 hidden sm:block">
-              <div className="bg-slate-900/90 backdrop-blur-md p-5 rounded-2xl border border-slate-700 shadow-2xl">
-                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-800 pb-2">Kontrola trasy</p>
-                 <div className="space-y-3">
-                    <p className="text-white font-bold text-xs flex items-center gap-3">
-                      <i className="fas fa-location-arrow text-green-500 text-[10px]"></i> {origin}
-                    </p>
-                    <p className="text-white font-bold text-xs flex items-center gap-3">
-                      <i className="fas fa-check-double text-orange-500 text-[10px]"></i> {result.waypoints.length} ověřených bodů
-                    </p>
-                    <div className="pt-1">
-                       <span className="text-[8px] bg-green-600/20 text-green-500 px-2 py-0.5 rounded font-bold uppercase">Map Match Active</span>
-                    </div>
-                 </div>
+            <>
+              <div className="absolute top-6 left-6 z-10 hidden sm:block">
+                <div className="bg-slate-900/90 backdrop-blur-md p-5 rounded-2xl border border-slate-700 shadow-2xl">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-800 pb-2">Kontrola trasy</p>
+                  <div className="space-y-3">
+                      <p className="text-white font-bold text-xs flex items-center gap-3">
+                        <i className="fas fa-location-arrow text-green-500 text-[10px]"></i> {origin}
+                      </p>
+                      <p className="text-white font-bold text-xs flex items-center gap-3">
+                        <i className="fas fa-check-double text-orange-500 text-[10px]"></i> {result.waypoints.length} ověřených bodů
+                      </p>
+                      <div className="pt-1">
+                        <span className="text-[8px] bg-green-600/20 text-green-500 px-2 py-0.5 rounded font-bold uppercase">Map Match Active</span>
+                      </div>
+                  </div>
+                </div>
               </div>
-            </div>
+
+              {/* Floating Action Buttons for External Navigation (Mobile & Desktop) */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 w-full px-4 flex justify-center gap-4">
+                 <a 
+                   href={getExternalMapLink('google')} 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   className="flex-1 max-w-[180px] bg-white text-slate-900 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-2xl border-2 border-slate-200 active:scale-95 transition-all"
+                 >
+                   <img src="https://upload.wikimedia.org/wikipedia/commons/3/39/Google_Maps_icon_%282015-2020%29.svg" alt="G" className="w-5 h-5" />
+                   GOOGLE MAPS
+                 </a>
+                 <a 
+                   href={getExternalMapLink('mapycz')} 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   className="flex-1 max-w-[180px] bg-[#f00] text-white py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-2xl border-2 border-[#d00] active:scale-95 transition-all"
+                 >
+                   <i className="fas fa-map text-sm"></i>
+                   MAPY.CZ
+                 </a>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -273,6 +321,22 @@ const TripPlanner: React.FC = () => {
       {/* Textový itinerář */}
       {viewMode === 'text' && result && !loading && (
         <div className="bg-slate-800 p-8 rounded-[2.5rem] border border-orange-500/20 space-y-6 shadow-2xl animate-slideUp">
+          
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/40 p-5 rounded-[2rem] border border-slate-700">
+             <div>
+                <h3 className="text-white font-bold text-sm font-brand uppercase">Navigovat podle plánu</h3>
+                <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Otevřít trasu v profesionální aplikaci</p>
+             </div>
+             <div className="flex gap-2 w-full sm:w-auto">
+               <a href={getExternalMapLink('google')} target="_blank" rel="noopener noreferrer" className="flex-1 bg-white text-black px-4 py-3 rounded-xl font-bold text-[11px] flex items-center justify-center gap-2">
+                 <i className="fab fa-google"></i> MAPS
+               </a>
+               <a href={getExternalMapLink('mapycz')} target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#f00] text-white px-4 py-3 rounded-xl font-bold text-[11px] flex items-center justify-center gap-2">
+                 <i className="fas fa-map"></i> MAPY.CZ
+               </a>
+             </div>
+          </div>
+
           <div className="prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed whitespace-pre-wrap bg-slate-900/50 p-7 rounded-3xl border border-slate-700">
             {result.text}
           </div>
