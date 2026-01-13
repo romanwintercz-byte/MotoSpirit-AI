@@ -80,22 +80,24 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
   try {
     const ai = getAI();
     
-    const systemInstruction = `Jsi elitní motocyklový navigátor a kartograf. Tvým cílem je vytvořit TRASU S EXTRÉMNÍ PŘESNOSTÍ.
+    // Klíčová změna: Prompt vyžaduje, aby GPS data byla EXAKTNÍM odrazem textu
+    const systemInstruction = `Jsi profesionální motocyklový navigátor. Tvým úkolem je vytvořit detailní itinerář a PŘESNĚ ODPOVÍDAJÍCÍ seznam GPS souřadnic.
+
+    POSTUP:
+    1. Pomocí nástroje Google Maps najdi reálnou trasu z bodu ${origin} podle preferencí: ${preferences}.
+    2. Napiš čtivý itinerář (itinerář musí obsahovat názvy měst a silnic, které reálně existují).
+    3. Na konci odpovědi vytvoř sekci "GPS_ROUTE_DATA".
+    4. Do této sekce vlož seznam souřadnic [lat, lon], které TVOŘÍ PRÁVĚ TU CESTU, kterou jsi popsal v textu.
+    5. Musí jít o plynulou sekvenci (aspoň 50-80 bodů), které na sebe navazují a přesně kopírují silnice zmíněné v itineráři. 
+    6. Nepřidávej body mimo popsanou trasu.
     
-    PRAVIDLA PRO TRASOVÁNÍ:
-    1. Musíš vrátit VELKÉ MNOŽSTVÍ GPS BODŮ (60 až 100 bodů), které plynule kopírují reálnou geometrii silnic (zatáčky, křižovatky, objezdy).
-    2. Body nesmí být jen v cílech, ale hustě po celé délce cesty, aby výsledná čára na mapě přesně seděla na silnice.
-    3. Preferuj vyhlášené motorkářské okresky s minimem dálnic.
-    
-    FORMÁT ODPOVĚDI:
-    1. Detailní itinerář (popis trasy, zajímavosti, tipy na zastávky).
-    2. Sekce "GPS_DATA" obsahující POUZE seznam souřadnic ve formátu: [lat, lon], [lat, lon], ... (vše v hranatých závorkách, oddělené čárkou).
-    
-    Ujisti se, že souřadnice jsou platné (např. v ČR se lat pohybuje kolem 49-50 a lon kolem 13-18).`;
+    Formát sekce GPS:
+    GPS_ROUTE_DATA
+    [lat1, lon1], [lat2, lon2], [lat3, lon3] ...`;
 
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
-      contents: `Naplánuj vysoce precizní trasu z: ${origin}. Tvoje preference jsou: ${preferences}. Vygeneruj co nejhustší seznam navigačních bodů.`,
+      contents: `Naplánuj výlet z: ${origin}. Preference: ${preferences}. Zajisti, aby GPS body v sekci GPS_ROUTE_DATA přesně odpovídaly popsanému itineráři.`,
       config: {
         systemInstruction,
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
@@ -103,28 +105,37 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
     });
     
     const fullText = response.text || "";
-    const parts = fullText.split("GPS_DATA");
-    const text = parts[0];
-    const gpsPart = parts[1] || "";
+    // Hledáme začátek GPS dat
+    const gpsMarker = "GPS_ROUTE_DATA";
+    const parts = fullText.split(gpsMarker);
+    const textPart = parts[0];
+    const gpsPart = parts.length > 1 ? parts[1] : fullText; // Pokud marker chybí, prohledáme vše
     
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     
     const waypoints: [number, number][] = [];
-    // Robustnější regex pro zachycení různých variant mezer
+    // Regex, který ignoruje okolní text a najde jen dvojice v závorkách
     const coordRegex = /\[\s*(\d+\.\d+)\s*,\s*(\d+\.\d+)\s*\]/g;
     
     let match;
-    const searchArea = gpsPart || fullText;
-    while ((match = coordRegex.exec(searchArea)) !== null) {
+    while ((match = coordRegex.exec(gpsPart)) !== null) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
-      // Základní validace souřadnic pro Evropu (přibližně)
-      if (lat > 30 && lat < 75 && lon > -10 && lon < 45) {
+      // Validace pro střední Evropu + okraj
+      if (lat > 34 && lat < 72 && lon > -12 && lon < 45) {
         waypoints.push([lat, lon]);
       }
     }
 
-    return { text, links: chunks, waypoints };
+    // Pokud se nepodařilo najít body v gpsPart, zkusíme prohledat celý text jako fallback
+    if (waypoints.length < 5 && parts.length === 1) {
+       let fallbackMatch;
+       while ((fallbackMatch = coordRegex.exec(fullText)) !== null) {
+         waypoints.push([parseFloat(fallbackMatch[1]), parseFloat(fallbackMatch[2])]);
+       }
+    }
+
+    return { text: textPart, links: chunks, waypoints };
   } catch (error) {
     throw new Error(handleApiError(error));
   }
