@@ -80,24 +80,24 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
   try {
     const ai = getAI();
     
-    // Klíčová změna: Prompt vyžaduje, aby GPS data byla EXAKTNÍM odrazem textu
-    const systemInstruction = `Jsi profesionální motocyklový navigátor. Tvým úkolem je vytvořit detailní itinerář a PŘESNĚ ODPOVÍDAJÍCÍ seznam GPS souřadnic.
+    const systemInstruction = `Jsi elitní motocyklový navigátor pro Českou republiku a Evropu. 
+    Tvým úkolem je vytvořit itinerář a seznam GPS souřadnic, které se k němu VÁŽOU.
 
-    POSTUP:
-    1. Pomocí nástroje Google Maps najdi reálnou trasu z bodu ${origin} podle preferencí: ${preferences}.
-    2. Napiš čtivý itinerář (itinerář musí obsahovat názvy měst a silnic, které reálně existují).
-    3. Na konci odpovědi vytvoř sekci "GPS_ROUTE_DATA".
-    4. Do této sekce vlož seznam souřadnic [lat, lon], které TVOŘÍ PRÁVĚ TU CESTU, kterou jsi popsal v textu.
-    5. Musí jít o plynulou sekvenci (aspoň 50-80 bodů), které na sebe navazují a přesně kopírují silnice zmíněné v itineráři. 
-    6. Nepřidávej body mimo popsanou trasu.
+    KRITICKÁ PRAVIDLA:
+    1. Pokud je start v ${origin}, souřadnice MUSÍ začínat v této lokalitě.
+    2. Před vygenerováním GPS dat si ověř (pomocí interních znalostí a Google Maps), zda souřadnice [lat, lon] odpovídají popsaným místům v textu.
+    3. Pokud píšeš o Teplicích, souřadnice nesmí být v Rakousku (lat ~47), ale v severních Čechách (lat ~50.6).
+    4. Vygeneruj plynulou sekvenci cca 40-60 bodů v sekci "GPS_ROUTE_DATA".
     
-    Formát sekce GPS:
+    FORMÁT:
+    [Textový itinerář s tipy na zatáčky a zastávky]
+    
     GPS_ROUTE_DATA
-    [lat1, lon1], [lat2, lon2], [lat3, lon3] ...`;
+    [50.640, 13.824], [50.651, 13.835], ...`;
 
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
-      contents: `Naplánuj výlet z: ${origin}. Preference: ${preferences}. Zajisti, aby GPS body v sekci GPS_ROUTE_DATA přesně odpovídaly popsanému itineráři.`,
+      contents: `Naplánuj trasu: ${origin}. Preference: ${preferences}. Dbej na to, aby souřadnice přesně kopírovaly popsaný itinerář a region.`,
       config: {
         systemInstruction,
         tools: [{ googleSearch: {} }, { googleMaps: {} }],
@@ -105,34 +105,25 @@ export const planTripWithGrounding = async (origin: string, preferences: string)
     });
     
     const fullText = response.text || "";
-    // Hledáme začátek GPS dat
     const gpsMarker = "GPS_ROUTE_DATA";
     const parts = fullText.split(gpsMarker);
     const textPart = parts[0];
-    const gpsPart = parts.length > 1 ? parts[1] : fullText; // Pokud marker chybí, prohledáme vše
+    const gpsPart = parts.length > 1 ? parts[1] : fullText;
     
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    
     const waypoints: [number, number][] = [];
-    // Regex, který ignoruje okolní text a najde jen dvojice v závorkách
-    const coordRegex = /\[\s*(\d+\.\d+)\s*,\s*(\d+\.\d+)\s*\]/g;
+    
+    // Vylepšený regex pro zachycení souřadnic i s volitelnými znaménky a mezerami
+    const coordRegex = /\[\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*\]/g;
     
     let match;
     while ((match = coordRegex.exec(gpsPart)) !== null) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
-      // Validace pro střední Evropu + okraj
-      if (lat > 34 && lat < 72 && lon > -12 && lon < 45) {
+      // Základní sanity check (v rámci Evropy/Světa dle potřeby, zde širší rozsah)
+      if (!isNaN(lat) && !isNaN(lon)) {
         waypoints.push([lat, lon]);
       }
-    }
-
-    // Pokud se nepodařilo najít body v gpsPart, zkusíme prohledat celý text jako fallback
-    if (waypoints.length < 5 && parts.length === 1) {
-       let fallbackMatch;
-       while ((fallbackMatch = coordRegex.exec(fullText)) !== null) {
-         waypoints.push([parseFloat(fallbackMatch[1]), parseFloat(fallbackMatch[2])]);
-       }
     }
 
     return { text: textPart, links: chunks, waypoints };
