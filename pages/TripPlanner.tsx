@@ -1,231 +1,227 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { planTripWithGrounding } from '../services/geminiService';
+import { planExpedition } from '../services/geminiService';
+import { Expedition, TransportMode, TripDay } from '../types';
 
 const TripPlanner: React.FC = () => {
-  const [origin, setOrigin] = useState('Teplice');
-  const [preferences, setPreferences] = useState('Klínovec a Nechranice, pěkné zatáčky');
-  const [loading, setLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [viewMode, setViewMode] = useState<'text' | 'map'>('text');
-  const [result, setResult] = useState<{ text: string, links: any[], waypoints: [number, number][] } | null>(null);
+  const [origin, setOrigin] = useState('Praha');
+  const [days, setDays] = useState(3);
+  const [mode, setMode] = useState<TransportMode>('moto');
+  const [preferences, setPreferences] = useState('Zajímavé průsmyky, ubytování v kempech, obědy v lokálních hospůdkách.');
   
+  const [loading, setLoading] = useState(false);
+  const [expedition, setExpedition] = useState<Expedition | null>(null);
+  const [activeDayIdx, setActiveDayIdx] = useState(0);
+  const [viewMode, setViewMode] = useState<'info' | 'map'>('info');
+
   const mapRef = useRef<any | null>(null);
   const polylineRef = useRef<any | null>(null);
   const markersRef = useRef<any[]>([]);
 
-  const handlePlan = async (overriddenPreferences?: string) => {
+  const modes: { val: TransportMode, icon: string, label: string }[] = [
+    { val: 'moto', icon: 'fa-motorcycle', label: 'Motorka' },
+    { val: 'car', icon: 'fa-car', label: 'Auto' },
+    { val: 'walk', icon: 'fa-person-hiking', label: 'Pěšky' },
+    { val: 'cablecar', icon: 'fa-mountain-sun', label: 'Kombinované' },
+  ];
+
+  const handlePlan = async () => {
     setLoading(true);
-    // Vždy přepneme na text při začátku, abychom viděli loading indikátor
-    setViewMode('text'); 
+    setViewMode('info');
     try {
-      const plan = await planTripWithGrounding(origin, overriddenPreferences || preferences);
-      setResult(plan);
-      if (plan.waypoints && plan.waypoints.length > 1) {
-        setViewMode('map');
-      }
+      const result = await planExpedition(origin, days, mode, preferences);
+      setExpedition(result);
+      setActiveDayIdx(0);
     } catch (err) {
-      console.error(err);
-      alert("AI plánování selhalo. Zkuste upřesnit zadání.");
+      alert("AI Expedice selhala. Zkuste to znovu.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVoiceInput = () => {
-    const Recognition = (window as any).Recognition || (window as any).webkitSpeechRecognition;
-    if (!Recognition) return alert("Hlasové zadávání není podporováno.");
-    const recognition = new Recognition();
-    recognition.lang = 'cs-CZ';
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onend = () => setIsRecording(false);
-    recognition.onresult = (event: any) => {
-      const text = event.results[0][0].transcript;
-      setPreferences(text);
-      handlePlan(text);
-    };
-    recognition.start();
+  const getDayColor = (dayNum: number) => {
+    const colors = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ec4899'];
+    return colors[(dayNum - 1) % colors.length];
   };
 
-  const getExternalMapLink = (type: 'google' | 'mapycz') => {
-    if (!result || !result.waypoints || result.waypoints.length === 0) {
-      if (type === 'google') return `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(preferences)}`;
-      return `https://mapy.cz/zakladni?planovani-trasy&start=${encodeURIComponent(origin)}&end=${encodeURIComponent(preferences)}`;
-    }
-    
-    const pts = result.waypoints;
-    const maxExternalWaypoints = 10; // Méně bodů = čistší trasa v externí navigaci
-    const sampled: [number, number][] = [];
-    
-    sampled.push(pts[0]);
-    if (pts.length > 2) {
-      const step = (pts.length - 2) / (maxExternalWaypoints - 2);
-      for (let i = 1; i < maxExternalWaypoints - 1; i++) {
-        const idx = Math.floor(i * step);
-        if (pts[idx]) sampled.push(pts[idx]);
-      }
-    }
-    if (pts.length > 1) sampled.push(pts[pts.length - 1]);
-
-    if (type === 'google') {
-      const originStr = `${sampled[0][0]},${sampled[0][1]}`;
-      const destinationStr = `${sampled[sampled.length - 1][0]},${sampled[sampled.length - 1][1]}`;
-      const waypointsStr = sampled.slice(1, -1).map(p => `${p[0]},${p[1]}`).join('|');
-      return `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destinationStr}&waypoints=${waypointsStr}&travelmode=driving`;
-    } else {
-      const coords = sampled.map(p => `${p[1]}_${p[0]}`).join(';');
-      return `https://mapy.cz/zakladni?planovani-trasy&rc=${coords}`;
-    }
-  };
-
-  // Bezpečná inicializace mapy
+  // Map Init & Update
   useEffect(() => {
+    const L = (window as any).L;
+    if (!L) return;
+
     const initMap = () => {
-      const L = (window as any).L;
-      const mapEl = document.getElementById('trip-map');
-      
-      if (!L || !mapEl || mapRef.current) return;
-
-      try {
-        const mapInstance = L.map('trip-map', { 
-          zoomControl: false, 
-          attributionControl: false 
-        }).setView([50.08, 14.43], 8);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapInstance);
-        L.control.zoom({ position: 'bottomright' }).addTo(mapInstance);
-        mapRef.current = mapInstance;
-      } catch (e) {
-        console.error("Map initialization failed", e);
-      }
+      const mapEl = document.getElementById('exp-map');
+      if (!mapEl || mapRef.current) return;
+      mapRef.current = L.map('exp-map', { zoomControl: false, attributionControl: false }).setView([50, 15], 6);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapRef.current);
     };
 
-    // Pokud uživatel přepne na mapu, ujistíme se, že je inicializovaná
     if (viewMode === 'map') {
       setTimeout(initMap, 100);
     }
   }, [viewMode]);
 
-  // Aktualizace trasy na mapě
   useEffect(() => {
     const L = (window as any).L;
-    if (!mapRef.current || !L || !result?.waypoints?.length) return;
+    if (!mapRef.current || !L || !expedition) return;
 
-    try {
-      // Vyčistit starou trasu
-      if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
-      markersRef.current.forEach(m => mapRef.current?.removeLayer(m));
-      markersRef.current = [];
+    // Clear old
+    if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
+    markersRef.current.forEach(m => mapRef.current.removeLayer(m));
+    markersRef.current = [];
 
-      // Vykreslit novou trasu
-      polylineRef.current = L.polyline(result.waypoints, { 
-        color: '#f97316', 
-        weight: 5, 
-        opacity: 0.8, 
-        lineJoin: 'round' 
-      }).addTo(mapRef.current);
-
-      // Přidat start a cíl
-      const start = result.waypoints[0];
-      const end = result.waypoints[result.waypoints.length - 1];
+    const currentDay = expedition.days[activeDayIdx];
+    if (currentDay && currentDay.waypoints.length > 0) {
+      const color = getDayColor(currentDay.dayNumber);
+      polylineRef.current = L.polyline(currentDay.waypoints, { color, weight: 6, opacity: 0.8 }).addTo(mapRef.current);
       
-      const sMarker = L.circleMarker(start, { radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(mapRef.current);
-      const eMarker = L.circleMarker(end, { radius: 8, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(mapRef.current);
+      const start = currentDay.waypoints[0];
+      const end = currentDay.waypoints[currentDay.waypoints.length - 1];
       
-      markersRef.current.push(sMarker, eMarker);
-
-      if (viewMode === 'map') {
-        setTimeout(() => {
-          mapRef.current.invalidateSize();
-          mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
-        }, 200);
-      }
-    } catch (e) {
-      console.error("Polyline update failed", e);
+      markersRef.current.push(L.circleMarker(start, { radius: 6, color: '#fff', fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
+      markersRef.current.push(L.circleMarker(end, { radius: 6, color: '#fff', fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
+      
+      mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
     }
-  }, [viewMode, result]);
+  }, [activeDayIdx, expedition, viewMode]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn pb-12 px-2 md:px-0">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 px-2">
       <header className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="text-center md:text-left">
-          <h1 className="text-3xl font-bold font-brand uppercase text-white">MOTO <span className="text-orange-500">PLANNER</span></h1>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest italic opacity-70">Regionálně přesná AI navigace</p>
+          <h1 className="text-3xl font-bold font-brand uppercase text-white">SPIRIT <span className="text-orange-500">WANDERER</span></h1>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">AI Expediční Plánovač</p>
         </div>
-        
-        {result && (
-          <div className="flex bg-slate-800 p-1 rounded-2xl border border-slate-700 shadow-xl">
-            <button onClick={() => setViewMode('text')} className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'text' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>TEXT</button>
-            <button onClick={() => setViewMode('map')} className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>MAPA</button>
+        {expedition && (
+          <div className="flex bg-slate-800 p-1 rounded-2xl border border-slate-700">
+            <button onClick={() => setViewMode('info')} className={`px-5 py-2 rounded-xl text-[10px] font-bold uppercase ${viewMode === 'info' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>ITINERÁŘ</button>
+            <button onClick={() => setViewMode('map')} className={`px-5 py-2 rounded-xl text-[10px] font-bold uppercase ${viewMode === 'map' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>MAPA</button>
           </div>
         )}
       </header>
 
-      {/* Input Panel */}
-      <div className="bg-slate-800/80 p-6 md:p-8 rounded-[2.5rem] border border-slate-700 shadow-xl space-y-6 backdrop-blur-md">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Setup Panel */}
+      <div className="bg-slate-800/80 p-6 rounded-[2.5rem] border border-slate-700 shadow-2xl space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Start</label>
-            <input type="text" value={origin} onChange={(e) => setOrigin(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-4 px-6 focus:border-orange-500 outline-none text-white font-semibold transition-all" />
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Místo odjezdu</label>
+            <input type="text" value={origin} onChange={(e) => setOrigin(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-3 px-5 text-sm text-white focus:border-orange-500 outline-none" />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Trasa / Cíl</label>
-            <input type="text" value={preferences} onChange={(e) => setPreferences(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-4 px-6 focus:border-orange-500 outline-none text-white font-semibold transition-all" />
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Počet dní</label>
+            <div className="flex items-center gap-4 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-2">
+               <button onClick={() => setDays(Math.max(1, days - 1))} className="text-orange-500 p-2"><i className="fas fa-minus"></i></button>
+               <span className="flex-grow text-center font-bold">{days}</span>
+               <button onClick={() => setDays(Math.min(14, days + 1))} className="text-orange-500 p-2"><i className="fas fa-plus"></i></button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Dopravní prostředek</label>
+            <div className="flex gap-2">
+              {modes.map(m => (
+                <button 
+                  key={m.val} 
+                  onClick={() => setMode(m.val)}
+                  className={`flex-1 py-3 rounded-2xl border transition-all flex flex-col items-center gap-1 ${mode === m.val ? 'bg-orange-600 border-orange-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-500'}`}
+                  title={m.label}
+                >
+                  <i className={`fas ${m.icon} text-sm`}></i>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-4">
-           <button onClick={handleVoiceInput} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-900 border border-slate-700 text-white'}`}><i className="fas fa-microphone text-lg"></i></button>
-           <button onClick={() => handlePlan()} disabled={loading} className="flex-grow bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all disabled:opacity-50 uppercase tracking-tight shadow-lg shadow-orange-900/20">
-            {loading ? <i className="fas fa-satellite animate-spin"></i> : <i className="fas fa-route"></i>}
-            {loading ? 'Hledám čistou trasu...' : 'NAPLÁNOVAT'}
-          </button>
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Detaily a preference</label>
+          <textarea 
+            value={preferences} 
+            onChange={(e) => setPreferences(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-2xl py-4 px-5 text-sm text-white focus:border-orange-500 outline-none h-24 resize-none"
+            placeholder="Popiš svou představu o výletu..."
+          />
         </div>
+
+        <button 
+          onClick={handlePlan}
+          disabled={loading}
+          className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-white shadow-lg shadow-orange-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 uppercase tracking-wider"
+        >
+          {loading ? <i className="fas fa-compass animate-spin"></i> : <i className="fas fa-map-location-dot"></i>}
+          {loading ? 'Sestavuji expedici...' : 'VYGENEROVAT EXPEDICI'}
+        </button>
       </div>
 
-      {loading && (
-        <div className="bg-slate-800/80 border border-orange-500/30 p-10 rounded-[2rem] flex flex-col items-center gap-4 text-center animate-pulse">
-           <i className="fas fa-motorcycle text-white text-3xl animate-bounce"></i>
-           <p className="font-brand font-bold uppercase text-white tracking-tight">AI kalkuluje optimální stopu...</p>
-        </div>
-      )}
-
-      {result && !loading && (
-        <div className="space-y-6">
-          {/* Action Bar */}
-          <div className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-             <div className="text-center md:text-left">
-                <h2 className="text-white font-brand font-bold uppercase">Export do navigace</h2>
-                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Otevřete v externí aplikaci pro 100% přesnost</p>
-             </div>
-             <div className="flex gap-3 w-full md:w-auto">
-               <a href={getExternalMapLink('google')} target="_blank" rel="noopener noreferrer" className="flex-1 md:w-40 bg-white text-slate-900 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-xs shadow-lg transition-transform active:scale-95">
-                 <i className="fab fa-google"></i> GOOGLE
-               </a>
-               <a href={getExternalMapLink('mapycz')} target="_blank" rel="noopener noreferrer" className="flex-1 md:w-40 bg-red-600 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-xs shadow-lg transition-transform active:scale-95">
-                 <i className="fas fa-map"></i> MAPY.CZ
-               </a>
-             </div>
+      {/* Result View */}
+      {expedition && !loading && (
+        <div className="animate-fadeIn space-y-6">
+          {/* Day Selector Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+             {expedition.days.map((day, idx) => (
+               <button 
+                key={idx}
+                onClick={() => setActiveDayIdx(idx)}
+                className={`snap-center shrink-0 px-6 py-4 rounded-2xl border transition-all flex flex-col items-center gap-1 min-w-[100px] ${activeDayIdx === idx ? 'bg-slate-700 border-orange-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-500'}`}
+               >
+                 <span className="text-[10px] font-bold uppercase opacity-50">DEN</span>
+                 <span className="text-xl font-brand font-bold">{day.dayNumber}</span>
+               </button>
+             ))}
           </div>
 
-          {/* Map Area */}
-          <div className={viewMode === 'map' ? 'block' : 'hidden'}>
-            <div className="bg-slate-800 p-2 rounded-[2.5rem] border border-slate-700 shadow-2xl relative min-h-[400px]">
-              <div id="trip-map" className="w-full h-[500px] z-0 rounded-[2rem] bg-slate-900"></div>
-              {!mapRef.current && (
-                <div className="absolute inset-0 flex items-center justify-center text-slate-600 font-bold uppercase text-xs">
-                  Inicializace mapy...
-                </div>
-              )}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Timeline / Itinerary */}
+            <div className={`lg:col-span-2 space-y-6 ${viewMode === 'info' ? 'block' : 'hidden lg:block'}`}>
+               <div className="bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-6">
+                    <span className="bg-orange-600/20 text-orange-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-orange-500/20">
+                      DEN {expedition.days[activeDayIdx].dayNumber}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-brand font-bold text-white mb-6 uppercase">Program dne</h3>
+                  <div className="prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                    {expedition.days[activeDayIdx].description}
+                  </div>
+               </div>
+            </div>
+
+            {/* Sidebar Stats & Accom */}
+            <div className="space-y-6">
+               <div className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 shadow-xl">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Detaily cesty</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
+                      <i className="fas fa-route text-orange-500"></i>
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Celkem dní</p>
+                        <p className="text-sm font-bold text-white">{expedition.days.length}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
+                      <i className="fas fa-gas-pump text-orange-500"></i>
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Doprava</p>
+                        <p className="text-sm font-bold text-white uppercase">{expedition.transportMode}</p>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+               
+               <div className="bg-gradient-to-br from-orange-600/20 to-slate-800 p-6 rounded-[2.5rem] border border-orange-500/20 shadow-xl">
+                  <h3 className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-4">Ubytování</h3>
+                  <div className="bg-slate-900/80 p-5 rounded-3xl border border-slate-700 space-y-2">
+                    <p className="text-xs text-slate-300 font-bold">Hledám nejlepší základnu...</p>
+                    <p className="text-[10px] text-slate-500 leading-tight">AI doporučení ubytování pro tento den najdeš v itineráři nebo na mapě.</p>
+                  </div>
+               </div>
             </div>
           </div>
 
-          {/* Text Area */}
-          <div className={viewMode === 'text' ? 'block' : 'hidden'}>
-            <div className="bg-slate-800 p-8 rounded-[2.5rem] border border-slate-700 space-y-6 shadow-2xl">
-              <div className="prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed whitespace-pre-wrap bg-slate-950/40 p-6 rounded-[2rem] border border-slate-800 shadow-inner">
-                {result.text}
-              </div>
+          {/* Map Full Width */}
+          <div className={`${viewMode === 'map' ? 'block' : 'hidden lg:block'} h-[500px] bg-slate-800 rounded-[2.5rem] border border-slate-700 overflow-hidden relative shadow-2xl`}>
+            <div id="exp-map" className="w-full h-full z-0"></div>
+            <div className="absolute top-6 left-6 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-700 shadow-xl">
+               <p className="text-[10px] font-bold text-orange-500 uppercase">Trasa dne {expedition.days[activeDayIdx].dayNumber}</p>
             </div>
           </div>
         </div>

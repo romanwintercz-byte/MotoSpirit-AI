@@ -17,6 +17,38 @@ export interface Motorcycle {
   image?: string;
 }
 
+export type TransportMode = 'moto' | 'car' | 'walk' | 'cablecar';
+
+export interface Accommodation {
+  name: string;
+  type: string;
+  rating: string;
+  url: string;
+  priceEstimate?: string;
+}
+
+export interface TripDay {
+  dayNumber: number;
+  mode: TransportMode;
+  startLocation: string;
+  endLocation: string;
+  distance: string;
+  description: string;
+  activities: string[];
+  accommodation?: Accommodation;
+  waypoints: [number, number][];
+}
+
+export interface Expedition {
+  id: string;
+  name: string;
+  startDate: string;
+  days: TripDay[];
+  transportMode: TransportMode;
+  totalDistance: string;
+  preferences: string;
+}
+
 export interface MaintenanceRecord {
   id: string;
   bikeId: string;
@@ -35,19 +67,22 @@ export interface FuelRecord {
   mileage: number;
   liters: number;
   cost: number;
-  isFull: boolean; // Předpokládáme true podle zadání
+  isFull: boolean;
   receiptImage?: string;
-}
-
-export interface RouteSuggestion {
-  name: string;
-  description: string;
-  stops: string[];
-  distance: string;
-  difficulty: 'Snadná' | 'Střední' | 'Náročná';
 }
 
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
+}
+
+export interface POI {
+  name: string;
+  description: string;
+  type: 'gas' | 'food' | 'view' | 'point' | 'service' | 'hotel';
+  lat: number;
+  lon: number;
+  rating?: string;
+  bikerTip?: string;
+  url?: string;
 }

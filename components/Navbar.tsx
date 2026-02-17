@@ -22,6 +22,7 @@ const Navbar: React.FC = () => {
   const navItems = [
     { path: '/', label: 'Domů', icon: 'fa-home' },
     { path: '/garage', label: 'Garáž', icon: 'fa-motorcycle' },
+    { path: '/radar', label: 'Radar', icon: 'fa-satellite-dish' },
     { path: '/logbook', label: 'Kniha jízd', icon: 'fa-book' },
     { path: '/planner', label: 'Plánovač', icon: 'fa-map-location-dot' },
     { path: '/assistant', label: 'AI Asistent', icon: 'fa-robot' },
