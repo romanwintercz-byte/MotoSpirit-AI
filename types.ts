@@ -47,6 +47,7 @@ export interface Expedition {
   transportMode: TransportMode;
   totalDistance: string;
   preferences: string;
+  travelersCount: number;
 }
 
 export interface MaintenanceRecord {

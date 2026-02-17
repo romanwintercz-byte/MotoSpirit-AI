@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Motorcycle, MaintenanceRecord, ChatMessage, POI, Expedition, TransportMode } from "../types";
+import { Motorcycle, MaintenanceRecord, ChatMessage, POI, Expedition, TransportMode, TripDay } from "../types";
 
 const MODEL_2_5 = 'gemini-2.5-flash';
 const MODEL_3_FLASH = 'gemini-3-flash-preview';
@@ -18,32 +18,29 @@ const handleApiError = (error: any) => {
   return "❌ Došlo k chybě při komunikaci s AI.";
 };
 
-/**
- * Plánuje komplexní vícedenní expedici.
- */
 export const planExpedition = async (
   origin: string, 
   days: number, 
   mode: TransportMode, 
-  preferences: string
+  preferences: string,
+  travelers: number
 ): Promise<Expedition> => {
   try {
     const ai = getAI();
     
-    const prompt = `Naplánuj vícedenní výlet (expedici) na ${days} dní začínající v ${origin}. 
+    const prompt = `Naplánuj ${days}-denní expedici z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
-    Preference uživatele: ${preferences}.
+    Preference: ${preferences}.
     
-    Pro každý den vygeneruj:
-    1. Popis trasy a cíl dne.
-    2. Seznam 3-4 hlavních aktivit (včetně pěších výletů nebo lanovek, pokud se hodí).
-    3. Doporučení na ubytování v cíli dne (název, typ, orientační cena).
-    4. Geografické body trasy pro mapu (GPS_ROUTE_DATA).
+    Pro každý den uveď:
+    - Popis cesty a zajímavostí.
+    - Sekci "ACCOMMODATION_INFO" s názvem hotelu/kempu v cíli dne a odkazem na mapu.
+    - Sekci "GPS_DATA" se seznamem souřadnic [lat, lon] (alespoň 10-15 bodů na den).
     
-    VÝSTUP MUSÍ BÝT STRUKTUROVANÝ TEXT, kde pro každý den bude sekce "DEN X", pak popis a nakonec sekce "GPS_DATA_X" se seznamem souřadnic [lat, lon].
-    Na konci přidej sekci "ACCOMMODATION_JSON" s JSON polem objektů ubytování pro každý den.
-    
-    Pamatuj: Pokud je mód 'walk', hledej turistické trasy. Pokud 'moto', hledej zatáčky. Pokud 'car', hledej komfortní cesty.`;
+    Výstup strukturuj jasně: 
+    DEN X: ... text ...
+    ACCOMMODATION_X: {"name": "Název", "type": "Hotel/Kemp", "url": "odkaz"}
+    GPS_X: [lat, lon], [lat, lon]...`;
 
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
@@ -55,33 +52,41 @@ export const planExpedition = async (
     });
 
     const fullText = response.text || "";
+    const tripDays: TripDay[] = [];
     
-    // Parsování dní (velmi zjednodušená verze pro demo, v produkci by byl lepší responseSchema)
-    const tripDays: any[] = [];
     for (let i = 1; i <= days; i++) {
       const dayMarker = `DEN ${i}`;
-      const nextDayMarker = `DEN ${i + 1}`;
-      const gpsMarker = `GPS_DATA_${i}`;
-      
-      const daySection = fullText.split(dayMarker)[1]?.split(nextDayMarker)[0]?.split(gpsMarker)[0] || "Popis dne nebyl vygenerován.";
-      const gpsSection = fullText.split(gpsMarker)[1]?.split(`DEN ${i + 1}`)[0]?.split("ACCOMMODATION_JSON")[0] || "";
-      
+      const accomMarker = `ACCOMMODATION_${i}`;
+      const gpsMarker = `GPS_${i}`;
+      const nextDayMarker = `DEN ${i+1}`;
+
+      const dayText = fullText.split(dayMarker)[1]?.split(accomMarker)[0] || "";
+      const accomText = fullText.split(accomMarker)[1]?.split(gpsMarker)[0] || "{}";
+      const gpsText = fullText.split(gpsMarker)[1]?.split(nextDayMarker)[0]?.split('ACCOMMODATION_')[0] || "";
+
+      let accommodation = { name: "Neznámé ubytování", type: "Přenocování", url: "", rating: "4.0" };
+      try {
+        const parsed = JSON.parse(accomText.trim().match(/\{[\s\S]*\}/)?.[0] || "{}");
+        if (parsed.name) accommodation = { ...accommodation, ...parsed };
+      } catch (e) {}
+
       const waypoints: [number, number][] = [];
       const coordRegex = /\[\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*\]/g;
       let match;
-      while ((match = coordRegex.exec(gpsSection)) !== null) {
+      while ((match = coordRegex.exec(gpsText)) !== null) {
         waypoints.push([parseFloat(match[1]), parseFloat(match[2])]);
       }
 
       tripDays.push({
         dayNumber: i,
         mode,
-        description: daySection.trim(),
+        description: dayText.trim(),
         waypoints,
-        activities: [], // Mohlo by se dále parsovat
-        startLocation: i === 1 ? origin : "Cíl předchozího dne",
+        activities: [],
+        accommodation,
+        startLocation: origin,
         endLocation: "Cíl dne",
-        distance: "Dle trasy"
+        distance: "Vypočítávám..."
       });
     }
 
@@ -92,7 +97,8 @@ export const planExpedition = async (
       days: tripDays,
       transportMode: mode,
       totalDistance: "Kalkuluji...",
-      preferences
+      preferences,
+      travelersCount: travelers
     };
   } catch (error) {
     throw new Error(handleApiError(error));
@@ -103,7 +109,7 @@ export const searchNearbyPOI = async (category: string, lat?: number, lon?: numb
   try {
     const ai = getAI();
     let locationContext = locationName ? `v lokalitě: ${locationName}` : `v okolí [${lat}, ${lon}]`;
-    const prompt = `Jsi cestovní průvodce. Najdi ${locationContext} nejlepší ${category}. Vrať čisté JSON pole objektů (name, description, type, lat, lon, rating, url). Typy: gas, food, view, point, service, hotel.`;
+    const prompt = `Najdi ${locationContext} nejlepší ${category}. Vrať JSON pole (name, description, type, lat, lon, rating, url).`;
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
       contents: prompt,
@@ -117,10 +123,9 @@ export const searchNearbyPOI = async (category: string, lat?: number, lon?: numb
 export const processReceiptAI = async (input: { base64?: string, mimeType?: string, text?: string }): Promise<any> => {
   try {
     const ai = getAI();
-    const prompt = input.text ? `Extrahuj výdaj z: ${input.text}` : `Extrahuj výdaj z účtenky.`;
     const response = await ai.models.generateContent({
       model: MODEL_3_FLASH,
-      contents: input.base64 ? [{ inlineData: { data: input.base64, mimeType: input.mimeType || 'image/jpeg' } }, { text: prompt }] : prompt,
+      contents: input.base64 ? [{ inlineData: { data: input.base64, mimeType: input.mimeType || 'image/jpeg' } }, { text: "Extrahuj JSON." }] : "Extrahuj JSON.",
       config: { responseMimeType: "application/json" }
     });
     return JSON.parse(response.text || "{}");
@@ -132,7 +137,7 @@ export const analyzeMaintenance = async (bike: Motorcycle, records: MaintenanceR
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: MODEL_3_FLASH,
-      contents: `Analyzuj stav ${bike.brand} ${bike.model}, ${bike.mileage}km. Servis: ${JSON.stringify(records)}.`,
+      contents: `Analyzuj stav ${bike.brand} ${bike.model}.`,
     });
     return response.text || "";
   } catch (error) { return ""; }
@@ -144,7 +149,7 @@ export const getBikerAdvice = async (message: string, history: ChatMessage[]): P
     const response = await ai.models.generateContent({
       model: MODEL_3_FLASH,
       contents: message,
-      config: { systemInstruction: "Jsi MotoSpirit/SpiritWanderer, cestovní asistent. Mluv česky, stručně, slangem." }
+      config: { systemInstruction: "Jsi SpiritWanderer asistent. Mluv česky." }
     });
     return response.text || "";
   } catch (error) { return ""; }
