@@ -39,6 +39,14 @@ export interface TripDay {
   waypoints: [number, number][];
 }
 
+export interface ExpeditionPreferences {
+  accommodation: 'wild' | 'camp' | 'pension' | 'hotel';
+  experiences: string[]; // e.g., ['curves', 'history', 'food', 'offroad', 'views']
+  pace: 'chill' | 'standard' | 'fast';
+  budget: 'low' | 'mid' | 'high';
+  customNote: string;
+}
+
 export interface Expedition {
   id: string;
   name: string;
@@ -46,7 +54,7 @@ export interface Expedition {
   days: TripDay[];
   transportMode: TransportMode;
   totalDistance: string;
-  preferences: string;
+  preferences: ExpeditionPreferences;
   travelersCount: number;
 }
 

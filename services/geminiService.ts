@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Motorcycle, MaintenanceRecord, ChatMessage, POI, Expedition, TransportMode, TripDay } from "../types";
+import { Motorcycle, MaintenanceRecord, ChatMessage, POI, Expedition, TransportMode, TripDay, ExpeditionPreferences } from "../types";
 
 const MODEL_2_5 = 'gemini-2.5-flash';
 const MODEL_3_FLASH = 'gemini-3-flash-preview';
@@ -22,23 +22,31 @@ export const planExpedition = async (
   origin: string, 
   days: number, 
   mode: TransportMode, 
-  preferences: string,
+  preferences: ExpeditionPreferences,
   travelers: number
 ): Promise<Expedition> => {
   try {
     const ai = getAI();
     
-    const prompt = `Naplánuj ${days}-denní expedici z ${origin} pro ${travelers} osoby/osob. 
+    const prompt = `Naplánuj detailní ${days}-denní expedici z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
-    Preference: ${preferences}.
+    
+    PREFERENCE:
+    - Ubytování: ${preferences.accommodation} (wild=nadivoko, camp=kemp, pension=penzion, hotel=hotel)
+    - Zážitky: ${preferences.experiences.join(', ')}
+    - Tempo: ${preferences.pace} (chill=kochačka, standard=běžné, fast=rychlé/dlouhé přejezdy)
+    - Rozpočet: ${preferences.budget}
+    - Poznámka: ${preferences.customNote}
     
     Pro každý den uveď:
-    - Popis cesty a zajímavostí.
+    - Název dne (např. "Cesta přes Alpy").
+    - Podrobný popis cesty a zajímavostí (v češtině).
     - Sekci "ACCOMMODATION_INFO" s názvem hotelu/kempu v cíli dne a odkazem na mapu.
-    - Sekci "GPS_DATA" se seznamem souřadnic [lat, lon] (alespoň 10-15 bodů na den).
+    - Sekci "GPS_DATA" se seznamem souřadnic [lat, lon] (alespoň 15-20 bodů na den pro plynulou trasu na mapě).
     
-    Výstup strukturuj jasně: 
-    DEN X: ... text ...
+    Výstup strukturuj přesně takto (pro každý den): 
+    DEN X: [Název]
+    POPIS_X: ... text ...
     ACCOMMODATION_X: {"name": "Název", "type": "Hotel/Kemp", "url": "odkaz"}
     GPS_X: [lat, lon], [lat, lon]...`;
 
@@ -55,12 +63,14 @@ export const planExpedition = async (
     const tripDays: TripDay[] = [];
     
     for (let i = 1; i <= days; i++) {
-      const dayMarker = `DEN ${i}`;
-      const accomMarker = `ACCOMMODATION_${i}`;
-      const gpsMarker = `GPS_${i}`;
-      const nextDayMarker = `DEN ${i+1}`;
+      const dayMarker = `DEN ${i}:`;
+      const descMarker = `POPIS_${i}:`;
+      const accomMarker = `ACCOMMODATION_${i}:`;
+      const gpsMarker = `GPS_${i}:`;
+      const nextDayMarker = `DEN ${i+1}:`;
 
-      const dayText = fullText.split(dayMarker)[1]?.split(accomMarker)[0] || "";
+      const dayTitle = fullText.split(dayMarker)[1]?.split(descMarker)[0]?.trim() || `Den ${i}`;
+      const dayText = fullText.split(descMarker)[1]?.split(accomMarker)[0] || "";
       const accomText = fullText.split(accomMarker)[1]?.split(gpsMarker)[0] || "{}";
       const gpsText = fullText.split(gpsMarker)[1]?.split(nextDayMarker)[0]?.split('ACCOMMODATION_')[0] || "";
 
@@ -80,7 +90,7 @@ export const planExpedition = async (
       tripDays.push({
         dayNumber: i,
         mode,
-        description: dayText.trim(),
+        description: `### ${dayTitle}\n\n${dayText.trim()}`,
         waypoints,
         activities: [],
         accommodation,
@@ -92,13 +102,103 @@ export const planExpedition = async (
 
     return {
       id: Date.now().toString(),
-      name: `Expedice z ${origin}`,
+      name: `Expedice z ${origin} (${days} dní)`,
       startDate: new Date().toISOString().split('T')[0],
       days: tripDays,
       transportMode: mode,
       totalDistance: "Kalkuluji...",
       preferences,
       travelersCount: travelers
+    };
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const refineExpedition = async (
+  currentExpedition: Expedition,
+  refinementPrompt: string
+): Promise<Expedition> => {
+  try {
+    const ai = getAI();
+    
+    const prompt = `Jsi expert na plánování motocyklových expedic. Máš stávající itinerář a uživatel ho chce upravit.
+    
+    STÁVAJÍCÍ EXPEDICE:
+    ${JSON.stringify(currentExpedition, null, 2)}
+    
+    POŽADAVEK NA ÚPRAVU:
+    "${refinementPrompt}"
+    
+    ÚKOL:
+    Přeplánuj expedici podle požadavku. Můžeš změnit trasy, ubytování, popisy nebo i počet dní, pokud je to nutné.
+    Zachovej strukturu výstupu jako u původního plánování.
+    
+    Výstup strukturuj přesně takto (pro každý den): 
+    DEN X: [Název]
+    POPIS_X: ... text ...
+    ACCOMMODATION_X: {"name": "Název", "type": "Hotel/Kemp", "url": "odkaz"}
+    GPS_X: [lat, lon], [lat, lon]...`;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_2_5,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }, { googleMaps: {} }],
+        temperature: 0.7,
+      },
+    });
+
+    const fullText = response.text || "";
+    const tripDays: TripDay[] = [];
+    
+    // Parse the response (similar logic to planExpedition)
+    // We assume the number of days might have changed, so we look for all DEN X markers
+    const dayMarkers = fullText.match(/DEN \d+:/g) || [];
+    const totalDays = dayMarkers.length;
+
+    for (let i = 1; i <= totalDays; i++) {
+      const dayMarker = `DEN ${i}:`;
+      const descMarker = `POPIS_${i}:`;
+      const accomMarker = `ACCOMMODATION_${i}:`;
+      const gpsMarker = `GPS_${i}:`;
+      const nextDayMarker = `DEN ${i+1}:`;
+
+      const dayTitle = fullText.split(dayMarker)[1]?.split(descMarker)[0]?.trim() || `Den ${i}`;
+      const dayText = fullText.split(descMarker)[1]?.split(accomMarker)[0] || "";
+      const accomText = fullText.split(accomMarker)[1]?.split(gpsMarker)[0] || "{}";
+      const gpsText = fullText.split(gpsMarker)[1]?.split(nextDayMarker)[0]?.split('ACCOMMODATION_')[0] || "";
+
+      let accommodation = { name: "Neznámé ubytování", type: "Přenocování", url: "", rating: "4.0" };
+      try {
+        const parsed = JSON.parse(accomText.trim().match(/\{[\s\S]*\}/)?.[0] || "{}");
+        if (parsed.name) accommodation = { ...accommodation, ...parsed };
+      } catch (e) {}
+
+      const waypoints: [number, number][] = [];
+      const coordRegex = /\[\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*\]/g;
+      let match;
+      while ((match = coordRegex.exec(gpsText)) !== null) {
+        waypoints.push([parseFloat(match[1]), parseFloat(match[2])]);
+      }
+
+      tripDays.push({
+        dayNumber: i,
+        mode: currentExpedition.transportMode,
+        description: `### ${dayTitle}\n\n${dayText.trim()}`,
+        waypoints,
+        activities: [],
+        accommodation,
+        startLocation: currentExpedition.days[0]?.startLocation || "Start",
+        endLocation: "Cíl dne",
+        distance: "Vypočítávám..."
+      });
+    }
+
+    return {
+      ...currentExpedition,
+      id: Date.now().toString(),
+      days: tripDays,
     };
   } catch (error) {
     throw new Error(handleApiError(error));
