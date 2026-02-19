@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
+import { syncDataToCloud, fetchDataFromCloud, generateSyncCode } from '../services/syncService';
 
 const Garage: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
@@ -73,6 +74,9 @@ const Garage: React.FC = () => {
 
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [syncCode, setSyncCode] = useState<string>(() => localStorage.getItem('motospirit_sync_code') || '');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bikeFileInputRef = useRef<HTMLInputElement>(null);
@@ -139,6 +143,61 @@ const Garage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- SYNC LOGIC ---
+  const handleSyncPush = async () => {
+    if (!syncCode) return;
+    setIsSyncing(true);
+    try {
+      const expeditions = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+      const fuel = JSON.parse(localStorage.getItem('motospirit_fuel') || '[]');
+      
+      await syncDataToCloud(syncCode, {
+        user,
+        bikes,
+        records,
+        fuel,
+        expeditions
+      });
+      alert("Data byla úspěšně odeslána do cloudu.");
+    } catch (e) {
+      alert("Synchronizace selhala.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSyncPull = async () => {
+    if (!syncCode) return;
+    if (!window.confirm("Tímto přepíšeš lokální data daty z cloudu. Pokračovat?")) return;
+    
+    setIsSyncing(true);
+    try {
+      const cloudData = await fetchDataFromCloud(syncCode);
+      if (cloudData) {
+        if (cloudData.user) setUser(cloudData.user);
+        if (cloudData.bikes) setBikes(cloudData.bikes);
+        if (cloudData.records) setRecords(cloudData.records);
+        if (cloudData.fuel) localStorage.setItem('motospirit_fuel', JSON.stringify(cloudData.fuel));
+        if (cloudData.expeditions) localStorage.setItem('spirit_wanderer_trips', JSON.stringify(cloudData.expeditions));
+        
+        alert("Data byla úspěšně stažena z cloudu.");
+        window.location.reload(); // Reload to refresh all states across pages
+      } else {
+        alert("Pro tento kód nebyla nalezena žádná data.");
+      }
+    } catch (e) {
+      alert("Stažení dat selhalo.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const initSyncCode = () => {
+    const newCode = generateSyncCode();
+    setSyncCode(newCode);
+    localStorage.setItem('motospirit_sync_code', newCode);
   };
 
   const handleAddBike = () => {
@@ -236,6 +295,12 @@ const Garage: React.FC = () => {
                       <span className="flex items-center gap-2 bg-slate-900/50 px-3 py-1 rounded-full border border-slate-700">
                         <i className="fas fa-calendar-check text-orange-500"></i> {user.experienceYears} let
                       </span>
+                      <button 
+                        onClick={() => setShowSyncModal(true)}
+                        className="flex items-center gap-2 bg-orange-600/10 hover:bg-orange-600/20 px-3 py-1 rounded-full border border-orange-500/30 text-orange-500 transition-all"
+                      >
+                        <i className="fas fa-cloud-arrow-up"></i> {syncCode ? 'MOTO CLOUD AKTIVNÍ' : 'AKTIVOVAT CLOUD'}
+                      </button>
                     </div>
                   </>
                 )}
@@ -457,6 +522,93 @@ const Garage: React.FC = () => {
             <div className="p-6 bg-slate-900/80 border-t border-slate-700 flex gap-3 shrink-0 pb-10 sm:pb-6">
               <button onClick={() => setIsAddModalOpen(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white transition-all">ZRUŠIT</button>
               <button onClick={handleAddBike} className="flex-1 bg-orange-600 hover:bg-orange-500 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white shadow-lg shadow-orange-900/20 active:scale-95 transition-all">ULOŽIT MAŠINU</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
+            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
+               <div>
+                  <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">MOTO <span className="text-orange-500">CLOUD</span></h2>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Synchronizace mezi zařízeními</p>
+               </div>
+               <button onClick={() => setShowSyncModal(false)} className="text-slate-500 hover:text-white p-2">
+                 <i className="fas fa-times text-xl"></i>
+               </button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              {!syncCode ? (
+                <div className="space-y-6 text-center">
+                  <div className="w-20 h-20 bg-orange-600/10 rounded-3xl flex items-center justify-center mx-auto border border-orange-500/20">
+                    <i className="fas fa-cloud-arrow-up text-orange-500 text-3xl"></i>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-white font-bold">Aktivuj svůj Rider ID</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">Získej unikátní kód, pomocí kterého propojíš svůj telefon, tablet i PC. Žádná hesla, jen tvůj kód.</p>
+                  </div>
+                  <button 
+                    onClick={initSyncCode}
+                    className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all"
+                  >
+                    GENEROVAT RIDER ID
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <div className="bg-slate-950 p-6 rounded-3xl border border-slate-700 text-center space-y-2">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Tvé Rider ID</p>
+                    <p className="text-2xl font-brand font-bold text-orange-500 tracking-wider select-all cursor-pointer" title="Klikni pro kopírování">{syncCode}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={handleSyncPush}
+                      disabled={isSyncing}
+                      className="bg-slate-900 hover:bg-slate-700 border border-slate-700 p-6 rounded-3xl flex flex-col items-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <i className={`fas ${isSyncing ? 'fa-sync-alt animate-spin' : 'fa-cloud-arrow-up'} text-orange-500 text-xl`}></i>
+                      <span className="text-[9px] font-bold text-white uppercase tracking-widest">Odeslat do cloudu</span>
+                    </button>
+                    <button 
+                      onClick={handleSyncPull}
+                      disabled={isSyncing}
+                      className="bg-slate-900 hover:bg-slate-700 border border-slate-700 p-6 rounded-3xl flex flex-col items-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <i className={`fas ${isSyncing ? 'fa-sync-alt animate-spin' : 'fa-cloud-arrow-down'} text-blue-500 text-xl`}></i>
+                      <span className="text-[9px] font-bold text-white uppercase tracking-widest">Stáhnout z cloudu</span>
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-orange-600/5 rounded-2xl border border-orange-500/10">
+                    <p className="text-[9px] text-orange-500/70 leading-relaxed text-center italic">
+                      "Zadej toto ID na svém druhém zařízení a klikni na 'Stáhnout', aby se data propojila."
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Máš kód z jiného zařízení?</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text"
+                        placeholder="Zadej kód..."
+                        className="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-orange-500 uppercase"
+                        onChange={(e) => {
+                           const val = e.target.value.toUpperCase();
+                           if (val.length > 5) {
+                             localStorage.setItem('motospirit_sync_code', val);
+                             setSyncCode(val);
+                           }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

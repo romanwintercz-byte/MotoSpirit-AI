@@ -7,6 +7,7 @@ import TripPlanner from './pages/TripPlanner';
 import Assistant from './pages/Assistant';
 import Logbook from './pages/Logbook';
 import Radar from './pages/Radar';
+import SharedTrip from './pages/SharedTrip';
 import Navbar from './components/Navbar';
 
 const App: React.FC = () => {
@@ -32,6 +33,7 @@ const App: React.FC = () => {
             <Route path="/radar" element={<Radar />} />
             <Route path="/assistant" element={<Assistant />} />
             <Route path="/logbook" element={<Logbook />} />
+            <Route path="/share/:slug" element={<SharedTrip />} />
           </Routes>
         </main>
         

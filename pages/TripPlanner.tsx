@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { planExpedition, refineExpedition } from '../services/geminiService';
+import { shareExpeditionPublicly } from '../services/syncService';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences } from '../types';
 
 const TripPlanner: React.FC = () => {
@@ -34,6 +35,8 @@ const TripPlanner: React.FC = () => {
   const [viewMode, setViewMode] = useState<'info' | 'map'>('info');
   const [refinePrompt, setRefinePrompt] = useState('');
   const [showRefine, setShowRefine] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
@@ -96,6 +99,28 @@ const TripPlanner: React.FC = () => {
       alert("Ladění selhalo. Zkuste to znovu.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!expedition) return;
+    const syncCode = localStorage.getItem('motospirit_sync_code');
+    if (!syncCode) {
+      alert("Pro sdílení musíš mít aktivovaný Moto Cloud v sekci Garáž.");
+      return;
+    }
+    
+    setIsSharing(true);
+    try {
+      const slug = await shareExpeditionPublicly(syncCode, expedition);
+      if (slug) {
+        const url = `${window.location.origin}/#/share/${slug}`;
+        setShareUrl(url);
+      }
+    } catch (e) {
+      alert("Sdílení selhalo.");
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -413,6 +438,13 @@ const TripPlanner: React.FC = () => {
                         >
                           <i className="fas fa-wand-magic-sparkles"></i> LADIT S AI
                         </button>
+                        <button 
+                          onClick={handleShare}
+                          disabled={isSharing}
+                          className="bg-slate-900 hover:bg-slate-700 text-blue-400 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                        >
+                          <i className={`fas ${isSharing ? 'fa-sync-alt animate-spin' : 'fa-share-nodes'}`}></i> SDÍLET
+                        </button>
                         {savedExpeditions.some(ex => ex.id === expedition.id) ? (
                           <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
                              <i className="fas fa-check"></i> ULOŽENO
@@ -553,6 +585,46 @@ const TripPlanner: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Share Modal */}
+      {shareUrl && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
+            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
+               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">SDÍLET <span className="text-orange-500">EXPEDICI</span></h2>
+               <button onClick={() => setShareUrl(null)} className="text-slate-500 hover:text-white p-2">
+                 <i className="fas fa-times text-xl"></i>
+               </button>
+            </div>
+            <div className="p-8 space-y-6">
+              <p className="text-xs text-slate-400 leading-relaxed">Tvoje expedice je nyní veřejně dostupná. Pošli tento odkaz kamarádům:</p>
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-700 flex items-center gap-3">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={shareUrl} 
+                  className="bg-transparent flex-grow text-[10px] text-orange-500 font-mono outline-none"
+                />
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    alert("Odkaz zkopírován!");
+                  }}
+                  className="text-slate-500 hover:text-white"
+                >
+                  <i className="fas fa-copy"></i>
+                </button>
+              </div>
+              <button 
+                onClick={() => setShareUrl(null)}
+                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white transition-all"
+              >
+                HOTOVO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
