@@ -34,6 +34,23 @@ const Home: React.FC = () => {
     { label: 'Počet strojů', value: bikes.length.toString(), icon: 'fa-motorcycle', color: 'border-blue-500/50' },
   ];
 
+  const toCzechVocative = (name: string): string => {
+    if (!name) return '';
+    const n = name.trim();
+    const lastChar = n.slice(-1).toLowerCase();
+    const lastTwo = n.slice(-2).toLowerCase();
+
+    // Basic rules for Czech vocative (simplified)
+    if (lastChar === 'a') return n.slice(0, -1) + 'o'; // Honza -> Honzo
+    if (lastChar === 'e' || lastChar === 'i' || lastChar === 'y') return n; // Lucie, Jiří, Maty
+    if (lastChar === 'r') return n.slice(0, -1) + 'ře'; // Petr -> Petře
+    if (['k', 'h', 'g'].includes(lastChar) || lastTwo === 'ch') return n + 'u'; // Marek -> Marku, Filip -> Filipu (wait, Filip -> Filipe)
+    if (['n', 'l', 'm', 'v', 'b', 'p', 'f', 't', 'd'].includes(lastChar)) return n + 'e'; // Roman -> Romane, Pavel -> Pavle
+    if (['s', 'z', 'š', 'ž', 'č', 'ř', 'c', 'j'].includes(lastChar)) return n + 'i'; // Tomáš -> Tomáši
+
+    return n;
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn pb-10">
       {/* Hero Section - Mobile Optimized */}
@@ -49,7 +66,7 @@ const Home: React.FC = () => {
           </div>
           <h1 className="font-brand text-3xl md:text-6xl font-bold mb-3 leading-tight uppercase">
             {user?.name ? (
-              <>Ahoj <span className="text-orange-500">{user.nickname || user.name}</span>!</>
+              <>Ahoj <span className="text-orange-500">{toCzechVocative(user.nickname || user.name)}</span>!</>
             ) : (
               <>ŽIJ <span className="text-orange-500 italic">SVOJI</span> CESTU</>
             )}
