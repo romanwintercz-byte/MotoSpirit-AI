@@ -5,6 +5,9 @@ export interface UserProfile {
   experienceYears: number;
   ridingStyle: string;
   avatar?: string;
+  isPublic?: boolean;
+  isAdmin?: boolean;
+  isDeactivated?: boolean;
 }
 
 export interface Motorcycle {

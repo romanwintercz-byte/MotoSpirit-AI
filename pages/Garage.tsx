@@ -7,7 +7,7 @@ import { syncDataToCloud, fetchDataFromCloud, generateSyncCode, subscribeToCloud
 
 const Garage: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
-  const resizeImage = (file: File, maxWidth: number = 800): Promise<string> => {
+  const resizeImage = (file: File, maxWidth: number = 600): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -29,8 +29,8 @@ const Garage: React.FC = () => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            // Uložíme jako JPEG s kvalitou 0.7 pro maximální úsporu místa
-            resolve(canvas.toDataURL('image/jpeg', 0.7));
+            // Uložíme jako JPEG s kvalitou 0.5 pro maximální úsporu místa (Mb dieta)
+            resolve(canvas.toDataURL('image/jpeg', 0.5));
           }
         };
       };
@@ -56,7 +56,7 @@ const Garage: React.FC = () => {
 
   // --- STATE ---
   const [user, setUser] = useState<UserProfile>(() => 
-    safeParse(safeGetItem('motospirit_user', ''), { name: '', nickname: 'Rider', experienceYears: 0, ridingStyle: 'Road', avatar: '' })
+    safeParse(safeGetItem('motospirit_user', ''), { name: '', nickname: 'Rider', experienceYears: 0, ridingStyle: 'Road', avatar: '', isPublic: true })
   );
 
   const [bikes, setBikes] = useState<Motorcycle[]>(() => 
@@ -80,6 +80,8 @@ const Garage: React.FC = () => {
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'ok' | 'error'>('checking');
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [communityCode, setCommunityCode] = useState('');
+  const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('motospirit_auth') === 'true');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bikeFileInputRef = useRef<HTMLInputElement>(null);
@@ -280,9 +282,15 @@ const Garage: React.FC = () => {
   };
 
   const initSyncCode = () => {
+    if (communityCode !== 'MOTOSPIRIT1.0') {
+      alert("Nesprávný kód komunity!");
+      return;
+    }
     const newCode = generateSyncCode();
     setSyncCode(newCode);
     localStorage.setItem('motospirit_sync_code', newCode);
+    localStorage.setItem('motospirit_auth', 'true');
+    setIsAuthorized(true);
   };
 
   const handleAddBike = () => {
@@ -367,6 +375,30 @@ const Garage: React.FC = () => {
                       value={user.nickname} 
                       onChange={e => setUser({...user, nickname: e.target.value})}
                     />
+                    <div className="flex items-center gap-3 px-2">
+                      <input 
+                        type="checkbox" 
+                        id="isPublic"
+                        checked={user.isPublic} 
+                        onChange={e => setUser({...user, isPublic: e.target.checked})}
+                        className="w-4 h-4 accent-orange-500"
+                      />
+                      <label htmlFor="isPublic" className="text-[10px] font-bold text-slate-400 uppercase">Veřejný profil (viditelný v Radaru)</label>
+                    </div>
+                    {!user.isAdmin && (
+                      <button 
+                        onClick={() => {
+                          const pass = prompt("Zadej administrátorské heslo:");
+                          if (pass === "SPIRIT-BOSS-2024") {
+                            setUser({...user, isAdmin: true});
+                            alert("Nyní jsi administrátor!");
+                          }
+                        }}
+                        className="text-[8px] text-slate-600 uppercase font-bold hover:text-orange-500 transition-colors text-left px-2"
+                      >
+                        Aktivovat Admin mód
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -636,11 +668,20 @@ const Garage: React.FC = () => {
               {!syncCode ? (
                 <div className="space-y-6 text-center">
                   <div className="w-20 h-20 bg-orange-600/10 rounded-3xl flex items-center justify-center mx-auto border border-orange-500/20">
-                    <i className="fas fa-cloud-arrow-up text-orange-500 text-3xl"></i>
+                    <i className="fas fa-shield-halved text-orange-500 text-3xl"></i>
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-white font-bold">Aktivuj svůj Rider ID</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">Získej unikátní kód, pomocí kterého propojíš svůj telefon, tablet i PC. Žádná hesla, jen tvůj kód.</p>
+                    <h3 className="text-white font-bold">Vstup do komunity</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">Pro vytvoření Rider ID musíš zadat kód komunity, který jsi dostal od administrátora.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <input 
+                      type="text"
+                      placeholder="Kód komunity..."
+                      value={communityCode}
+                      onChange={e => setCommunityCode(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center uppercase tracking-widest"
+                    />
                   </div>
                   <button 
                     onClick={initSyncCode}

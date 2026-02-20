@@ -138,3 +138,46 @@ export const shareExpeditionPublicly = async (syncCode: string, expedition: Expe
     return null;
   }
 };
+
+export const getAllPublicProfiles = async () => {
+  try {
+    const { data: profiles, error: pError } = await supabase
+      .from('moto_sync_profiles')
+      .select('sync_code, user_data');
+    
+    if (pError) throw pError;
+
+    const { data: garages, error: gError } = await supabase
+      .from('moto_garage')
+      .select('sync_code, bikes_data');
+    
+    if (gError) throw gError;
+
+    return (profiles || []).map(p => {
+      const userData = p.user_data as UserProfile;
+      const garage = (garages || []).find(g => g.sync_code === p.sync_code);
+      return {
+        syncCode: p.sync_code,
+        user: userData,
+        bikes: (garage?.bikes_data as Motorcycle[]) || []
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching public profiles:", error);
+    return [];
+  }
+};
+
+export const updateProfileStatus = async (syncCode: string, userData: UserProfile) => {
+  try {
+    const { error } = await supabase
+      .from('moto_sync_profiles')
+      .update({ user_data: userData })
+      .eq('sync_code', syncCode);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error updating profile status:", error);
+    return false;
+  }
+};
