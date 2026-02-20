@@ -22,49 +22,57 @@ export const syncDataToCloud = async (syncCode: string, data: {
   if (!syncCode) return;
 
   try {
-    // 1. Update Profile & User Data
+    // 1. Ensure Profile exists (Upsert)
+    // We do this first because other tables have a foreign key to this
     if (data.user) {
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('moto_sync_profiles')
-        .upsert({ sync_code: syncCode, user_data: data.user }, { onConflict: 'sync_code' });
-      if (error) throw new Error(`Profile sync failed: ${error.message}`);
+        .upsert({ 
+          sync_code: syncCode, 
+          user_data: data.user 
+        }, { onConflict: 'sync_code' });
+      
+      if (profileError) throw new Error(`Profile sync failed: ${profileError.message}`);
+    } else {
+      // If user data isn't provided, we still need to ensure the profile record exists 
+      // so foreign keys don't fail.
+      await supabase.from('moto_sync_profiles').upsert({ sync_code: syncCode }, { onConflict: 'sync_code' });
     }
 
-    // 2. Update Garage (Bikes, Records, Fuel)
+    // 2. Update Garage (Direct Upsert)
+    // Since handleSyncPush sends all local data, we can safely overwrite the cloud state
     if (data.bikes || data.records || data.fuel) {
-      const existingGarage = await supabase
-        .from('moto_garage')
-        .select('*')
-        .eq('sync_code', syncCode)
-        .single();
-
-      const updateData = {
+      const updateData: any = {
         sync_code: syncCode,
-        bikes_data: data.bikes || (existingGarage.data?.bikes_data || []),
-        records_data: data.records || (existingGarage.data?.records_data || []),
-        fuel_data: data.fuel || (existingGarage.data?.fuel_data || []),
         updated_at: new Date().toISOString()
       };
+      
+      if (data.bikes) updateData.bikes_data = data.bikes;
+      if (data.records) updateData.records_data = data.records;
+      if (data.fuel) updateData.fuel_data = data.fuel;
 
-      const { error } = await supabase
+      const { error: garageError } = await supabase
         .from('moto_garage')
         .upsert(updateData, { onConflict: 'sync_code' });
-      if (error) throw new Error(`Garage sync failed: ${error.message}`);
+        
+      if (garageError) throw new Error(`Garage sync failed: ${garageError.message}`);
     }
 
     // 3. Update Expeditions
     if (data.expeditions) {
-      const { error } = await supabase
+      const { error: expError } = await supabase
         .from('moto_expeditions')
         .upsert({ 
           sync_code: syncCode, 
-          expedition_data: data.expeditions 
+          expedition_data: data.expeditions,
+          updated_at: new Date().toISOString()
         }, { onConflict: 'sync_code' });
-      if (error) throw new Error(`Expedition sync failed: ${error.message}`);
+        
+      if (expError) throw new Error(`Expedition sync failed: ${expError.message}`);
     }
   } catch (error) {
-    console.error("Sync error:", error);
-    throw error; // Re-throw to be caught by the UI
+    console.error("Sync error details:", error);
+    throw error;
   }
 };
 
