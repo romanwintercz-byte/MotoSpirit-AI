@@ -85,7 +85,11 @@ const Garage: React.FC = () => {
   const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('motospirit_auth') === 'true');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const bikeFileInputRef = useRef<HTMLInputElement>(null);
+  const bikeCameraInputRef = useRef<HTMLInputElement>(null);
+  const editBikeFileInputRef = useRef<HTMLInputElement>(null);
+  const editBikeCameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkDb = async () => {
@@ -362,13 +366,33 @@ const Garage: React.FC = () => {
               accept="image/*" 
               onChange={(e) => handleFileChange(e, 'user')} 
             />
+            <input 
+              type="file" 
+              ref={cameraInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              capture="user"
+              onChange={(e) => handleFileChange(e, 'user')} 
+            />
             
-            <button 
-              onClick={() => isProfileEditing ? fileInputRef.current?.click() : setIsProfileEditing(true)}
-              className="absolute -bottom-1 -right-1 bg-orange-600 hover:bg-orange-500 w-9 h-9 rounded-xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg active:scale-90"
-            >
-              <i className={`fas ${isProfileEditing ? 'fa-upload' : 'fa-camera'} text-white text-xs`}></i>
-            </button>
+            <div className="absolute -bottom-1 -right-1 flex gap-1">
+              {isProfileEditing && (
+                <button 
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="bg-orange-600 hover:bg-orange-500 w-9 h-9 rounded-xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg active:scale-90"
+                  title="Vyfotit"
+                >
+                  <i className="fas fa-camera text-white text-xs"></i>
+                </button>
+              )}
+              <button 
+                onClick={() => isProfileEditing ? fileInputRef.current?.click() : setIsProfileEditing(true)}
+                className="bg-slate-700 hover:bg-slate-600 w-9 h-9 rounded-xl border-4 border-slate-900 flex items-center justify-center transition-all shadow-lg active:scale-90"
+                title={isProfileEditing ? "Vybrat z galerie" : "Upravit profil"}
+              >
+                <i className={`fas ${isProfileEditing ? 'fa-image' : 'fa-user-edit'} text-white text-xs`}></i>
+              </button>
+            </div>
           </div>
           
           <div className="flex-grow text-center sm:text-left">
@@ -631,29 +655,54 @@ const Garage: React.FC = () => {
               
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka stroje</label>
-                <div 
-                  onClick={() => !loading && bikeFileInputRef.current?.click()}
-                  className={`w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all ${loading ? 'opacity-50' : ''}`}
-                >
-                  {loading ? (
-                    <div className="flex flex-col items-center">
-                      <i className="fas fa-sync-alt animate-spin text-2xl text-orange-500 mb-2"></i>
-                      <span className="text-[9px] text-slate-500 font-bold uppercase">Zmenšuji fotku...</span>
-                    </div>
-                  ) : editingBike.image ? (
-                    <img src={editingBike.image} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <i className="fas fa-camera text-3xl text-slate-600 mb-2 group-hover:text-orange-500 transition-colors"></i>
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center px-4">Klikni a foť / vyber soubor</span>
-                    </>
-                  )}
+                <div className="flex gap-3">
+                  <div 
+                    className={`flex-grow h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center overflow-hidden group transition-all ${loading ? 'opacity-50' : ''}`}
+                  >
+                    {loading ? (
+                      <div className="flex flex-col items-center">
+                        <i className="fas fa-sync-alt animate-spin text-2xl text-orange-500 mb-2"></i>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Zpracovávám...</span>
+                      </div>
+                    ) : editingBike.image ? (
+                      <img src={editingBike.image} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center p-4">
+                        <i className="fas fa-motorcycle text-3xl text-slate-700 mb-2"></i>
+                        <p className="text-[9px] text-slate-600 font-bold uppercase">Žádná fotka</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={() => !loading && editBikeCameraInputRef.current?.click()}
+                      className="flex-1 bg-slate-900 border border-slate-700 hover:border-orange-500 rounded-2xl px-4 flex flex-col items-center justify-center gap-1 transition-all group"
+                    >
+                      <i className="fas fa-camera text-slate-500 group-hover:text-orange-500"></i>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase">Foťák</span>
+                    </button>
+                    <button 
+                      onClick={() => !loading && editBikeFileInputRef.current?.click()}
+                      className="flex-1 bg-slate-900 border border-slate-700 hover:border-orange-500 rounded-2xl px-4 flex flex-col items-center justify-center gap-1 transition-all group"
+                    >
+                      <i className="fas fa-image text-slate-500 group-hover:text-orange-500"></i>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase">Galerie</span>
+                    </button>
+                  </div>
                 </div>
                 <input 
                   type="file" 
-                  ref={bikeFileInputRef} 
+                  ref={editBikeFileInputRef} 
                   className="hidden" 
                   accept="image/*" 
+                  onChange={(e) => handleFileChange(e, 'edit')} 
+                />
+                <input 
+                  type="file" 
+                  ref={editBikeCameraInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  capture="environment"
                   onChange={(e) => handleFileChange(e, 'edit')} 
                 />
               </div>
@@ -716,29 +765,54 @@ const Garage: React.FC = () => {
               
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka stroje</label>
-                <div 
-                  onClick={() => !loading && bikeFileInputRef.current?.click()}
-                  className={`w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all ${loading ? 'opacity-50' : ''}`}
-                >
-                  {loading ? (
-                    <div className="flex flex-col items-center">
-                      <i className="fas fa-sync-alt animate-spin text-2xl text-orange-500 mb-2"></i>
-                      <span className="text-[9px] text-slate-500 font-bold uppercase">Zmenšuji fotku...</span>
-                    </div>
-                  ) : newBike.image ? (
-                    <img src={newBike.image} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <i className="fas fa-camera text-3xl text-slate-600 mb-2 group-hover:text-orange-500 transition-colors"></i>
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center px-4">Klikni a foť / vyber soubor</span>
-                    </>
-                  )}
+                <div className="flex gap-3">
+                  <div 
+                    className={`flex-grow h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center overflow-hidden group transition-all ${loading ? 'opacity-50' : ''}`}
+                  >
+                    {loading ? (
+                      <div className="flex flex-col items-center">
+                        <i className="fas fa-sync-alt animate-spin text-2xl text-orange-500 mb-2"></i>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase">Zpracovávám...</span>
+                      </div>
+                    ) : newBike.image ? (
+                      <img src={newBike.image} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center p-4">
+                        <i className="fas fa-motorcycle text-3xl text-slate-700 mb-2"></i>
+                        <p className="text-[9px] text-slate-600 font-bold uppercase">Žádná fotka</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={() => !loading && bikeCameraInputRef.current?.click()}
+                      className="flex-1 bg-slate-900 border border-slate-700 hover:border-orange-500 rounded-2xl px-4 flex flex-col items-center justify-center gap-1 transition-all group"
+                    >
+                      <i className="fas fa-camera text-slate-500 group-hover:text-orange-500"></i>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase">Foťák</span>
+                    </button>
+                    <button 
+                      onClick={() => !loading && bikeFileInputRef.current?.click()}
+                      className="flex-1 bg-slate-900 border border-slate-700 hover:border-orange-500 rounded-2xl px-4 flex flex-col items-center justify-center gap-1 transition-all group"
+                    >
+                      <i className="fas fa-image text-slate-500 group-hover:text-orange-500"></i>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase">Galerie</span>
+                    </button>
+                  </div>
                 </div>
                 <input 
                   type="file" 
                   ref={bikeFileInputRef} 
                   className="hidden" 
                   accept="image/*" 
+                  onChange={(e) => handleFileChange(e, 'bike')} 
+                />
+                <input 
+                  type="file" 
+                  ref={bikeCameraInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  capture="environment"
                   onChange={(e) => handleFileChange(e, 'bike')} 
                 />
               </div>
