@@ -23,13 +23,19 @@ export const planExpedition = async (
   days: number, 
   mode: TransportMode, 
   preferences: ExpeditionPreferences,
-  travelers: number
+  travelers: number,
+  tripType: 'ride' | 'expedition' = 'expedition'
 ): Promise<Expedition> => {
   try {
     const ai = getAI();
     
-    const prompt = `Naplánuj detailní ${days}-denní expedici z ${origin} pro ${travelers} osoby/osob. 
+    const typeContext = tripType === 'ride' 
+      ? "Jedná se o jednodenní vyjížďku (ride). Zaměř se na scénický okruh se startem i cílem v místě startu. Hledej nejlepší asfalt a 'Coffee & Cake' zastávky."
+      : "Jedná se o vícedenní expedici. Naplánuj denní etapy, přesuny a logistiku ubytování.";
+
+    const prompt = `Naplánuj detailní ${days}-denní ${tripType === 'ride' ? 'vyjížďku' : 'expedici'} z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
+    ${typeContext}
     
     PREFERENCE:
     - Ubytování: ${preferences.accommodation} (wild=nadivoko, camp=kemp, pension=penzion, hotel=hotel)
@@ -108,7 +114,8 @@ export const planExpedition = async (
       transportMode: mode,
       totalDistance: "Kalkuluji...",
       preferences,
-      travelersCount: travelers
+      travelersCount: travelers,
+      tripType
     };
   } catch (error) {
     throw new Error(handleApiError(error));

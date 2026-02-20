@@ -60,6 +60,7 @@ export interface Expedition {
   totalDistance: string;
   preferences: ExpeditionPreferences;
   travelersCount: number;
+  tripType?: 'ride' | 'expedition';
 }
 
 export interface MaintenanceRecord {
