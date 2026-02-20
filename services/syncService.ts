@@ -24,9 +24,10 @@ export const syncDataToCloud = async (syncCode: string, data: {
   try {
     // 1. Update Profile & User Data
     if (data.user) {
-      await supabase
+      const { error } = await supabase
         .from('moto_sync_profiles')
         .upsert({ sync_code: syncCode, user_data: data.user }, { onConflict: 'sync_code' });
+      if (error) throw new Error(`Profile sync failed: ${error.message}`);
     }
 
     // 2. Update Garage (Bikes, Records, Fuel)
@@ -45,24 +46,25 @@ export const syncDataToCloud = async (syncCode: string, data: {
         updated_at: new Date().toISOString()
       };
 
-      await supabase
+      const { error } = await supabase
         .from('moto_garage')
         .upsert(updateData, { onConflict: 'sync_code' });
+      if (error) throw new Error(`Garage sync failed: ${error.message}`);
     }
 
     // 3. Update Expeditions
     if (data.expeditions) {
-      // For simplicity, we store all expeditions in one JSON for the sync profile
-      // or we could store them individually. Let's do a single record for now to keep it simple.
-      await supabase
+      const { error } = await supabase
         .from('moto_expeditions')
         .upsert({ 
           sync_code: syncCode, 
           expedition_data: data.expeditions 
         }, { onConflict: 'sync_code' });
+      if (error) throw new Error(`Expedition sync failed: ${error.message}`);
     }
   } catch (error) {
     console.error("Sync error:", error);
+    throw error; // Re-throw to be caught by the UI
   }
 };
 
@@ -74,6 +76,12 @@ export const fetchDataFromCloud = async (syncCode: string) => {
       supabase.from('moto_expeditions').select('expedition_data').eq('sync_code', syncCode).single()
     ]);
 
+    // We don't throw if data is missing, as a new user might not have all tables populated yet.
+    // But we should log errors if they are not "PGRST116" (row not found).
+    if (profile.error && profile.error.code !== 'PGRST116') throw new Error(`Profile fetch error: ${profile.error.message}`);
+    if (garage.error && garage.error.code !== 'PGRST116') throw new Error(`Garage fetch error: ${garage.error.message}`);
+    if (expeditions.error && expeditions.error.code !== 'PGRST116') throw new Error(`Expeditions fetch error: ${expeditions.error.message}`);
+
     return {
       user: profile.data?.user_data as UserProfile | null,
       bikes: garage.data?.bikes_data as Motorcycle[] | null,
@@ -83,7 +91,7 @@ export const fetchDataFromCloud = async (syncCode: string) => {
     };
   } catch (error) {
     console.error("Fetch sync error:", error);
-    return null;
+    throw error;
   }
 };
 

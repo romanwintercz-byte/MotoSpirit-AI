@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
+import { supabase } from '../services/supabaseClient';
 import { syncDataToCloud, fetchDataFromCloud, generateSyncCode } from '../services/syncService';
 
 const Garage: React.FC = () => {
@@ -77,9 +78,24 @@ const Garage: React.FC = () => {
   const [syncCode, setSyncCode] = useState<string>(() => localStorage.getItem('motospirit_sync_code') || '');
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [dbStatus, setDbStatus] = useState<'checking' | 'ok' | 'error'>('checking');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bikeFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const checkDb = async () => {
+      try {
+        const { error } = await supabase.from('moto_sync_profiles').select('count', { count: 'exact', head: true }).limit(1);
+        if (error) throw error;
+        setDbStatus('ok');
+      } catch (e) {
+        console.error("DB Check failed:", e);
+        setDbStatus('error');
+      }
+    };
+    if (showSyncModal) checkDb();
+  }, [showSyncModal]);
 
   // --- PERSISTENCE ---
   useEffect(() => {
@@ -153,6 +169,7 @@ const Garage: React.FC = () => {
       const expeditions = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
       const fuel = JSON.parse(localStorage.getItem('motospirit_fuel') || '[]');
       
+      console.log("Pushing data to cloud for code:", syncCode);
       await syncDataToCloud(syncCode, {
         user,
         bikes,
@@ -161,8 +178,9 @@ const Garage: React.FC = () => {
         expeditions
       });
       alert("Data byla úspěšně odeslána do cloudu.");
-    } catch (e) {
-      alert("Synchronizace selhala.");
+    } catch (e: any) {
+      console.error("Sync push error:", e);
+      alert(`Synchronizace selhala: ${e.message || 'Neznámá chyba'}`);
     } finally {
       setIsSyncing(false);
     }
@@ -174,6 +192,7 @@ const Garage: React.FC = () => {
     
     setIsSyncing(true);
     try {
+      console.log("Pulling data from cloud for code:", syncCode);
       const cloudData = await fetchDataFromCloud(syncCode);
       if (cloudData) {
         if (cloudData.user) setUser(cloudData.user);
@@ -187,8 +206,9 @@ const Garage: React.FC = () => {
       } else {
         alert("Pro tento kód nebyla nalezena žádná data.");
       }
-    } catch (e) {
-      alert("Stažení dat selhalo.");
+    } catch (e: any) {
+      console.error("Sync pull error:", e);
+      alert(`Stažení dat selhalo: ${e.message || 'Neznámá chyba'}`);
     } finally {
       setIsSyncing(false);
     }
@@ -534,7 +554,12 @@ const Garage: React.FC = () => {
             <div className="p-8 border-b border-slate-700 flex justify-between items-center">
                <div>
                   <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">MOTO <span className="text-orange-500">CLOUD</span></h2>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Synchronizace mezi zařízeními</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'ok' ? 'bg-green-500' : dbStatus === 'error' ? 'bg-red-500' : 'bg-slate-500 animate-pulse'}`}></div>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                      {dbStatus === 'ok' ? 'PŘIPOJENO KE CLOUDU' : dbStatus === 'error' ? 'CHYBA PŘIPOJENÍ (VITE_ PREFIX?)' : 'OVĚŘOVÁNÍ...'}
+                    </p>
+                  </div>
                </div>
                <button onClick={() => setShowSyncModal(false)} className="text-slate-500 hover:text-white p-2">
                  <i className="fas fa-times text-xl"></i>
