@@ -107,14 +107,14 @@ const Garage: React.FC = () => {
       
       // Update local state if cloud data is newer or different
       // To avoid loops, we only update if there's a meaningful change
-      if (cloudData.user && JSON.stringify(cloudData.user) !== JSON.stringify(user)) {
-        setUser(cloudData.user);
+      if (cloudData.user) {
+        setUser(prev => JSON.stringify(prev) !== JSON.stringify(cloudData.user) ? cloudData.user : prev);
       }
-      if (cloudData.bikes && JSON.stringify(cloudData.bikes) !== JSON.stringify(bikes)) {
-        setBikes(cloudData.bikes);
+      if (cloudData.bikes) {
+        setBikes(prev => JSON.stringify(prev) !== JSON.stringify(cloudData.bikes) ? cloudData.bikes : prev);
       }
-      if (cloudData.records && JSON.stringify(cloudData.records) !== JSON.stringify(records)) {
-        setRecords(cloudData.records);
+      if (cloudData.records) {
+        setRecords(prev => JSON.stringify(prev) !== JSON.stringify(cloudData.records) ? cloudData.records : prev);
       }
       if (cloudData.fuel) {
         localStorage.setItem('motospirit_fuel', JSON.stringify(cloudData.fuel));
@@ -384,7 +384,7 @@ const Garage: React.FC = () => {
                         onClick={() => setShowSyncModal(true)}
                         className="flex items-center gap-2 bg-orange-600/10 hover:bg-orange-600/20 px-3 py-1 rounded-full border border-orange-500/30 text-orange-500 transition-all"
                       >
-                        <i className={`fas ${lastSyncTime ? 'fa-cloud-check' : 'fa-cloud-arrow-up'}`}></i> 
+                        <i className={`fas ${lastSyncTime ? 'fa-check-circle' : 'fa-cloud-upload-alt'}`}></i> 
                         {syncCode ? (lastSyncTime ? 'SYNCHRONIZOVÁNO' : 'MOTO CLOUD AKTIVNÍ') : 'AKTIVOVAT CLOUD'}
                       </button>
                     </div>

@@ -59,25 +59,34 @@ const TripPlanner: React.FC = () => {
   ];
 
   // --- PERSISTENCE ---
+  const autoSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     localStorage.setItem('spirit_wanderer_trips', JSON.stringify(savedExpeditions));
     
-    // Auto-sync
+    // Auto-sync with debounce
     const syncCode = localStorage.getItem('motospirit_sync_code');
     if (syncCode) {
-      const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');
-      const bikes = JSON.parse(localStorage.getItem('motospirit_bikes') || '[]');
-      const records = JSON.parse(localStorage.getItem('motospirit_records') || '[]');
-      const fuel = JSON.parse(localStorage.getItem('motospirit_fuel') || '[]');
-      
-      syncDataToCloud(syncCode, {
-        user,
-        bikes,
-        records,
-        fuel,
-        expeditions: savedExpeditions
-      }).catch(console.error);
+      if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
+      autoSyncTimeoutRef.current = setTimeout(() => {
+        const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');
+        const bikes = JSON.parse(localStorage.getItem('motospirit_bikes') || '[]');
+        const records = JSON.parse(localStorage.getItem('motospirit_records') || '[]');
+        const fuel = JSON.parse(localStorage.getItem('motospirit_fuel') || '[]');
+        
+        syncDataToCloud(syncCode, {
+          user,
+          bikes,
+          records,
+          fuel,
+          expeditions: savedExpeditions
+        }).catch(console.error);
+      }, 2000);
     }
+
+    return () => {
+      if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
+    };
   }, [savedExpeditions]);
 
   // --- HANDLERS ---

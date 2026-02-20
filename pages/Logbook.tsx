@@ -52,22 +52,31 @@ const Logbook: React.FC = () => {
     localStorage.setItem('motospirit_fuel', JSON.stringify(fuelRecords));
   }, [fuelRecords]);
 
+  const autoSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     localStorage.setItem('motospirit_records', JSON.stringify(expenses));
     
-    // Auto-sync
+    // Auto-sync with debounce
     const syncCode = localStorage.getItem('motospirit_sync_code');
     if (syncCode) {
-      const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');
-      const expeditions = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
-      syncDataToCloud(syncCode, {
-        user,
-        bikes,
-        records: expenses,
-        fuel: fuelRecords,
-        expeditions
-      }).catch(console.error);
+      if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
+      autoSyncTimeoutRef.current = setTimeout(() => {
+        const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');
+        const expeditions = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+        syncDataToCloud(syncCode, {
+          user,
+          bikes,
+          records: expenses,
+          fuel: fuelRecords,
+          expeditions
+        }).catch(console.error);
+      }, 2000);
     }
+    
+    return () => {
+      if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
+    };
   }, [expenses, fuelRecords, bikes]);
 
   const currentBikeFuel = fuelRecords.filter(f => f.bikeId === selectedBikeId).sort((a,b) => b.mileage - a.mileage);
