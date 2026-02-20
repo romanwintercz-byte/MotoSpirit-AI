@@ -8,6 +8,7 @@ export interface UserProfile {
   isPublic?: boolean;
   isAdmin?: boolean;
   isDeactivated?: boolean;
+  following?: string[]; // List of syncCodes
 }
 
 export interface Motorcycle {

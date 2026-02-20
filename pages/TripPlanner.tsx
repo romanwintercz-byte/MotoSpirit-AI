@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { planExpedition, refineExpedition } from '../services/geminiService';
-import { shareExpeditionPublicly, syncDataToCloud } from '../services/syncService';
-import { Expedition, TransportMode, TripDay, ExpeditionPreferences } from '../types';
+import { shareExpeditionPublicly, syncDataToCloud, fetchInbox, sendTripToRider, deleteInboxMessage, getAllPublicProfiles } from '../services/syncService';
+import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 
 const TripPlanner: React.FC = () => {
   // --- FORM STATE ---
@@ -37,6 +37,11 @@ const TripPlanner: React.FC = () => {
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [inbox, setInbox] = useState<any[]>([]);
+  const [showInbox, setShowInbox] = useState(false);
+  const [showSendToRider, setShowSendToRider] = useState(false);
+  const [followedRiders, setFollowedRiders] = useState<any[]>([]);
+  const [isSending, setIsSending] = useState(false);
 
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
@@ -88,6 +93,39 @@ const TripPlanner: React.FC = () => {
       if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
     };
   }, [savedExpeditions]);
+
+  useEffect(() => {
+    const sync = () => {
+      const saved = localStorage.getItem('spirit_wanderer_trips');
+      if (saved) setSavedExpeditions(JSON.parse(saved));
+    };
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+
+  // Fetch Inbox and Followed Riders
+  useEffect(() => {
+    const syncCode = localStorage.getItem('motospirit_sync_code');
+    if (!syncCode) return;
+
+    const loadData = async () => {
+      const msgs = await fetchInbox(syncCode);
+      setInbox(msgs);
+
+      const userStr = localStorage.getItem('motospirit_user');
+      if (userStr) {
+        const user = JSON.parse(userStr) as UserProfile;
+        if (user.following && user.following.length > 0) {
+          const allProfiles = await getAllPublicProfiles();
+          const followed = allProfiles.filter(p => user.following?.includes(p.syncCode));
+          setFollowedRiders(followed);
+        }
+      }
+    };
+    loadData();
+    const interval = setInterval(loadData, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   // --- HANDLERS ---
   const handlePlan = async () => {
@@ -148,6 +186,30 @@ const TripPlanner: React.FC = () => {
     } finally {
       setIsSharing(false);
     }
+  };
+
+  const handleSendToRider = async (toSyncCode: string) => {
+    if (!expedition) return;
+    const fromSyncCode = localStorage.getItem('motospirit_sync_code');
+    if (!fromSyncCode) return;
+
+    setIsSending(true);
+    const success = await sendTripToRider(fromSyncCode, toSyncCode, expedition);
+    setIsSending(false);
+    if (success) {
+      alert("Trasa byla odeslána!");
+      setShowSendToRider(false);
+    } else {
+      alert("Odeslání selhalo.");
+    }
+  };
+
+  const handleAcceptTrip = (msg: any) => {
+    const newExp = { ...msg.expedition_data, id: Date.now().toString(), name: `Od ${msg.from_code}: ${msg.expedition_data.name}` };
+    setSavedExpeditions(prev => [newExp, ...prev]);
+    deleteInboxMessage(msg.id);
+    setInbox(prev => prev.filter(m => m.id !== msg.id));
+    alert("Trasa byla přidána do tvých expedic.");
   };
 
   const toggleExperience = (id: string) => {
@@ -256,9 +318,20 @@ const TripPlanner: React.FC = () => {
           <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mt-1 opacity-70">AI Roadtrip Engine v2.5</p>
         </div>
         {expedition && (
-          <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md">
-            <button onClick={() => setViewMode('info')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'info' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ITINERÁŘ</button>
-            <button onClick={() => setViewMode('map')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>MAPA</button>
+          <div className="flex items-center gap-4">
+            {inbox.length > 0 && (
+              <button 
+                onClick={() => setShowInbox(true)}
+                className="relative bg-orange-600/20 text-orange-500 w-12 h-12 rounded-2xl border border-orange-500/30 flex items-center justify-center animate-pulse"
+              >
+                <i className="fas fa-envelope"></i>
+                <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900">{inbox.length}</span>
+              </button>
+            )}
+            <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md">
+              <button onClick={() => setViewMode('info')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'info' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ITINERÁŘ</button>
+              <button onClick={() => setViewMode('map')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>MAPA</button>
+            </div>
           </div>
         )}
       </header>
@@ -465,6 +538,12 @@ const TripPlanner: React.FC = () => {
                           <i className="fas fa-wand-magic-sparkles"></i> LADIT S AI
                         </button>
                         <button 
+                          onClick={() => setShowSendToRider(true)}
+                          className="bg-slate-900 hover:bg-slate-700 text-orange-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                        >
+                          <i className="fas fa-paper-plane"></i> POSLAT KÁMOŠI
+                        </button>
+                        <button 
                           onClick={handleShare}
                           disabled={isSharing}
                           className="bg-slate-900 hover:bg-slate-700 text-blue-400 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
@@ -647,6 +726,96 @@ const TripPlanner: React.FC = () => {
               >
                 HOTOVO
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send to Rider Modal */}
+      {showSendToRider && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
+            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
+               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">POSLAT <span className="text-orange-500">KÁMOŠI</span></h2>
+               <button onClick={() => setShowSendToRider(false)} className="text-slate-500 hover:text-white p-2">
+                 <i className="fas fa-times text-xl"></i>
+               </button>
+            </div>
+            <div className="p-8 space-y-4">
+              <p className="text-xs text-slate-400 leading-relaxed">Vyber jezdce ze své party, kterému chceš poslat tuhle trasu přímo do jeho aplikace.</p>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                {followedRiders.length === 0 ? (
+                  <div className="text-center py-10 border-2 border-dashed border-slate-700 rounded-3xl">
+                    <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">V partě zatím nikoho nemáš</p>
+                    <a href="#/radar" className="text-orange-500 text-[10px] font-bold uppercase mt-2 inline-block">Najít jezdce v Radaru</a>
+                  </div>
+                ) : (
+                  followedRiders.map(rider => (
+                    <button 
+                      key={rider.syncCode}
+                      onClick={() => handleSendToRider(rider.syncCode)}
+                      disabled={isSending}
+                      className="w-full p-4 rounded-2xl bg-slate-900 border border-slate-700 hover:border-orange-500 flex items-center gap-4 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700">
+                        {rider.user.avatar ? <img src={rider.user.avatar} className="w-full h-full object-cover" /> : <i className="fas fa-user text-orange-500"></i>}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-white uppercase tracking-tight">{rider.user.nickname}</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{rider.user.ridingStyle}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inbox Modal */}
+      {showInbox && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
+            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
+               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">PŘIJATÉ <span className="text-orange-500">TRASY</span></h2>
+               <button onClick={() => setShowInbox(false)} className="text-slate-500 hover:text-white p-2">
+                 <i className="fas fa-times text-xl"></i>
+               </button>
+            </div>
+            <div className="p-8 space-y-4">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                {inbox.map(msg => (
+                  <div key={msg.id} className="bg-slate-900 border border-slate-700 p-5 rounded-3xl space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
+                        <i className="fas fa-map-location-dot"></i>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white uppercase tracking-tight">{msg.expedition_data.name}</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Od: {msg.from_code.slice(0, 8)}...</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleAcceptTrip(msg)}
+                        className="flex-1 bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all"
+                      >
+                        PŘIJMOUT
+                      </button>
+                      <button 
+                        onClick={() => {
+                          deleteInboxMessage(msg.id);
+                          setInbox(prev => prev.filter(m => m.id !== msg.id));
+                        }}
+                        className="px-4 bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-500 rounded-xl border border-slate-700 transition-all"
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

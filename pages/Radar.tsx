@@ -21,6 +21,22 @@ const Radar: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const toggleFollow = (syncCode: string) => {
+    if (!currentUser) return;
+    const following = currentUser.following || [];
+    const isFollowing = following.includes(syncCode);
+    
+    const newFollowing = isFollowing 
+      ? following.filter(id => id !== syncCode)
+      : [...following, syncCode];
+      
+    const updatedUser = { ...currentUser, following: newFollowing };
+    setCurrentUser(updatedUser);
+    localStorage.setItem('motospirit_user', JSON.stringify(updatedUser));
+    // Trigger storage event for other components and sync
+    window.dispatchEvent(new Event('storage'));
+  };
+
   // POI Radar State
   const [pois, setPois] = useState<POI[]>([]);
   const [loadingPOI, setLoadingPOI] = useState(false);
@@ -126,6 +142,22 @@ const Radar: React.FC = () => {
                     </h3>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{rider.user.ridingStyle || 'Road'} Rider</p>
                   </div>
+                </div>
+
+                <div className="flex gap-2 mb-6">
+                  {rider.syncCode !== currentUserSyncCode && (
+                    <button 
+                      onClick={() => toggleFollow(rider.syncCode)}
+                      className={`flex-1 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                        currentUser?.following?.includes(rider.syncCode)
+                          ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20'
+                          : 'bg-slate-900 text-slate-400 border border-slate-700 hover:border-orange-500/50'
+                      }`}
+                    >
+                      <i className={`fas ${currentUser?.following?.includes(rider.syncCode) ? 'fa-check' : 'fa-plus'}`}></i>
+                      {currentUser?.following?.includes(rider.syncCode) ? 'V MÉ PARTĚ' : 'PŘIDAT DO PARTY'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-3">

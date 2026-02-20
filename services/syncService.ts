@@ -181,3 +181,46 @@ export const updateProfileStatus = async (syncCode: string, userData: UserProfil
     return false;
   }
 };
+
+export const sendTripToRider = async (fromSyncCode: string, toSyncCode: string, expedition: Expedition) => {
+  try {
+    const { error } = await supabase.from('moto_inbox').insert({
+      from_code: fromSyncCode,
+      to_code: toSyncCode,
+      expedition_data: expedition,
+      created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error sending trip:", error);
+    return false;
+  }
+};
+
+export const fetchInbox = async (syncCode: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('moto_inbox')
+      .select('*')
+      .eq('to_code', syncCode)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching inbox:", error);
+    return [];
+  }
+};
+
+export const deleteInboxMessage = async (id: string) => {
+  try {
+    const { error } = await supabase.from('moto_inbox').delete().eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error deleting inbox message:", error);
+    return false;
+  }
+};
