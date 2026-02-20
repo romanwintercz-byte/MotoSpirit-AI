@@ -49,6 +49,7 @@ export interface ExpeditionPreferences {
   pace: 'chill' | 'standard' | 'fast';
   budget: 'low' | 'mid' | 'high';
   customNote: string;
+  isRoundTrip?: boolean;
 }
 
 export interface Expedition {
