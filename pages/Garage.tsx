@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
 import { supabase } from '../services/supabaseClient';
-import { syncDataToCloud, fetchDataFromCloud, generateSyncCode } from '../services/syncService';
+import { syncDataToCloud, fetchDataFromCloud, generateSyncCode, subscribeToCloudChanges } from '../services/syncService';
 
 const Garage: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
@@ -79,6 +79,7 @@ const Garage: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'ok' | 'error'>('checking');
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bikeFileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +97,70 @@ const Garage: React.FC = () => {
     };
     if (showSyncModal) checkDb();
   }, [showSyncModal]);
+
+  // --- REALTIME SUBSCRIPTION ---
+  useEffect(() => {
+    if (!syncCode) return;
+    
+    const channel = subscribeToCloudChanges(syncCode, (cloudData) => {
+      if (!cloudData) return;
+      
+      // Update local state if cloud data is newer or different
+      // To avoid loops, we only update if there's a meaningful change
+      if (cloudData.user && JSON.stringify(cloudData.user) !== JSON.stringify(user)) {
+        setUser(cloudData.user);
+      }
+      if (cloudData.bikes && JSON.stringify(cloudData.bikes) !== JSON.stringify(bikes)) {
+        setBikes(cloudData.bikes);
+      }
+      if (cloudData.records && JSON.stringify(cloudData.records) !== JSON.stringify(records)) {
+        setRecords(cloudData.records);
+      }
+      if (cloudData.fuel) {
+        localStorage.setItem('motospirit_fuel', JSON.stringify(cloudData.fuel));
+      }
+      if (cloudData.expeditions) {
+        localStorage.setItem('spirit_wanderer_trips', JSON.stringify(cloudData.expeditions));
+      }
+      setLastSyncTime(new Date());
+    });
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [syncCode]);
+
+  // --- AUTO-SYNC ON CHANGES ---
+  const autoSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (!syncCode) return;
+    
+    // Debounce sync to avoid too many requests
+    if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
+    
+    autoSyncTimeoutRef.current = setTimeout(async () => {
+      try {
+        const expeditions = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+        const fuel = JSON.parse(localStorage.getItem('motospirit_fuel') || '[]');
+        
+        await syncDataToCloud(syncCode, {
+          user,
+          bikes,
+          records,
+          fuel,
+          expeditions
+        });
+        setLastSyncTime(new Date());
+      } catch (e) {
+        console.error("Auto-sync failed", e);
+      }
+    }, 2000); // Sync 2 seconds after last change
+    
+    return () => {
+      if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
+    };
+  }, [user, bikes, records, syncCode]);
 
   // --- PERSISTENCE ---
   useEffect(() => {
@@ -319,7 +384,8 @@ const Garage: React.FC = () => {
                         onClick={() => setShowSyncModal(true)}
                         className="flex items-center gap-2 bg-orange-600/10 hover:bg-orange-600/20 px-3 py-1 rounded-full border border-orange-500/30 text-orange-500 transition-all"
                       >
-                        <i className="fas fa-cloud-arrow-up"></i> {syncCode ? 'MOTO CLOUD AKTIVNÍ' : 'AKTIVOVAT CLOUD'}
+                        <i className={`fas ${lastSyncTime ? 'fa-cloud-check' : 'fa-cloud-arrow-up'}`}></i> 
+                        {syncCode ? (lastSyncTime ? 'SYNCHRONIZOVÁNO' : 'MOTO CLOUD AKTIVNÍ') : 'AKTIVOVAT CLOUD'}
                       </button>
                     </div>
                   </>

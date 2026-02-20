@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { planExpedition, refineExpedition } from '../services/geminiService';
-import { shareExpeditionPublicly } from '../services/syncService';
+import { shareExpeditionPublicly, syncDataToCloud } from '../services/syncService';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences } from '../types';
 
 const TripPlanner: React.FC = () => {
@@ -61,6 +61,23 @@ const TripPlanner: React.FC = () => {
   // --- PERSISTENCE ---
   useEffect(() => {
     localStorage.setItem('spirit_wanderer_trips', JSON.stringify(savedExpeditions));
+    
+    // Auto-sync
+    const syncCode = localStorage.getItem('motospirit_sync_code');
+    if (syncCode) {
+      const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');
+      const bikes = JSON.parse(localStorage.getItem('motospirit_bikes') || '[]');
+      const records = JSON.parse(localStorage.getItem('motospirit_records') || '[]');
+      const fuel = JSON.parse(localStorage.getItem('motospirit_fuel') || '[]');
+      
+      syncDataToCloud(syncCode, {
+        user,
+        bikes,
+        records,
+        fuel,
+        expeditions: savedExpeditions
+      }).catch(console.error);
+    }
   }, [savedExpeditions]);
 
   // --- HANDLERS ---

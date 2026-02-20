@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FuelRecord, MaintenanceRecord, Motorcycle } from '../types';
 import { processReceiptAI } from '../services/geminiService';
+import { syncDataToCloud } from '../services/syncService';
 
 const Logbook: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
@@ -53,7 +54,21 @@ const Logbook: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('motospirit_records', JSON.stringify(expenses));
-  }, [expenses]);
+    
+    // Auto-sync
+    const syncCode = localStorage.getItem('motospirit_sync_code');
+    if (syncCode) {
+      const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');
+      const expeditions = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+      syncDataToCloud(syncCode, {
+        user,
+        bikes,
+        records: expenses,
+        fuel: fuelRecords,
+        expeditions
+      }).catch(console.error);
+    }
+  }, [expenses, fuelRecords, bikes]);
 
   const currentBikeFuel = fuelRecords.filter(f => f.bikeId === selectedBikeId).sort((a,b) => b.mileage - a.mileage);
   const currentBikeExpenses = expenses.filter(e => e.bikeId === selectedBikeId);

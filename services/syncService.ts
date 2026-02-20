@@ -79,16 +79,10 @@ export const syncDataToCloud = async (syncCode: string, data: {
 export const fetchDataFromCloud = async (syncCode: string) => {
   try {
     const [profile, garage, expeditions] = await Promise.all([
-      supabase.from('moto_sync_profiles').select('user_data').eq('sync_code', syncCode).single(),
-      supabase.from('moto_garage').select('*').eq('sync_code', syncCode).single(),
-      supabase.from('moto_expeditions').select('expedition_data').eq('sync_code', syncCode).single()
+      supabase.from('moto_sync_profiles').select('user_data').eq('sync_code', syncCode).maybeSingle(),
+      supabase.from('moto_garage').select('*').eq('sync_code', syncCode).maybeSingle(),
+      supabase.from('moto_expeditions').select('expedition_data').eq('sync_code', syncCode).maybeSingle()
     ]);
-
-    // We don't throw if data is missing, as a new user might not have all tables populated yet.
-    // But we should log errors if they are not "PGRST116" (row not found).
-    if (profile.error && profile.error.code !== 'PGRST116') throw new Error(`Profile fetch error: ${profile.error.message}`);
-    if (garage.error && garage.error.code !== 'PGRST116') throw new Error(`Garage fetch error: ${garage.error.message}`);
-    if (expeditions.error && expeditions.error.code !== 'PGRST116') throw new Error(`Expeditions fetch error: ${expeditions.error.message}`);
 
     return {
       user: profile.data?.user_data as UserProfile | null,
@@ -101,6 +95,32 @@ export const fetchDataFromCloud = async (syncCode: string) => {
     console.error("Fetch sync error:", error);
     throw error;
   }
+};
+
+export const subscribeToCloudChanges = (syncCode: string, callback: (data: any) => void) => {
+  if (!syncCode) return null;
+
+  const channel = supabase
+    .channel(`sync-${syncCode}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'moto_garage', filter: `sync_code=eq.${syncCode}` },
+      async () => {
+        const data = await fetchDataFromCloud(syncCode);
+        callback(data);
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'moto_expeditions', filter: `sync_code=eq.${syncCode}` },
+      async () => {
+        const data = await fetchDataFromCloud(syncCode);
+        callback(data);
+      }
+    )
+    .subscribe();
+
+  return channel;
 };
 
 export const shareExpeditionPublicly = async (syncCode: string, expedition: Expedition) => {
