@@ -25,7 +25,15 @@ const Radar: React.FC = () => {
   const [pois, setPois] = useState<POI[]>([]);
   const [loadingPOI, setLoadingPOI] = useState(false);
   const [searchLocation, setSearchLocation] = useState('');
-  const [searchCategory, setSearchCategory] = useState('benzínky a motorkářské hospody');
+  const [searchCategory, setSearchCategory] = useState('benzínky');
+
+  const categories = [
+    { id: 'benzínky', label: 'Benzínky', icon: 'fa-gas-pump', color: 'text-orange-500' },
+    { id: 'motorkářské hospody', label: 'Hospody', icon: 'fa-utensils', color: 'text-yellow-500' },
+    { id: 'moto servisy', label: 'Servisy', icon: 'fa-wrench', color: 'text-blue-500' },
+    { id: 'vyhlídky', label: 'Vyhlídky', icon: 'fa-mountain', color: 'text-green-500' },
+    { id: 'historické památky', label: 'Památky', icon: 'fa-castle', color: 'text-purple-500' },
+  ];
 
   useEffect(() => {
     const fetchRiders = async () => {
@@ -158,31 +166,42 @@ const Radar: React.FC = () => {
         )
       ) : (
         <div className="space-y-6">
-          <div className="bg-slate-800 p-6 rounded-[2rem] border border-slate-700 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Kde hledat?</label>
+          <div className="bg-slate-800 p-6 rounded-[2rem] border border-slate-700 space-y-6">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Kde hledat?</label>
+              <div className="relative">
+                <i className="fas fa-location-dot absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
                 <input 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm text-white" 
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl py-4 pl-12 pr-4 focus:border-orange-500 outline-none text-sm text-white" 
                   placeholder="Město, region nebo 'moje okolí'..." 
                   value={searchLocation} 
                   onChange={e => setSearchLocation(e.target.value)}
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Co hledat?</label>
-                <select 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 focus:border-orange-500 outline-none text-sm text-white appearance-none"
-                  value={searchCategory}
-                  onChange={e => setSearchCategory(e.target.value)}
-                >
-                  <option value="benzínky a motorkářské hospody">Benzínky a hospody</option>
-                  <option value="zajímavá vyhlídková místa">Vyhlídky a body zájmu</option>
-                  <option value="moto servisy a prodejny">Servisy a moto prodejny</option>
-                  <option value="motorkářské kempy a ubytování">Kempy a ubytování</option>
-                </select>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Co hledat?</label>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSearchCategory(cat.id)}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                      searchCategory === cat.id 
+                        ? 'bg-orange-600/10 border-orange-500 shadow-lg shadow-orange-900/20' 
+                        : 'bg-slate-950 border-slate-700 hover:border-slate-500'
+                    }`}
+                  >
+                    <i className={`fas ${cat.icon} text-lg ${searchCategory === cat.id ? 'text-orange-500' : 'text-slate-500'}`}></i>
+                    <span className={`text-[9px] font-bold uppercase tracking-tight ${searchCategory === cat.id ? 'text-white' : 'text-slate-500'}`}>
+                      {cat.label}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
+
             <button 
               onClick={handleSearchPOI}
               disabled={loadingPOI}
