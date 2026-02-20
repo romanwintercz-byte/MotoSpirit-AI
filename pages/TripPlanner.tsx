@@ -409,26 +409,28 @@ const TripPlanner: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Ubytování</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { id: 'wild', icon: 'fa-tents', label: 'Wild' },
-                      { id: 'camp', icon: 'fa-campground', label: 'Kemp' },
-                      { id: 'pension', icon: 'fa-house-user', label: 'Penzion' },
-                      { id: 'hotel', icon: 'fa-hotel', label: 'Hotel' }
-                    ].map(acc => (
-                      <button 
-                        key={acc.id}
-                        onClick={() => setPrefAcc(acc.id as any)}
-                        className={`py-3 rounded-xl border transition-all flex flex-col items-center gap-1 ${prefAcc === acc.id ? 'bg-orange-600 border-orange-400 text-white' : 'bg-slate-950 border-slate-700 text-slate-600'}`}
-                      >
-                        <i className={`fas ${acc.icon} text-[10px]`}></i>
-                        <span className="text-[8px] font-bold uppercase">{acc.label}</span>
-                      </button>
-                    ))}
+                {tripType !== 'ride' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Ubytování</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { id: 'wild', icon: 'fa-tents', label: 'Wild' },
+                        { id: 'camp', icon: 'fa-campground', label: 'Kemp' },
+                        { id: 'pension', icon: 'fa-house-user', label: 'Penzion' },
+                        { id: 'hotel', icon: 'fa-hotel', label: 'Hotel' }
+                      ].map(acc => (
+                        <button 
+                          key={acc.id}
+                          onClick={() => setPrefAcc(acc.id as any)}
+                          className={`py-3 rounded-xl border transition-all flex flex-col items-center gap-1 ${prefAcc === acc.id ? 'bg-orange-600 border-orange-400 text-white' : 'bg-slate-950 border-slate-700 text-slate-600'}`}
+                        >
+                          <i className={`fas ${acc.icon} text-[10px]`}></i>
+                          <span className="text-[8px] font-bold uppercase">{acc.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Zážitky</label>
@@ -658,16 +660,16 @@ const TripPlanner: React.FC = () => {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Accommodation Card */}
+                  {/* Accommodation / Stop Card */}
                   <div className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 shadow-xl overflow-hidden relative">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
-                      <i className="fas fa-hotel text-6xl"></i>
+                      <i className={`fas ${expedition.tripType === 'ride' ? 'fa-coffee' : 'fa-hotel'} text-6xl`}></i>
                     </div>
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-3">
                       <span className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center">
-                        <i className="fas fa-bed text-orange-500 text-[10px]"></i>
+                        <i className={`fas ${expedition.tripType === 'ride' ? 'fa-mug-hot' : 'fa-bed'} text-orange-500 text-[10px]`}></i>
                       </span>
-                      Ubytování na noc
+                      {expedition.tripType === 'ride' ? 'Tip na zastávku' : 'Ubytování na noc'}
                     </h3>
                     
                     {expedition.days[activeDayIdx].accommodation ? (
@@ -685,7 +687,9 @@ const TripPlanner: React.FC = () => {
                       </div>
                     ) : (
                       <div className="py-8 text-center bg-slate-900 rounded-3xl border border-slate-700 border-dashed">
-                        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Hledám základnu...</p>
+                        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+                          {expedition.tripType === 'ride' ? 'Hledám ideální pauzu...' : 'Hledám základnu...'}
+                        </p>
                       </div>
                     )}
                   </div>
