@@ -490,7 +490,7 @@ const TripPlanner: React.FC = () => {
                   className="w-full bg-orange-600 hover:bg-orange-700 py-4 rounded-2xl font-bold text-white shadow-xl shadow-orange-900/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
                 >
                   {loading ? <i className="fas fa-satellite-dish animate-spin"></i> : <i className="fas fa-sparkles"></i>}
-                  {loading ? 'Generuji...' : 'PLÁNOVAT EXPEDICI'}
+                  {loading ? 'Generuji...' : (tripType === 'ride' ? 'PLÁNOVAT VYJÍŽĎKU' : 'PLÁNOVAT EXPEDICI')}
                 </button>
               </div>
             </div>
