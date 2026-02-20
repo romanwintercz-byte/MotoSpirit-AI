@@ -89,6 +89,20 @@ export interface ChatMessage {
   text: string;
 }
 
+export interface RideChallenge {
+  id: string;
+  creatorSyncCode: string;
+  creatorNickname: string;
+  title: string;
+  dateTime: string;
+  meetingPoint: string;
+  style: string;
+  description: string;
+  route?: Expedition;
+  participants: string[]; // List of syncCodes
+  createdAt: string;
+}
+
 export interface POI {
   name: string;
   description: string;

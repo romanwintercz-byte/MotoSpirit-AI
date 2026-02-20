@@ -778,7 +778,7 @@ const TripPlanner: React.FC = () => {
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
           <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
             <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">PŘIJATÉ <span className="text-orange-500">TRASY</span></h2>
+               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">PŘIJATÉ <span className="text-orange-500">ZPRÁVY</span></h2>
                <button onClick={() => setShowInbox(false)} className="text-slate-500 hover:text-white p-2">
                  <i className="fas fa-times text-xl"></i>
                </button>
@@ -789,28 +789,34 @@ const TripPlanner: React.FC = () => {
                   <div key={msg.id} className="bg-slate-900 border border-slate-700 p-5 rounded-3xl space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
-                        <i className="fas fa-map-location-dot"></i>
+                        <i className={`fas ${msg.type === 'wave' ? 'fa-hand-peace' : 'fa-map-location-dot'}`}></i>
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-white uppercase tracking-tight">{msg.expedition_data.name}</p>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Od: {msg.from_code.slice(0, 8)}...</p>
+                        <p className="text-xs font-bold text-white uppercase tracking-tight">
+                          {msg.type === 'wave' ? 'Někdo ti mává!' : msg.expedition_data.name}
+                        </p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+                          {msg.type === 'wave' ? msg.message : `Od: ${msg.from_code.slice(0, 8)}...`}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleAcceptTrip(msg)}
-                        className="flex-1 bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all"
-                      >
-                        PŘIJMOUT
-                      </button>
+                      {msg.type !== 'wave' && (
+                        <button 
+                          onClick={() => handleAcceptTrip(msg)}
+                          className="flex-1 bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all"
+                        >
+                          PŘIJMOUT
+                        </button>
+                      )}
                       <button 
                         onClick={() => {
                           deleteInboxMessage(msg.id);
                           setInbox(prev => prev.filter(m => m.id !== msg.id));
                         }}
-                        className="px-4 bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-500 rounded-xl border border-slate-700 transition-all"
+                        className={`px-4 bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-500 rounded-xl border border-slate-700 transition-all ${msg.type === 'wave' ? 'flex-1 py-3' : ''}`}
                       >
-                        <i className="fas fa-trash-alt"></i>
+                        {msg.type === 'wave' ? 'ZAVŘÍT' : <i className="fas fa-trash-alt"></i>}
                       </button>
                     </div>
                   </div>

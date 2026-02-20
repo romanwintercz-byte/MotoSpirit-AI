@@ -224,3 +224,62 @@ export const deleteInboxMessage = async (id: string) => {
     return false;
   }
 };
+
+export const sendWave = async (fromSyncCode: string, toSyncCode: string, fromNickname: string) => {
+  try {
+    const { error } = await supabase.from('moto_inbox').insert({
+      from_code: fromSyncCode,
+      to_code: toSyncCode,
+      type: 'wave',
+      message: `${fromNickname} ti mává! ✌️`,
+      created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error sending wave:", error);
+    return false;
+  }
+};
+
+export const createRideChallenge = async (challenge: any) => {
+  try {
+    const { error } = await supabase.from('moto_challenges').insert({
+      ...challenge,
+      created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error creating challenge:", error);
+    return false;
+  }
+};
+
+export const fetchRideChallenges = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('moto_challenges')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching challenges:", error);
+    return [];
+  }
+};
+
+export const joinRideChallenge = async (challengeId: string, participants: string[]) => {
+  try {
+    const { error } = await supabase
+      .from('moto_challenges')
+      .update({ participants })
+      .eq('id', challengeId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error joining challenge:", error);
+    return false;
+  }
+};
