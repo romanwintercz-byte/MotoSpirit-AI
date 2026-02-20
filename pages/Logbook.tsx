@@ -6,7 +6,7 @@ import { syncDataToCloud } from '../services/syncService';
 
 const Logbook: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
-  const resizeImage = (file: File, maxWidth: number = 800): Promise<string> => {
+  const resizeImage = (file: File, maxWidth: number = 600): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -26,7 +26,8 @@ const Logbook: React.FC = () => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.6));
+            // Mb Diet: 600px, 0.5 quality
+            resolve(canvas.toDataURL('image/jpeg', 0.5));
           }
         };
       };
