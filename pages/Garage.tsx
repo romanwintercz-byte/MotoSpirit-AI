@@ -68,6 +68,7 @@ const Garage: React.FC = () => {
   );
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingBike, setEditingBike] = useState<Motorcycle | null>(null);
   const [isProfileEditing, setIsProfileEditing] = useState(false);
   const [newBike, setNewBike] = useState<Partial<Motorcycle>>({
     brand: '', model: '', year: new Date().getFullYear(), mileage: 0, image: ''
@@ -195,7 +196,7 @@ const Garage: React.FC = () => {
   }, []);
 
   // --- HANDLERS ---
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'user' | 'bike') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'user' | 'bike' | 'edit') => {
     const file = e.target.files?.[0];
     if (file) {
       setLoading(true);
@@ -203,8 +204,10 @@ const Garage: React.FC = () => {
         const compressedBase64 = await resizeImage(file);
         if (target === 'user') {
           setUser(prev => ({ ...prev, avatar: compressedBase64 }));
-        } else {
+        } else if (target === 'bike') {
           setNewBike(prev => ({ ...prev, image: compressedBase64 }));
+        } else if (target === 'edit' && editingBike) {
+          setEditingBike(prev => prev ? ({ ...prev, image: compressedBase64 }) : null);
         }
       } catch (err) {
         console.error("Image processing failed", err);
@@ -314,6 +317,16 @@ const Garage: React.FC = () => {
     setBikes(prev => [...prev, bikeToAdd]);
     setNewBike({ brand: '', model: '', year: 2024, mileage: 0, image: '' });
     setIsAddModalOpen(false);
+  };
+
+  const handleUpdateBike = () => {
+    if (!editingBike || !editingBike.brand?.trim() || !editingBike.model?.trim()) {
+      alert("Vyplň prosím aspoň značku a model.");
+      return;
+    }
+
+    setBikes(prev => prev.map(b => b.id === editingBike.id ? editingBike : b));
+    setEditingBike(null);
   };
 
   const deleteBike = (id: string) => {
@@ -473,15 +486,23 @@ const Garage: React.FC = () => {
             <div key={bike.id} className="bg-slate-800 rounded-[2rem] overflow-hidden border border-slate-700 group shadow-lg hover:border-orange-500/50 transition-all">
               <div className="h-48 relative overflow-hidden">
                 <img src={bike.image} alt={bike.model} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent">
+                <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent flex justify-between items-start">
                    <h3 className="text-xl font-bold font-brand text-white">{bike.brand} <span className="text-orange-500">{bike.model}</span></h3>
+                   <div className="flex gap-2">
+                    <button 
+                      onClick={() => setEditingBike(bike)}
+                      className="bg-slate-900/80 hover:bg-orange-600 w-10 h-10 rounded-xl backdrop-blur-md transition-all flex items-center justify-center border border-slate-700"
+                    >
+                      <i className="fas fa-edit text-white text-sm"></i>
+                    </button>
+                    <button 
+                      onClick={() => deleteBike(bike.id)}
+                      className="bg-red-600/80 hover:bg-red-600 w-10 h-10 rounded-xl backdrop-blur-md transition-all flex items-center justify-center border border-red-900/30"
+                    >
+                      <i className="fas fa-trash-can text-white text-sm"></i>
+                    </button>
+                   </div>
                 </div>
-                <button 
-                  onClick={() => deleteBike(bike.id)}
-                  className="absolute top-4 right-4 bg-red-600/80 hover:bg-red-600 w-10 h-10 rounded-xl backdrop-blur-md transition-all sm:opacity-0 group-hover:opacity-100 flex items-center justify-center"
-                >
-                  <i className="fas fa-trash-can text-white text-sm"></i>
-                </button>
               </div>
               <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
@@ -555,6 +576,91 @@ const Garage: React.FC = () => {
             </div>
             <div className="p-6 bg-slate-900/50 flex justify-center">
               <button onClick={() => setAnalysis(null)} className="w-full bg-orange-600 hover:bg-orange-700 py-4 rounded-xl font-bold transition-all shadow-lg text-white">ZAVŘÍT</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Bike Modal */}
+      {editingBike && (
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] border-t sm:border border-slate-700 shadow-2xl animate-slideUp overflow-hidden flex flex-col max-h-[95vh]">
+            <div className="p-6 border-b border-slate-700 flex justify-between items-center shrink-0">
+              <h2 className="text-lg font-brand font-bold uppercase tracking-tight text-white">UPRAVIT <span className="text-orange-500">MAŠINU</span></h2>
+              <button onClick={() => setEditingBike(null)} className="text-slate-500 hover:text-white p-2"><i className="fas fa-times text-2xl"></i></button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-grow bg-slate-800">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Značka</label>
+                <input 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
+                  placeholder="Yamaha, Honda, BMW..." 
+                  value={editingBike.brand} 
+                  onChange={e => setEditingBike({...editingBike, brand: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Model</label>
+                <input 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
+                  placeholder="Ténéré, Africa Twin..." 
+                  value={editingBike.model} 
+                  onChange={e => setEditingBike({...editingBike, model: e.target.value})}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Rok</label>
+                  <input 
+                    type="number"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
+                    value={editingBike.year} 
+                    onChange={e => setEditingBike({...editingBike, year: parseInt(e.target.value) || 0})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Nájezd (km)</label>
+                  <input 
+                    type="number"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white" 
+                    value={editingBike.mileage} 
+                    onChange={e => setEditingBike({...editingBike, mileage: parseInt(e.target.value) || 0})}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Fotka stroje</label>
+                <div 
+                  onClick={() => !loading && bikeFileInputRef.current?.click()}
+                  className={`w-full h-40 bg-slate-900 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-orange-500/50 transition-all ${loading ? 'opacity-50' : ''}`}
+                >
+                  {loading ? (
+                    <div className="flex flex-col items-center">
+                      <i className="fas fa-sync-alt animate-spin text-2xl text-orange-500 mb-2"></i>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase">Zmenšuji fotku...</span>
+                    </div>
+                  ) : editingBike.image ? (
+                    <img src={editingBike.image} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <i className="fas fa-camera text-3xl text-slate-600 mb-2 group-hover:text-orange-500 transition-colors"></i>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center px-4">Klikni a foť / vyber soubor</span>
+                    </>
+                  )}
+                </div>
+                <input 
+                  type="file" 
+                  ref={bikeFileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={(e) => handleFileChange(e, 'edit')} 
+                />
+              </div>
+            </div>
+            <div className="p-6 bg-slate-900/80 border-t border-slate-700 flex gap-3 shrink-0 pb-10 sm:pb-6">
+              <button onClick={() => setEditingBike(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white transition-all">ZRUŠIT</button>
+              <button onClick={handleUpdateBike} className="flex-1 bg-orange-600 hover:bg-orange-500 py-4 rounded-xl font-bold text-xs uppercase tracking-widest text-white shadow-lg shadow-orange-900/20 active:scale-95 transition-all">ULOŽIT ZMĚNY</button>
             </div>
           </div>
         </div>

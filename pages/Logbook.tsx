@@ -48,6 +48,16 @@ const Logbook: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronizace s Garáží (pokud se změní motorka jinde)
+  useEffect(() => {
+    const sync = () => {
+      const savedBikes = JSON.parse(localStorage.getItem('motospirit_bikes') || '[]');
+      setBikes(savedBikes);
+    };
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('motospirit_fuel', JSON.stringify(fuelRecords));
   }, [fuelRecords]);
