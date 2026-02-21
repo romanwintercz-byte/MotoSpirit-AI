@@ -182,6 +182,21 @@ export const updateProfileStatus = async (syncCode: string, userData: UserProfil
   }
 };
 
+export const deleteProfile = async (syncCode: string) => {
+  try {
+    // Delete from all related tables
+    await Promise.all([
+      supabase.from('moto_sync_profiles').delete().eq('sync_code', syncCode),
+      supabase.from('moto_garage').delete().eq('sync_code', syncCode),
+      supabase.from('moto_expeditions').delete().eq('sync_code', syncCode)
+    ]);
+    return true;
+  } catch (error) {
+    console.error("Error deleting profile:", error);
+    return false;
+  }
+};
+
 export const sendTripToRider = async (fromSyncCode: string, toSyncCode: string, expedition: Expedition) => {
   try {
     const { error } = await supabase.from('moto_inbox').insert({

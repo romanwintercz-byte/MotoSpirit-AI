@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllPublicProfiles, updateProfileStatus, sendWave, createRideChallenge, fetchRideChallenges, joinRideChallenge } from '../services/syncService';
+import { getAllPublicProfiles, updateProfileStatus, deleteProfile, sendWave, createRideChallenge, fetchRideChallenges, joinRideChallenge } from '../services/syncService';
 import { Motorcycle, UserProfile, POI, RideChallenge, Expedition } from '../types';
 import { searchNearbyPOI } from '../services/geminiService';
 
@@ -151,6 +151,18 @@ const Radar: React.FC = () => {
     }
   };
 
+  const handleDelete = async (rider: RiderProfile) => {
+    if (!currentUser?.isAdmin) return;
+    if (!window.confirm(`VAROVÁNÍ: Opravdu chceš trvale vymazat uživatele ${rider.user.nickname} a všechna jeho data? Tato akce je nevratná!`)) return;
+
+    const success = await deleteProfile(rider.syncCode);
+    if (success) {
+      setRiders(prev => prev.filter(r => r.syncCode !== rider.syncCode));
+    } else {
+      alert("Nepodařilo se smazat uživatele.");
+    }
+  };
+
   const filteredRiders = riders.filter(r => {
     if (filterStyle !== 'all' && r.user.ridingStyle !== filterStyle) return false;
     if (filterParty && !currentUser?.following?.includes(r.syncCode)) return false;
@@ -282,13 +294,20 @@ const Radar: React.FC = () => {
                   </div>
 
                   {currentUser?.isAdmin && rider.syncCode !== currentUserSyncCode && (
-                    <div className="mt-6 pt-6 border-t border-slate-700 flex justify-end">
+                    <div className="mt-6 pt-6 border-t border-slate-700 flex justify-end gap-2">
                       <button 
                         onClick={() => handleDeactivate(rider)}
-                        className={`text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all ${rider.user.isDeactivated ? 'bg-green-600/20 text-green-500' : 'bg-red-600/20 text-red-500'}`}
+                        className={`text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all ${rider.user.isDeactivated ? 'bg-green-600/20 text-green-500 hover:bg-green-600/30' : 'bg-orange-600/20 text-orange-500 hover:bg-orange-600/30'}`}
                       >
                         <i className={`fas ${rider.user.isDeactivated ? 'fa-user-check' : 'fa-user-slash'} mr-2`}></i>
                         {rider.user.isDeactivated ? 'Aktivovat' : 'Deaktivovat'}
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(rider)}
+                        className="text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all bg-red-600/20 text-red-500 hover:bg-red-600/30"
+                      >
+                        <i className="fas fa-trash-can mr-2"></i>
+                        Smazat
                       </button>
                     </div>
                   )}
