@@ -30,10 +30,10 @@ export const planExpedition = async (
     const ai = getAI();
     
     const typeContext = tripType === 'ride' 
-      ? `Jedná se o jednodenní vyjížďku (ride) trvající cca ${days} hodin. ${preferences.isRoundTrip ? "MUSÍ se jednat o OKRUH - start i cíl jsou v místě: " + origin + "." : "Start je v místě: " + origin + "."} Zaměř se na scénické cesty, hledej nejlepší asfalt a 'Coffee & Cake' zastávky.`
-      : `Jedná se o vícedenní expedici na ${days} dní. Naplánuj denní etapy, přesuny a logistiku ubytování. Start je v místě: ${origin}.`;
+      ? "Jedná se o jednodenní vyjížďku (ride). Zaměř se na scénický okruh se startem i cílem v místě startu. Hledej nejlepší asfalt a 'Coffee & Cake' zastávky."
+      : "Jedná se o vícedenní expedici. Naplánuj denní etapy, přesuny a logistiku ubytování.";
 
-    const prompt = `Naplánuj detailní ${tripType === 'ride' ? 'vyjížďku' : 'expedici'} z ${origin} pro ${travelers} osoby/osob. 
+    const prompt = `Naplánuj detailní ${days}-denní ${tripType === 'ride' ? 'vyjížďku' : 'expedici'} z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
     ${typeContext}
     
@@ -68,7 +68,7 @@ export const planExpedition = async (
     const fullText = response.text || "";
     const tripDays: TripDay[] = [];
     
-    for (let i = 1; i <= (tripType === 'ride' ? 1 : days); i++) {
+    for (let i = 1; i <= days; i++) {
       const dayMarker = `DEN ${i}:`;
       const descMarker = `POPIS_${i}:`;
       const accomMarker = `ACCOMMODATION_${i}:`;
@@ -101,23 +101,14 @@ export const planExpedition = async (
         activities: [],
         accommodation,
         startLocation: origin,
-        endLocation: tripType === 'ride' && preferences.isRoundTrip ? origin : "Cíl dne",
+        endLocation: "Cíl dne",
         distance: "Vypočítávám..."
       });
     }
 
-    let dynamicName = `Expedice z ${origin} (${days} dní)`;
-    if (tripType === 'ride') {
-      if (days < 3) dynamicName = `Kolem komína z ${origin}`;
-      else if (days <= 6) dynamicName = `Pořádnej švih z ${origin}`;
-      else dynamicName = `Celodenní tah z ${origin}`;
-      
-      if (preferences.isRoundTrip) dynamicName += " (Okruh)";
-    }
-
     return {
       id: Date.now().toString(),
-      name: dynamicName,
+      name: `Expedice z ${origin} (${days} dní)`,
       startDate: new Date().toISOString().split('T')[0],
       days: tripDays,
       transportMode: mode,

@@ -19,6 +19,7 @@ const TripPlanner: React.FC = () => {
   const [prefPace, setPrefPace] = useState<ExpeditionPreferences['pace']>('standard');
   const [prefBudget, setPrefBudget] = useState<ExpeditionPreferences['budget']>('mid');
   const [customNote, setCustomNote] = useState('');
+  const [isRoundTrip, setIsRoundTrip] = useState(true);
   
   // --- APP STATE ---
   const [loading, setLoading] = useState(false);
@@ -409,6 +410,26 @@ const TripPlanner: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                {tripType === 'ride' && (
+                  <div className="flex items-center justify-between bg-slate-950 border border-slate-700 rounded-2xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isRoundTrip ? 'bg-orange-600/20 text-orange-500' : 'bg-slate-800 text-slate-500'}`}>
+                        <i className="fas fa-rotate"></i>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white uppercase tracking-tight">Okruh</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Návrat do místa startu</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsRoundTrip(!isRoundTrip)}
+                      className={`w-12 h-6 rounded-full transition-all relative ${isRoundTrip ? 'bg-orange-600' : 'bg-slate-700'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isRoundTrip ? 'left-7' : 'left-1'}`}></div>
+                    </button>
+                  </div>
+                )}
+
                 {tripType !== 'ride' && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Ubytování</label>

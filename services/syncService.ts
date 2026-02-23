@@ -12,6 +12,22 @@ export const generateSyncCode = () => {
   return `${adj}-${noun}-${num}`;
 };
 
+export const checkProfileExists = async (syncCode: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('moto_sync_profiles')
+      .select('sync_code')
+      .eq('sync_code', syncCode)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return !!data;
+  } catch (error) {
+    console.error("Error checking profile:", error);
+    return false;
+  }
+};
+
 export const syncDataToCloud = async (syncCode: string, data: {
   user?: UserProfile;
   bikes?: Motorcycle[];
