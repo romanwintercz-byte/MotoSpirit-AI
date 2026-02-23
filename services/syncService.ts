@@ -1,29 +1,37 @@
 import { supabase } from './supabaseClient';
 import { Expedition, Motorcycle, MaintenanceRecord, FuelRecord, UserProfile } from '../types';
 
-export const generateSyncCode = () => {
-  const adjectives = ['RYCHLY', 'DIVOKY', 'SILNY', 'MODRY', 'ORANZOVY', 'HORSKY'];
-  const nouns = ['PIST', 'RETEZ', 'VYFUK', 'MOTOR', 'JEZDEC', 'SPIRIT'];
-  const num = Math.floor(100 + Math.random() * 899);
-  
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  
-  return `${adj}-${noun}-${num}`;
-};
-
-export const checkProfileExists = async (syncCode: string) => {
+export const checkProfileExists = async (email: string) => {
   try {
     const { data, error } = await supabase
       .from('moto_sync_profiles')
       .select('sync_code')
-      .eq('sync_code', syncCode)
+      .eq('sync_code', email)
       .maybeSingle();
     
     if (error) throw error;
     return !!data;
   } catch (error) {
     console.error("Error checking profile:", error);
+    return false;
+  }
+};
+
+export const authenticateProfile = async (email: string, pin: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('moto_sync_profiles')
+      .select('user_data')
+      .eq('sync_code', email)
+      .maybeSingle();
+    
+    if (error) throw error;
+    if (!data || !data.user_data) return false;
+    
+    const userData = data.user_data as UserProfile;
+    return userData.pin === pin;
+  } catch (error) {
+    console.error("Error authenticating profile:", error);
     return false;
   }
 };

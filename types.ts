@@ -2,6 +2,7 @@
 export interface UserProfile {
   name: string;
   nickname: string;
+  email?: string;
   experienceYears: number;
   ridingStyle: string;
   avatar?: string;

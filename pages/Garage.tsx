@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
 import { supabase } from '../services/supabaseClient';
-import { syncDataToCloud, fetchDataFromCloud, generateSyncCode, subscribeToCloudChanges, checkProfileExists } from '../services/syncService';
+import { syncDataToCloud, fetchDataFromCloud, generateSyncCode, subscribeToCloudChanges } from '../services/syncService';
 
 const Garage: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
@@ -79,8 +79,6 @@ const Garage: React.FC = () => {
   const [syncCode, setSyncCode] = useState<string>(() => localStorage.getItem('motospirit_sync_code') || '');
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
-  const [cloudMode, setCloudMode] = useState<'select' | 'create' | 'restore'>('select');
-  const [pin, setPin] = useState('');
   const [dbStatus, setDbStatus] = useState<'checking' | 'ok' | 'error'>('checking');
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [communityCode, setCommunityCode] = useState('');
@@ -290,77 +288,16 @@ const Garage: React.FC = () => {
     }
   };
 
-  const handlePinSubmit = async () => {
-    if (pin.length < 4) {
-      alert("PIN musí mít alespoň 4 čísla.");
+  const initSyncCode = () => {
+    if (communityCode !== 'MOTOSPIRIT1.0') {
+      alert("Nesprávný kód komunity!");
       return;
     }
-
-    setIsSyncing(true);
-    try {
-      if (cloudMode === 'create') {
-        if (communityCode !== 'MOTOSPIRIT1.0') {
-          alert("Nesprávný kód komunity!");
-          setIsSyncing(false);
-          return;
-        }
-        const exists = await checkProfileExists(pin);
-        if (exists) {
-          alert("Tento PIN už někdo používá. Zvol si prosím jiný.");
-          setIsSyncing(false);
-          return;
-        }
-        setSyncCode(pin);
-        localStorage.setItem('motospirit_sync_code', pin);
-        localStorage.setItem('motospirit_auth', 'true');
-        setIsAuthorized(true);
-        alert("Profil úspěšně vytvořen! Nezapomeň si svůj PIN.");
-        setCloudMode('select');
-      } else if (cloudMode === 'restore') {
-        const exists = await checkProfileExists(pin);
-        if (!exists) {
-          alert("Profil s tímto PINem nebyl nalezen.");
-          setIsSyncing(false);
-          return;
-        }
-        setSyncCode(pin);
-        localStorage.setItem('motospirit_sync_code', pin);
-        localStorage.setItem('motospirit_auth', 'true');
-        setIsAuthorized(true);
-        // Automatically pull data
-        const data = await fetchDataFromCloud(pin);
-        if (data && (data.user || data.bikes || data.records || data.fuel || data.expeditions)) {
-          if (data.user) setUser(data.user);
-          if (data.bikes) setBikes(data.bikes);
-          if (data.records) setRecords(data.records);
-          if (data.fuel) {
-            localStorage.setItem('motospirit_fuel', JSON.stringify(data.fuel));
-          }
-          if (data.expeditions) {
-            localStorage.setItem('motospirit_expeditions', JSON.stringify(data.expeditions));
-          }
-          setLastSyncTime(new Date());
-          alert("Data byla úspěšně obnovena z cloudu.");
-          window.location.reload();
-        } else {
-          alert("Profil nalezen, ale zatím neobsahuje žádná data.");
-        }
-        setCloudMode('select');
-      }
-    } catch (e: any) {
-      console.error("Cloud error:", e);
-      alert(`Chyba: ${e.message || 'Neznámá chyba'}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handlePinInput = (num: string) => {
-    if (pin.length < 6) setPin(prev => prev + num);
-  };
-
-  const handlePinBackspace = () => {
-    setPin(prev => prev.slice(0, -1));
+    const newCode = generateSyncCode();
+    setSyncCode(newCode);
+    localStorage.setItem('motospirit_sync_code', newCode);
+    localStorage.setItem('motospirit_auth', 'true');
+    setIsAuthorized(true);
   };
 
   const handleAddBike = () => {
@@ -474,6 +411,17 @@ const Garage: React.FC = () => {
                       placeholder="Přezdívka" 
                       value={user.nickname} 
                       onChange={e => setUser({...user, nickname: e.target.value})}
+                    />
+                    <input 
+                      type="email"
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500 text-sm" 
+                      placeholder="E-mail" 
+                      value={user.email || ''} 
+                      onChange={e => {
+                        const newEmail = e.target.value;
+                        const isAdmin = newEmail.toLowerCase() === 'roman.winter.cz@gmail.com' || user.isAdmin;
+                        setUser({...user, email: newEmail, isAdmin});
+                      }}
                     />
                     <div className="flex items-center gap-3 px-2">
                       <input 
@@ -909,119 +857,35 @@ const Garage: React.FC = () => {
             
             <div className="p-8 space-y-8">
               {!syncCode ? (
-                <>
-                  {cloudMode === 'select' && (
-                    <div className="space-y-6 text-center">
-                      <div className="w-20 h-20 bg-orange-600/10 rounded-3xl flex items-center justify-center mx-auto border border-orange-500/20">
-                        <i className="fas fa-cloud text-orange-500 text-3xl"></i>
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-white font-bold">Vítej v Moto Cloudu</h3>
-                        <p className="text-xs text-slate-400 leading-relaxed">Zálohuj svá data a sdílej trasy s ostatními jezdci.</p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4 pt-4">
-                        <button 
-                          onClick={() => { setCloudMode('create'); setPin(''); setCommunityCode(''); }}
-                          className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all"
-                        >
-                          <i className="fas fa-user-plus mr-2"></i> Jsem tu nový
-                        </button>
-                        <button 
-                          onClick={() => { setCloudMode('restore'); setPin(''); }}
-                          className="w-full bg-slate-700 hover:bg-slate-600 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all"
-                        >
-                          <i className="fas fa-sign-in-alt mr-2"></i> Už mám účet
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {(cloudMode === 'create' || cloudMode === 'restore') && (
-                    <div className="space-y-6 text-center">
-                      <div className="flex justify-between items-center">
-                        <button onClick={() => setCloudMode('select')} className="text-slate-400 hover:text-white">
-                          <i className="fas fa-arrow-left"></i> Zpět
-                        </button>
-                        <h3 className="text-white font-bold">{cloudMode === 'create' ? 'Nový profil' : 'Obnovit profil'}</h3>
-                        <div className="w-8"></div>
-                      </div>
-
-                      {cloudMode === 'create' && (
-                        <div className="space-y-2">
-                          <input 
-                            type="text"
-                            placeholder="Kód komunity..."
-                            value={communityCode}
-                            onChange={e => setCommunityCode(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center uppercase tracking-widest"
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                          {cloudMode === 'create' ? 'Zvol si svůj PIN (4-6 čísel)' : 'Zadej svůj PIN'}
-                        </p>
-                        <div className="text-3xl font-brand font-bold text-orange-500 tracking-[0.5em] h-12 flex items-center justify-center">
-                          {pin || <span className="text-slate-700">----</span>}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 max-w-[240px] mx-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                          <button 
-                            key={num}
-                            onClick={() => handlePinInput(num.toString())}
-                            className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-2xl aspect-square flex items-center justify-center text-xl font-bold text-white transition-all"
-                          >
-                            {num}
-                          </button>
-                        ))}
-                        <button 
-                          onClick={handlePinBackspace}
-                          className="bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-2xl aspect-square flex items-center justify-center text-xl text-slate-400 transition-all"
-                        >
-                          <i className="fas fa-backspace"></i>
-                        </button>
-                        <button 
-                          onClick={() => handlePinInput('0')}
-                          className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-2xl aspect-square flex items-center justify-center text-xl font-bold text-white transition-all"
-                        >
-                          0
-                        </button>
-                        <button 
-                          onClick={handlePinSubmit}
-                          disabled={isSyncing || pin.length < 4 || (cloudMode === 'create' && !communityCode)}
-                          className="bg-orange-600 hover:bg-orange-500 active:bg-orange-400 disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-600 rounded-2xl aspect-square flex items-center justify-center text-xl text-white transition-all"
-                        >
-                          <i className={`fas ${isSyncing ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
+                <div className="space-y-6 text-center">
+                  <div className="w-20 h-20 bg-orange-600/10 rounded-3xl flex items-center justify-center mx-auto border border-orange-500/20">
+                    <i className="fas fa-shield-halved text-orange-500 text-3xl"></i>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-white font-bold">Vstup do komunity</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">Pro vytvoření Rider ID musíš zadat kód komunity, který jsi dostal od administrátora.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <input 
+                      type="text"
+                      placeholder="Kód komunity..."
+                      value={communityCode}
+                      onChange={e => setCommunityCode(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center uppercase tracking-widest"
+                    />
+                  </div>
+                  <button 
+                    onClick={initSyncCode}
+                    className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all"
+                  >
+                    GENEROVAT RIDER ID
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-8">
-                  <div className="bg-slate-950 p-6 rounded-3xl border border-slate-700 text-center space-y-2 relative group">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Tvé Rider ID (PIN)</p>
-                    <p className="text-3xl font-brand font-bold text-orange-500 tracking-widest select-all cursor-pointer" title="Klikni pro kopírování">
-                      {syncCode}
-                    </p>
-                    <button 
-                      onClick={() => {
-                        if (window.confirm("Opravdu chceš odpojit tento profil? Data zůstanou v cloudu, ale z tohoto zařízení se odhlásíš.")) {
-                          setSyncCode('');
-                          localStorage.removeItem('motospirit_sync_code');
-                          localStorage.removeItem('motospirit_auth');
-                          setIsAuthorized(false);
-                          setCloudMode('select');
-                        }
-                      }}
-                      className="absolute top-4 right-4 text-slate-600 hover:text-red-500 transition-colors"
-                      title="Odhlásit se"
-                    >
-                      <i className="fas fa-sign-out-alt"></i>
-                    </button>
+                  <div className="bg-slate-950 p-6 rounded-3xl border border-slate-700 text-center space-y-2">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Tvé Rider ID</p>
+                    <p className="text-2xl font-brand font-bold text-orange-500 tracking-wider select-all cursor-pointer" title="Klikni pro kopírování">{syncCode}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1031,7 +895,7 @@ const Garage: React.FC = () => {
                       className="bg-slate-900 hover:bg-slate-700 border border-slate-700 p-6 rounded-3xl flex flex-col items-center gap-3 transition-all active:scale-95 disabled:opacity-50"
                     >
                       <i className={`fas ${isSyncing ? 'fa-sync-alt animate-spin' : 'fa-cloud-arrow-up'} text-orange-500 text-xl`}></i>
-                      <span className="text-[9px] font-bold text-white uppercase tracking-widest text-center">Odeslat do cloudu</span>
+                      <span className="text-[9px] font-bold text-white uppercase tracking-widest">Odeslat do cloudu</span>
                     </button>
                     <button 
                       onClick={handleSyncPull}
@@ -1039,14 +903,32 @@ const Garage: React.FC = () => {
                       className="bg-slate-900 hover:bg-slate-700 border border-slate-700 p-6 rounded-3xl flex flex-col items-center gap-3 transition-all active:scale-95 disabled:opacity-50"
                     >
                       <i className={`fas ${isSyncing ? 'fa-sync-alt animate-spin' : 'fa-cloud-arrow-down'} text-blue-500 text-xl`}></i>
-                      <span className="text-[9px] font-bold text-white uppercase tracking-widest text-center">Stáhnout z cloudu</span>
+                      <span className="text-[9px] font-bold text-white uppercase tracking-widest">Stáhnout z cloudu</span>
                     </button>
                   </div>
 
                   <div className="p-4 bg-orange-600/5 rounded-2xl border border-orange-500/10">
                     <p className="text-[9px] text-orange-500/70 leading-relaxed text-center italic">
-                      "Tento PIN zadej na svém druhém zařízení při volbě 'Už mám účet', aby se data propojila."
+                      "Zadej toto ID na svém druhém zařízení a klikni na 'Stáhnout', aby se data propojila."
                     </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Máš kód z jiného zařízení?</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text"
+                        placeholder="Zadej kód..."
+                        className="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-orange-500 uppercase"
+                        onChange={(e) => {
+                           const val = e.target.value.toUpperCase();
+                           if (val.length > 5) {
+                             localStorage.setItem('motospirit_sync_code', val);
+                             setSyncCode(val);
+                           }
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

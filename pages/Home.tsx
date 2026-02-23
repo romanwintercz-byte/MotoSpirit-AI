@@ -98,6 +98,22 @@ const Home: React.FC = () => {
         ))}
       </div>
 
+      {/* Cloud Banner */}
+      {!localStorage.getItem('motospirit_sync_code') && (
+        <Link to="/garage" className="block bg-gradient-to-r from-orange-600 to-orange-500 p-6 rounded-[2rem] shadow-xl shadow-orange-900/20 relative overflow-hidden group hover:scale-[1.02] transition-all active:scale-95">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-sm border border-white/10">
+              <i className="fas fa-cloud text-white text-2xl"></i>
+            </div>
+            <div>
+              <h3 className="text-white font-brand font-bold text-xl uppercase tracking-tight mb-1">Připojit ke cloudu</h3>
+              <p className="text-orange-100 text-xs leading-relaxed">Zálohuj svá data, sdílej trasy a staň se součástí Moto komunity. Vytvoř si svůj PIN.</p>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* AI Assistant Promo */}
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-[2rem] border border-orange-500/20 flex items-center gap-5">
         <div className="bg-orange-600 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-orange-900/40">
