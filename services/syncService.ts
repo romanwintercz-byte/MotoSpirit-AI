@@ -135,6 +135,11 @@ export const fetchDataFromCloud = async (syncCode: string) => {
 export const subscribeToCloudChanges = (syncCode: string, callback: (data: any) => void) => {
   if (!syncCode) return null;
 
+  // Fetch initial data on subscription
+  fetchDataFromCloud(syncCode).then(data => {
+    if (data) callback(data);
+  }).catch(console.error);
+
   const channel = supabase
     .channel(`sync-${syncCode}`)
     .on(
