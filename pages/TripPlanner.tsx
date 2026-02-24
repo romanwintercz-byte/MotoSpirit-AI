@@ -113,7 +113,26 @@ const TripPlanner: React.FC = () => {
 
     const loadData = async () => {
       const msgs = await fetchInbox(syncCode);
-      setInbox(msgs);
+      
+      // Auto-accept trips
+      const tripMsgs = msgs.filter(m => m.expedition_data);
+      if (tripMsgs.length > 0) {
+        const newTrips: Expedition[] = [];
+        for (const msg of tripMsgs) {
+          const newExp = { 
+            ...msg.expedition_data, 
+            id: Date.now().toString() + Math.random().toString().substring(2, 6), 
+            name: msg.expedition_data.name, 
+            sharedBy: msg.from_code 
+          };
+          newTrips.push(newExp);
+          await deleteInboxMessage(msg.id);
+        }
+        setSavedExpeditions(prev => [...newTrips, ...prev]);
+        setInbox(msgs.filter(m => !m.expedition_data));
+      } else {
+        setInbox(msgs);
+      }
 
       const userStr = localStorage.getItem('motospirit_user');
       if (userStr) {
@@ -205,14 +224,6 @@ const TripPlanner: React.FC = () => {
     } else {
       alert("Odeslání selhalo.");
     }
-  };
-
-  const handleAcceptTrip = (msg: any) => {
-    const newExp = { ...msg.expedition_data, id: Date.now().toString(), name: `Od ${msg.from_code}: ${msg.expedition_data.name}` };
-    setSavedExpeditions(prev => [newExp, ...prev]);
-    deleteInboxMessage(msg.id);
-    setInbox(prev => prev.filter(m => m.id !== msg.id));
-    alert("Trasa byla přidána do tvých expedic.");
   };
 
   const toggleExperience = (id: string) => {
@@ -327,23 +338,23 @@ const TripPlanner: React.FC = () => {
           <h1 className="text-4xl font-bold font-brand uppercase text-white tracking-tighter">SPIRIT <span className="text-orange-500 italic">WANDERER</span></h1>
           <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mt-1 opacity-70">AI Roadtrip Engine v2.5</p>
         </div>
-        {expedition && (
-          <div className="flex items-center gap-4">
-            {inbox.length > 0 && (
-              <button 
-                onClick={() => setShowInbox(true)}
-                className="relative bg-orange-600/20 text-orange-500 w-12 h-12 rounded-2xl border border-orange-500/30 flex items-center justify-center animate-pulse"
-              >
-                <i className="fas fa-envelope"></i>
-                <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900">{inbox.length}</span>
-              </button>
-            )}
+        <div className="flex items-center gap-4">
+          {inbox.length > 0 && (
+            <button 
+              onClick={() => setShowInbox(true)}
+              className="relative bg-orange-600/20 text-orange-500 w-12 h-12 rounded-2xl border border-orange-500/30 flex items-center justify-center animate-pulse"
+            >
+              <i className="fas fa-envelope"></i>
+              <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900">{inbox.length}</span>
+            </button>
+          )}
+          {expedition && (
             <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md">
               <button onClick={() => setViewMode('info')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'info' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ITINERÁŘ</button>
               <button onClick={() => setViewMode('map')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>MAPA</button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -524,10 +535,10 @@ const TripPlanner: React.FC = () => {
              {/* Rides Group */}
              <div className="space-y-3">
                <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Moje Okruhy</h3>
-               {savedExpeditions.filter(ex => ex.tripType === 'ride').length === 0 ? (
+               {savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Žádné vyjížďky</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.tripType === 'ride').map(ex => (
+                 savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
@@ -553,10 +564,10 @@ const TripPlanner: React.FC = () => {
              {/* Expeditions Group */}
              <div className="space-y-3">
                <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Velké Výpravy</h3>
-               {savedExpeditions.filter(ex => ex.tripType !== 'ride').length === 0 ? (
+               {savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Žádné expedice</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.tripType !== 'ride').map(ex => (
+                 savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
@@ -569,6 +580,35 @@ const TripPlanner: React.FC = () => {
                        <div>
                          <h4 className="text-[10px] font-bold text-white truncate max-w-[100px] uppercase tracking-tight">{ex.name}</h4>
                          <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">{ex.days.length} DNÍ</p>
+                       </div>
+                     </div>
+                     <button onClick={(e) => deleteExpedition(ex.id, e)} className="text-slate-700 hover:text-red-500 p-2 transition-colors">
+                       <i className="fas fa-trash-alt text-[9px]"></i>
+                     </button>
+                   </div>
+                 ))
+               )}
+             </div>
+
+             {/* Shared Trips Group */}
+             <div className="space-y-3">
+               <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Trasy od kámošů</h3>
+               {savedExpeditions.filter(ex => ex.sharedBy).length === 0 ? (
+                 <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Zatím ti nikdo nic neposlal</p>
+               ) : (
+                 savedExpeditions.filter(ex => ex.sharedBy).map(ex => (
+                   <div 
+                    key={ex.id}
+                    onClick={() => loadExpedition(ex)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer group flex items-center justify-between ${expedition?.id === ex.id ? 'bg-orange-600/10 border-orange-500 shadow-lg' : 'bg-slate-900/50 border-slate-700 hover:border-slate-500'}`}
+                   >
+                     <div className="flex items-center gap-4">
+                       <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center border border-orange-500/30 group-hover:border-orange-500/50">
+                         <i className="fas fa-share-nodes text-orange-500 text-[10px]"></i>
+                       </div>
+                       <div>
+                         <h4 className="text-[10px] font-bold text-white truncate max-w-[100px] uppercase tracking-tight">{ex.name}</h4>
+                         <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Od: {ex.sharedBy}</p>
                        </div>
                      </div>
                      <button onClick={(e) => deleteExpedition(ex.id, e)} className="text-slate-700 hover:text-red-500 p-2 transition-colors">
@@ -944,22 +984,14 @@ const TripPlanner: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {msg.type !== 'wave' && (
-                        <button 
-                          onClick={() => handleAcceptTrip(msg)}
-                          className="flex-1 bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all"
-                        >
-                          PŘIJMOUT
-                        </button>
-                      )}
                       <button 
                         onClick={() => {
                           deleteInboxMessage(msg.id);
                           setInbox(prev => prev.filter(m => m.id !== msg.id));
                         }}
-                        className={`px-4 bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-500 rounded-xl border border-slate-700 transition-all ${msg.type === 'wave' ? 'flex-1 py-3' : ''}`}
+                        className="flex-1 px-4 py-3 bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-500 rounded-xl border border-slate-700 transition-all font-bold text-[10px] uppercase tracking-widest"
                       >
-                        {msg.type === 'wave' ? 'ZAVŘÍT' : <i className="fas fa-trash-alt"></i>}
+                        ZAVŘÍT
                       </button>
                     </div>
                   </div>

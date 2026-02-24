@@ -3,6 +3,7 @@ export interface UserProfile {
   name: string;
   nickname: string;
   email?: string;
+  pin?: string;
   experienceYears: number;
   ridingStyle: string;
   avatar?: string;
@@ -62,6 +63,7 @@ export interface Expedition {
   preferences: ExpeditionPreferences;
   travelersCount: number;
   tripType?: 'ride' | 'expedition';
+  sharedBy?: string;
 }
 
 export interface MaintenanceRecord {
