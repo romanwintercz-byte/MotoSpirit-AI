@@ -476,6 +476,13 @@ const Garage: React.FC = () => {
                         setUser({...user, email: newEmail, isAdmin});
                       }}
                     />
+                    <input 
+                      type="password"
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-orange-500 text-sm tracking-widest" 
+                      placeholder="PIN (pro přihlášení)" 
+                      value={user.pin || ''} 
+                      onChange={e => setUser({...user, pin: e.target.value})}
+                    />
                     <div className="flex items-center gap-3 px-2">
                       <input 
                         type="checkbox" 
