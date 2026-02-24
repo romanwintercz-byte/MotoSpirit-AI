@@ -289,7 +289,7 @@ const Garage: React.FC = () => {
   };
 
   const initSyncCode = () => {
-    if (communityCode !== 'MOTOSPIRIT1.0') {
+    if (communityCode.trim().toUpperCase() !== 'MOTOSPIRIT1.0') {
       alert("Nesprávný kód komunity!");
       return;
     }
