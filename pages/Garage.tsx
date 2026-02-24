@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
 import { supabase } from '../services/supabaseClient';
-import { syncDataToCloud, fetchDataFromCloud, generateSyncCode, subscribeToCloudChanges } from '../services/syncService';
+import { syncDataToCloud, fetchDataFromCloud, checkProfileExists, authenticateProfile, subscribeToCloudChanges } from '../services/syncService';
 
 const Garage: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
@@ -81,7 +81,8 @@ const Garage: React.FC = () => {
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'ok' | 'error'>('checking');
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [communityCode, setCommunityCode] = useState('');
+  const [email, setEmail] = useState(user.email || '');
+  const [pin, setPin] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('motospirit_auth') === 'true');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -288,16 +289,68 @@ const Garage: React.FC = () => {
     }
   };
 
-  const initSyncCode = () => {
-    if (communityCode.trim().toUpperCase() !== 'MOTOSPIRIT1.0') {
-      alert("Nesprávný kód komunity!");
+  const handleAuth = async () => {
+    if (!email.trim() || !pin.trim()) {
+      alert("Vyplň prosím e-mail a PIN.");
       return;
     }
-    const newCode = generateSyncCode();
-    setSyncCode(newCode);
-    localStorage.setItem('motospirit_sync_code', newCode);
-    localStorage.setItem('motospirit_auth', 'true');
-    setIsAuthorized(true);
+    
+    setIsSyncing(true);
+    try {
+      const emailLower = email.trim().toLowerCase();
+      const exists = await checkProfileExists(emailLower);
+      
+      if (exists) {
+        // Login
+        const authenticated = await authenticateProfile(emailLower, pin.trim());
+        if (authenticated) {
+          setSyncCode(emailLower);
+          localStorage.setItem('motospirit_sync_code', emailLower);
+          localStorage.setItem('motospirit_auth', 'true');
+          setIsAuthorized(true);
+          
+          // Fetch data
+          const cloudData = await fetchDataFromCloud(emailLower);
+          if (cloudData) {
+            if (cloudData.user) setUser(cloudData.user);
+            if (cloudData.bikes) setBikes(cloudData.bikes);
+            if (cloudData.records) setRecords(cloudData.records);
+            if (cloudData.fuel) localStorage.setItem('motospirit_fuel', JSON.stringify(cloudData.fuel));
+            if (cloudData.expeditions) localStorage.setItem('spirit_wanderer_trips', JSON.stringify(cloudData.expeditions));
+            alert("Přihlášení úspěšné. Data byla stažena z cloudu.");
+            window.location.reload();
+          }
+        } else {
+          alert("Nesprávný PIN!");
+        }
+      } else {
+        // Register
+        setSyncCode(emailLower);
+        localStorage.setItem('motospirit_sync_code', emailLower);
+        localStorage.setItem('motospirit_auth', 'true');
+        setIsAuthorized(true);
+        
+        // Update user profile with email and pin
+        const newUser = { ...user, email: emailLower, pin: pin.trim() };
+        setUser(newUser);
+        
+        // Push initial data
+        await syncDataToCloud(emailLower, {
+          user: newUser,
+          bikes,
+          records,
+          fuel: JSON.parse(localStorage.getItem('motospirit_fuel') || '[]'),
+          expeditions: JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]')
+        });
+        
+        alert("Profil vytvořen a data odeslána do cloudu.");
+      }
+    } catch (e: any) {
+      console.error("Auth error:", e);
+      alert(`Chyba přihlášení: ${e.message || 'Neznámá chyba'}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleAddBike = () => {
@@ -461,7 +514,10 @@ const Garage: React.FC = () => {
                         <i className="fas fa-calendar-check text-orange-500"></i> {user.experienceYears} let
                       </span>
                       <button 
-                        onClick={() => setShowSyncModal(true)}
+                        onClick={() => {
+                          setEmail(user.email || '');
+                          setShowSyncModal(true);
+                        }}
                         className="flex items-center gap-2 bg-orange-600/10 hover:bg-orange-600/20 px-3 py-1 rounded-full border border-orange-500/30 text-orange-500 transition-all"
                       >
                         <i className={`fas ${lastSyncTime ? 'fa-check-circle' : 'fa-cloud-upload-alt'}`}></i> 
@@ -862,30 +918,38 @@ const Garage: React.FC = () => {
                     <i className="fas fa-shield-halved text-orange-500 text-3xl"></i>
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-white font-bold">Vstup do komunity</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">Pro vytvoření Rider ID musíš zadat kód komunity, který jsi dostal od administrátora. (Nápověda: MOTOSPIRIT1.0)</p>
+                    <h3 className="text-white font-bold">Přihlášení / Registrace</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">Zadej svůj e-mail a PIN. Pokud účet neexistuje, bude automaticky vytvořen a data se nahrají na cloud.</p>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <input 
-                      type="text"
-                      placeholder="Kód komunity (MOTOSPIRIT1.0)"
-                      value={communityCode}
-                      onChange={e => setCommunityCode(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center uppercase tracking-widest"
+                      type="email"
+                      placeholder="E-mail"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center"
+                    />
+                    <input 
+                      type="password"
+                      placeholder="PIN (např. 1234)"
+                      value={pin}
+                      onChange={e => setPin(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center tracking-widest"
                     />
                   </div>
                   <button 
-                    onClick={initSyncCode}
-                    className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all"
+                    onClick={handleAuth}
+                    disabled={isSyncing}
+                    className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
                   >
-                    GENEROVAT RIDER ID
+                    {isSyncing ? 'ZPRACOVÁVÁM...' : 'PŘIHLÁSIT / REGISTROVAT'}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-8">
                   <div className="bg-slate-950 p-6 rounded-3xl border border-slate-700 text-center space-y-2">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Tvé Rider ID</p>
-                    <p className="text-2xl font-brand font-bold text-orange-500 tracking-wider select-all cursor-pointer" title="Klikni pro kopírování">{syncCode}</p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Přihlášen jako</p>
+                    <p className="text-lg font-brand font-bold text-orange-500 tracking-wider select-all cursor-pointer" title="Klikni pro kopírování">{syncCode}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -909,26 +973,8 @@ const Garage: React.FC = () => {
 
                   <div className="p-4 bg-orange-600/5 rounded-2xl border border-orange-500/10">
                     <p className="text-[9px] text-orange-500/70 leading-relaxed text-center italic">
-                      "Zadej toto ID na svém druhém zařízení a klikni na 'Stáhnout', aby se data propojila."
+                      "Tvá data se automaticky synchronizují s cloudem. Na jiném zařízení se stačí přihlásit stejným e-mailem a PINem."
                     </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Máš kód z jiného zařízení?</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text"
-                        placeholder="Zadej kód..."
-                        className="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-orange-500 uppercase"
-                        onChange={(e) => {
-                           const val = e.target.value.toUpperCase();
-                           if (val.length > 5) {
-                             localStorage.setItem('motospirit_sync_code', val);
-                             setSyncCode(val);
-                           }
-                        }}
-                      />
-                    </div>
                   </div>
                 </div>
               )}
