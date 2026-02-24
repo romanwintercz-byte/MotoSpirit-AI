@@ -863,12 +863,12 @@ const Garage: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-white font-bold">Vstup do komunity</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">Pro vytvoření Rider ID musíš zadat kód komunity, který jsi dostal od administrátora.</p>
+                    <p className="text-xs text-slate-400 leading-relaxed">Pro vytvoření Rider ID musíš zadat kód komunity, který jsi dostal od administrátora. (Nápověda: MOTOSPIRIT1.0)</p>
                   </div>
                   <div className="space-y-2">
                     <input 
                       type="text"
-                      placeholder="Kód komunity..."
+                      placeholder="Kód komunity (MOTOSPIRIT1.0)"
                       value={communityCode}
                       onChange={e => setCommunityCode(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center uppercase tracking-widest"
