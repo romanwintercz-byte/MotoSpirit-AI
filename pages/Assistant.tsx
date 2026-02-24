@@ -7,7 +7,7 @@ const Assistant: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem('motospirit_chat');
     return saved ? JSON.parse(saved) : [
-      { role: 'model', text: 'Čau rider! Jsem MotoSpirit. Potřebuješ poradit se servisem, technikou jízdy, nebo jen pokecat o mašinách?' }
+      { role: 'model', text: 'Čau rider! Jsem MotoSpirit AI. Potřebuješ poradit se servisem, naplánovat trasu, nebo jen pokecat o mašinách?' }
     ];
   });
   

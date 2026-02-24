@@ -62,7 +62,7 @@ const Home: React.FC = () => {
         />
         <div className="absolute inset-0 flex flex-col justify-center px-6 md:px-16">
           <div className="inline-block bg-orange-600 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-3 w-fit tracking-widest uppercase">
-            Rider Companion 1.2
+            MotoSpirit 2.5
           </div>
           <h1 className="font-brand text-3xl md:text-6xl font-bold mb-3 leading-tight uppercase">
             {user?.name ? (
@@ -72,7 +72,7 @@ const Home: React.FC = () => {
             )}
           </h1>
           <p className="text-slate-400 text-xs md:text-lg max-w-md mb-6 leading-relaxed">
-            Tvůj digitální mechanik a deník. Všechna data jsou uložena pouze v tvém prohlížeči.
+            Tvůj digitální parťák. Plánuj epické výpravy, sdílej trasy s kámoši, sleduj náklady a měj servis pod kontrolou. Vše bezpečně v cloudu.
           </p>
           <div className="flex gap-3">
             <Link to="/logbook" className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-sm active:scale-95">

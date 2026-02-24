@@ -980,7 +980,7 @@ const Garage: React.FC = () => {
 
                   <div className="p-4 bg-orange-600/5 rounded-2xl border border-orange-500/10">
                     <p className="text-[9px] text-orange-500/70 leading-relaxed text-center italic">
-                      "Tvá data se automaticky synchronizují s cloudem. Na jiném zařízení se stačí přihlásit stejným e-mailem a PINem."
+                      "Tvá data jsou v bezpečí cloudu. Na jiném zařízení se stačí přihlásit stejným e-mailem a PINem a máš všechno s sebou."
                     </p>
                   </div>
                 </div>
