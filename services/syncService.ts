@@ -1,6 +1,17 @@
 import { supabase } from './supabaseClient';
 import { Expedition, Motorcycle, MaintenanceRecord, FuelRecord, UserProfile } from '../types';
 
+export const generateSyncCode = () => {
+  const adjectives = ['RYCHLY', 'DIVOKY', 'SILNY', 'MODRY', 'ORANZOVY', 'HORSKY'];
+  const nouns = ['PIST', 'RETEZ', 'VYFUK', 'MOTOR', 'JEZDEC', 'SPIRIT'];
+  const num = Math.floor(100 + Math.random() * 899);
+  
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  
+  return `${adj}-${noun}-${num}`;
+};
+
 export const checkProfileExists = async (email: string) => {
   try {
     const { data, error } = await supabase
