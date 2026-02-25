@@ -299,9 +299,10 @@ export const sendWave = async (fromSyncCode: string, toSyncCode: string, fromNic
 
 export const createRideChallenge = async (challenge: any) => {
   try {
-    const { error } = await supabase.from('moto_challenges').insert({
-      ...challenge,
-      created_at: new Date().toISOString()
+    const { error } = await supabase.from('moto_shared_trips').insert({
+      slug: `challenge-${challenge.id}`,
+      expedition_data: challenge,
+      created_by: challenge.creatorSyncCode
     });
     if (error) throw error;
     return true;
@@ -314,11 +315,13 @@ export const createRideChallenge = async (challenge: any) => {
 export const fetchRideChallenges = async () => {
   try {
     const { data, error } = await supabase
-      .from('moto_challenges')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .from('moto_shared_trips')
+      .select('expedition_data')
+      .like('slug', 'challenge-%');
     if (error) throw error;
-    return data || [];
+    
+    const challenges = data.map(d => d.expedition_data) || [];
+    return challenges.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (error) {
     console.error("Error fetching challenges:", error);
     return [];
@@ -327,10 +330,24 @@ export const fetchRideChallenges = async () => {
 
 export const joinRideChallenge = async (challengeId: string, participants: string[]) => {
   try {
+    const { data, error: fetchError } = await supabase
+      .from('moto_shared_trips')
+      .select('expedition_data')
+      .eq('slug', `challenge-${challengeId}`)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
+    const updatedChallenge = {
+      ...data.expedition_data,
+      participants
+    };
+
     const { error } = await supabase
-      .from('moto_challenges')
-      .update({ participants })
-      .eq('id', challengeId);
+      .from('moto_shared_trips')
+      .update({ expedition_data: updatedChallenge })
+      .eq('slug', `challenge-${challengeId}`);
+      
     if (error) throw error;
     return true;
   } catch (error) {

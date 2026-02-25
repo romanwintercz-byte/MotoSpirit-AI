@@ -34,7 +34,7 @@ const TripPlanner: React.FC = () => {
     }
   });
   const [activeDayIdx, setActiveDayIdx] = useState(0);
-  const [viewMode, setViewMode] = useState<'info' | 'map'>('info');
+  const [viewMode, setViewMode] = useState<'info' | 'map' | 'stats' | 'countries'>('info');
   const [refinePrompt, setRefinePrompt] = useState('');
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -349,9 +349,11 @@ const TripPlanner: React.FC = () => {
             </button>
           )}
           {expedition && (
-            <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md">
-              <button onClick={() => setViewMode('info')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'info' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ITINERÁŘ</button>
-              <button onClick={() => setViewMode('map')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>MAPA</button>
+            <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md overflow-x-auto">
+              <button onClick={() => setViewMode('info')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'info' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ITINERÁŘ</button>
+              <button onClick={() => setViewMode('map')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'map' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>MAPA</button>
+              <button onClick={() => setViewMode('stats')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'stats' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ROZPOČET</button>
+              <button onClick={() => setViewMode('countries')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'countries' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ZEMĚ</button>
             </div>
           )}
         </div>
@@ -713,6 +715,24 @@ const TripPlanner: React.FC = () => {
                     )}
 
                     <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-700/50">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 pb-6 border-b border-slate-700/50">
+                        <div className="text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Vzdálenost</p>
+                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].distanceKm || expedition.days[activeDayIdx].distance} {expedition.days[activeDayIdx].distanceKm ? 'km' : ''}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Čas jízdy</p>
+                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].estimatedTimeMins ? `${Math.floor(expedition.days[activeDayIdx].estimatedTimeMins / 60)}h ${expedition.days[activeDayIdx].estimatedTimeMins % 60}m` : '-'}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Palivo</p>
+                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].fuelLiters ? `${expedition.days[activeDayIdx].fuelLiters} l` : '-'}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Cena paliva</p>
+                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].fuelCost ? `${expedition.days[activeDayIdx].fuelCost} Kč` : '-'}</p>
+                        </div>
+                      </div>
                       <div className="markdown-body prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed">
                         <Markdown>{expedition.days[activeDayIdx].description}</Markdown>
                       </div>
@@ -785,6 +805,155 @@ const TripPlanner: React.FC = () => {
                    <button onClick={() => mapRef.current?.zoomOut()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-minus"></i></button>
                 </div>
               </div>
+
+              {/* Stats Section */}
+              {viewMode === 'stats' && expedition.budget && (
+                <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl animate-fadeIn">
+                  <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-8">Rozpočet a statistiky</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Plánované náklady</h4>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
+                          <div className="flex items-center gap-3">
+                            <i className="fas fa-gas-pump text-orange-500"></i>
+                            <span className="text-sm font-bold text-white">Palivo</span>
+                          </div>
+                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedFuel.toLocaleString()} Kč</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
+                          <div className="flex items-center gap-3">
+                            <i className="fas fa-bed text-orange-500"></i>
+                            <span className="text-sm font-bold text-white">Ubytování</span>
+                          </div>
+                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedAccommodation.toLocaleString()} Kč</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
+                          <div className="flex items-center gap-3">
+                            <i className="fas fa-utensils text-orange-500"></i>
+                            <span className="text-sm font-bold text-white">Jídlo</span>
+                          </div>
+                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedFood.toLocaleString()} Kč</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
+                          <div className="flex items-center gap-3">
+                            <i className="fas fa-ticket text-orange-500"></i>
+                            <span className="text-sm font-bold text-white">Mýtné a známky</span>
+                          </div>
+                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedTolls.toLocaleString()} Kč</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-orange-600/20 p-4 rounded-2xl border border-orange-500/30">
+                          <span className="text-sm font-bold text-orange-500 uppercase tracking-widest">Celkem plán</span>
+                          <span className="font-brand font-bold text-xl text-orange-500">
+                            {(expedition.budget.plannedFuel + expedition.budget.plannedAccommodation + expedition.budget.plannedFood + expedition.budget.plannedTolls).toLocaleString()} Kč
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Statistiky trasy</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 text-center">
+                          <i className="fas fa-road text-2xl text-slate-600 mb-3"></i>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Celkem km</p>
+                          <p className="text-2xl font-brand font-bold text-white">{expedition.totalDistanceKm || expedition.totalDistance}</p>
+                        </div>
+                        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 text-center">
+                          <i className="fas fa-calendar-days text-2xl text-slate-600 mb-3"></i>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Počet dní</p>
+                          <p className="text-2xl font-brand font-bold text-white">{expedition.days.length}</p>
+                        </div>
+                        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 text-center col-span-2">
+                          <i className="fas fa-globe-europe text-2xl text-slate-600 mb-3"></i>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Tranzitní země</p>
+                          <div className="flex flex-wrap gap-2 justify-center mt-2">
+                            {Array.from(new Set(expedition.days.flatMap(d => d.countries || []))).map((country, i) => (
+                              <span key={i} className="bg-slate-800 px-3 py-1 rounded-lg text-xs font-bold text-slate-300 border border-slate-700">{country}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Countries Section */}
+              {viewMode === 'countries' && expedition.countriesInfo && (
+                <div className="space-y-6 animate-fadeIn">
+                  <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-8">Průvodce zeměmi</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {expedition.countriesInfo.map((country, idx) => (
+                      <div key={idx} className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 shadow-xl">
+                        <h4 className="text-xl font-brand font-bold text-white uppercase tracking-tight mb-6 flex items-center gap-3">
+                          <i className="fas fa-flag text-orange-500"></i>
+                          {country.name}
+                        </h4>
+                        
+                        <div className="space-y-4">
+                          <div className="flex gap-4 items-start">
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
+                              <i className="fas fa-gauge-high text-slate-400 text-xs"></i>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rychlostní limity</p>
+                              <p className="text-sm text-white font-medium">{country.speedLimits}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-4 items-start">
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
+                              <i className="fas fa-wine-glass text-slate-400 text-xs"></i>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tolerance alkoholu</p>
+                              <p className="text-sm text-white font-medium">{country.alcoholLimit}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-4 items-start">
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
+                              <i className="fas fa-ticket text-slate-400 text-xs"></i>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Mýtné a známky</p>
+                              <p className="text-sm text-white font-medium">{country.tolls}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-4 items-start">
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
+                              <i className="fas fa-triangle-exclamation text-slate-400 text-xs"></i>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Povinná výbava</p>
+                              <ul className="list-disc list-inside text-sm text-white font-medium">
+                                {country.mandatoryEquipment.map((eq, i) => <li key={i}>{eq}</li>)}
+                              </ul>
+                            </div>
+                          </div>
+
+                          {country.customRules && country.customRules.length > 0 && (
+                            <div className="flex gap-4 items-start">
+                              <div className="w-8 h-8 rounded-xl bg-orange-600/20 flex items-center justify-center shrink-0 border border-orange-500/30">
+                                <i className="fas fa-motorcycle text-orange-500 text-xs"></i>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Motorkářská specifika</p>
+                                <ul className="list-disc list-inside text-sm text-white font-medium">
+                                  {country.customRules.map((rule, i) => <li key={i}>{rule}</li>)}
+                                </ul>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="h-full min-h-[500px] bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[3rem] flex flex-col items-center justify-center p-12 text-center space-y-6">

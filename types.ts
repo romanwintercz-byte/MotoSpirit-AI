@@ -33,12 +33,37 @@ export interface Accommodation {
   priceEstimate?: string;
 }
 
+export interface CountryInfo {
+  name: string;
+  speedLimits: string;
+  alcoholLimit: string;
+  mandatoryEquipment: string[];
+  tolls: string;
+  customRules: string[];
+}
+
+export interface ExpeditionBudget {
+  plannedFuel: number;
+  plannedAccommodation: number;
+  plannedFood: number;
+  plannedTolls: number;
+  actualFuel?: number;
+  actualAccommodation?: number;
+  actualFood?: number;
+  actualTolls?: number;
+}
+
 export interface TripDay {
   dayNumber: number;
   mode: TransportMode;
   startLocation: string;
   endLocation: string;
   distance: string;
+  distanceKm?: number;
+  estimatedTimeMins?: number;
+  fuelLiters?: number;
+  fuelCost?: number;
+  countries?: string[];
   description: string;
   activities: string[];
   accommodation?: Accommodation;
@@ -60,6 +85,9 @@ export interface Expedition {
   days: TripDay[];
   transportMode: TransportMode;
   totalDistance: string;
+  totalDistanceKm?: number;
+  budget?: ExpeditionBudget;
+  countriesInfo?: CountryInfo[];
   preferences: ExpeditionPreferences;
   travelersCount: number;
   tripType?: 'ride' | 'expedition';
