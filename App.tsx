@@ -10,6 +10,7 @@ import Radar from './pages/Radar';
 import SharedTrip from './pages/SharedTrip';
 import Navbar from './components/Navbar';
 import { subscribeToCloudChanges, subscribeToNewChallenges } from './services/syncService';
+import { supabase } from './services/supabaseClient';
 
 const App: React.FC = () => {
   const [checking, setChecking] = useState<boolean>(true);
@@ -20,10 +21,38 @@ const App: React.FC = () => {
     // The application must not ask the user for it or provide UI for it unless using Veo/Pro Image models.
     setChecking(false);
 
-    const checkNewChallenges = () => {
+    const checkNewChallenges = async () => {
       const lastView = parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0');
-      const latestChallenge = parseInt(localStorage.getItem('motospirit_latest_challenge_time') || '0');
-      setHasNewChallenge(latestChallenge > lastView);
+      
+      try {
+        const { data } = await supabase
+          .from('moto_shared_trips')
+          .select('expedition_data')
+          .like('slug', 'challenge-%')
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (data && data.length > 0) {
+          const latestChallenge = data[0].expedition_data;
+          if (latestChallenge && latestChallenge.createdAt) {
+            const challengeTime = new Date(latestChallenge.createdAt).getTime();
+            localStorage.setItem('motospirit_latest_challenge_time', challengeTime.toString());
+            
+            // Don't show notification if the user created it themselves
+            const syncCode = localStorage.getItem('motospirit_sync_code');
+            if (challengeTime > lastView && latestChallenge.creatorSyncCode !== syncCode) {
+              setHasNewChallenge(true);
+            } else {
+              setHasNewChallenge(false);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error checking challenges:", e);
+        // Fallback to local storage
+        const latestChallenge = parseInt(localStorage.getItem('motospirit_latest_challenge_time') || '0');
+        setHasNewChallenge(latestChallenge > lastView);
+      }
     };
 
     checkNewChallenges();
