@@ -690,6 +690,12 @@ const TripPlanner: React.FC = () => {
                         >
                           <i className={`fas ${isSharing ? 'fa-sync-alt animate-spin' : 'fa-share-nodes'}`}></i> SDÍLET
                         </button>
+                        <button 
+                          onClick={exportGPX}
+                          className="bg-slate-900 hover:bg-slate-700 text-emerald-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                        >
+                          <i className="fas fa-download"></i> GPX
+                        </button>
                         {savedExpeditions.some(ex => ex.id === expedition.id) ? (
                           <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
                              <i className="fas fa-check"></i> ULOŽENO
