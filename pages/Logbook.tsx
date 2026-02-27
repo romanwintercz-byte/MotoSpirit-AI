@@ -98,16 +98,29 @@ const Logbook: React.FC = () => {
     };
   }, [expenses, fuelRecords, bikes]);
 
+  const [filterType, setFilterType] = useState<'all' | 'fuel' | 'service'>('all');
+  const [showManualEntry, setShowManualEntry] = useState(false);
+
   const currentBikeFuel = fuelRecords.filter(f => f.bikeId === selectedBikeId).sort((a,b) => b.mileage - a.mileage);
   const currentBikeExpenses = expenses.filter(e => e.bikeId === selectedBikeId);
 
   const calculateConsumption = () => {
     if (currentBikeFuel.length < 2) return '--';
-    const latest = currentBikeFuel[0];
-    const previous = currentBikeFuel[1];
-    const distance = latest.mileage - previous.mileage;
-    if (distance <= 0) return '--';
-    return ((latest.liters / distance) * 100).toFixed(2);
+    
+    // Long-term average calculation
+    // We need at least 2 records to calculate distance.
+    // The oldest record provides the starting mileage, but its fuel was consumed BEFORE that mileage.
+    // So we sum the liters of all records EXCEPT the oldest one.
+    const oldest = currentBikeFuel[currentBikeFuel.length - 1];
+    const newest = currentBikeFuel[0];
+    
+    const totalDistance = newest.mileage - oldest.mileage;
+    if (totalDistance <= 0) return '--';
+
+    // Sum liters of all records except the oldest
+    const totalLiters = currentBikeFuel.slice(0, currentBikeFuel.length - 1).reduce((sum, record) => sum + record.liters, 0);
+    
+    return ((totalLiters / totalDistance) * 100).toFixed(2);
   };
 
   const handleAIInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,6 +213,27 @@ const Logbook: React.FC = () => {
     window.dispatchEvent(new Event('storage'));
   };
 
+  const handleDeleteRecord = (id: string, isFuel: boolean) => {
+    if (!window.confirm("Opravdu chceš smazat tento záznam?")) return;
+    
+    if (isFuel) {
+      setFuelRecords(fuelRecords.filter(r => r.id !== id));
+    } else {
+      setExpenses(expenses.filter(r => r.id !== id));
+    }
+  };
+
+  const handleManualEntry = () => {
+    setPendingRecord({
+      type: 'fuel',
+      date: new Date().toISOString().split('T')[0],
+      cost: '',
+      liters: '',
+      mileage: bikes.find(b => b.id === selectedBikeId)?.mileage || '',
+      description: ''
+    });
+  };
+
   if (bikes.length === 0) return (
     <div className="text-center py-20 animate-fadeIn px-6">
       <i className="fas fa-motorcycle text-6xl text-slate-800 mb-6"></i>
@@ -276,24 +310,60 @@ const Logbook: React.FC = () => {
 
       <div className="space-y-4">
         <div className="flex justify-between items-center px-2">
-          <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Historie záznamů</h3>
-          <span className="text-[10px] text-slate-600">{[...currentBikeFuel, ...currentBikeExpenses].length} položek</span>
+          <div className="flex gap-2">
+            <button onClick={() => setFilterType('all')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${filterType === 'all' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Vše</button>
+            <button onClick={() => setFilterType('fuel')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${filterType === 'fuel' ? 'bg-orange-600/20 text-orange-500' : 'text-slate-500 hover:text-slate-300'}`}>Benzín</button>
+            <button onClick={() => setFilterType('service')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${filterType === 'service' ? 'bg-blue-500/20 text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}>Servis</button>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                const csvContent = "data:text/csv;charset=utf-8," 
+                  + "Datum,Typ,Cena,Kilometry,Litry,Popis\n"
+                  + [...currentBikeFuel, ...currentBikeExpenses]
+                    .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map(r => `${r.date},${'liters' in r ? 'Benzín' : r.type},${r.cost},${r.mileage},${'liters' in r ? r.liters : ''},${'liters' in r ? '' : r.description}`)
+                    .join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `logbook_${bikes.find(b => b.id === selectedBikeId)?.model}_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-all"
+              title="Exportovat do CSV"
+            >
+              <i className="fas fa-download text-xs"></i>
+            </button>
+            <button 
+              onClick={handleManualEntry}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-600/20 text-orange-500 hover:bg-orange-600 hover:text-white transition-all"
+              title="Přidat záznam ručně"
+            >
+              <i className="fas fa-plus text-xs"></i>
+            </button>
+          </div>
         </div>
         
         <div className="space-y-3">
           {[...currentBikeFuel, ...currentBikeExpenses]
+            .filter(rec => filterType === 'all' || (filterType === 'fuel' && 'liters' in rec) || (filterType === 'service' && !('liters' in rec)))
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .map((rec: any) => (
               <div 
                 key={rec.id} 
-                onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}
-                className={`bg-slate-800/40 border border-slate-700 p-4 rounded-3xl flex items-center gap-4 transition-all active:scale-[0.98] ${rec.receiptImage ? 'cursor-pointer hover:border-orange-500/30 shadow-md' : ''}`}
+                className={`bg-slate-800/40 border border-slate-700 p-4 rounded-3xl flex items-center gap-4 transition-all group ${rec.receiptImage ? 'hover:border-orange-500/30 shadow-md' : ''}`}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${'liters' in rec ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                <div 
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${'liters' in rec ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'} ${rec.receiptImage ? 'cursor-pointer' : ''}`}
+                  onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}
+                >
                   <i className={`fas ${'liters' in rec ? 'fa-gas-pump' : 'fa-tools'} text-sm`}></i>
                 </div>
-                <div className="flex-grow min-w-0">
-                  <h4 className="font-bold text-sm truncate text-white">
+                <div className="flex-grow min-w-0" onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}>
+                  <h4 className={`font-bold text-sm truncate text-white ${rec.receiptImage ? 'cursor-pointer' : ''}`}>
                     {'liters' in rec ? `${rec.liters} l benzínu` : rec.type}
                   </h4>
                   <div className="flex gap-2 text-[9px] text-slate-500 font-bold uppercase mt-0.5">
@@ -302,12 +372,30 @@ const Logbook: React.FC = () => {
                     <span>{rec.mileage.toLocaleString()} km</span>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className="font-brand font-bold text-base text-white">{rec.cost.toLocaleString()} <span className="text-[9px] font-normal">Kč</span></p>
-                  {rec.receiptImage && <i className="fas fa-image text-orange-500 text-[10px] mt-1"></i>}
+                  <div className="flex items-center gap-3">
+                    {rec.receiptImage && <i className="fas fa-image text-orange-500 text-[10px] cursor-pointer" onClick={() => setViewingReceipt(rec.receiptImage)}></i>}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRecord(rec.id, 'liters' in rec);
+                      }}
+                      className="text-slate-600 hover:text-red-500 transition-colors"
+                      title="Smazat záznam"
+                    >
+                      <i className="fas fa-trash-can text-[10px]"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
+            
+          {[...currentBikeFuel, ...currentBikeExpenses].filter(rec => filterType === 'all' || (filterType === 'fuel' && 'liters' in rec) || (filterType === 'service' && !('liters' in rec))).length === 0 && (
+            <div className="text-center py-10">
+              <p className="text-slate-600 text-xs uppercase font-bold tracking-widest">Žádné záznamy</p>
+            </div>
+          )}
         </div>
       </div>
 
