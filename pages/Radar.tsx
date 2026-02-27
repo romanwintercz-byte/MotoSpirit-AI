@@ -31,6 +31,24 @@ const Radar: React.FC = () => {
     title: '', dateTime: '', meetingPoint: '', style: 'Road', description: ''
   });
   const [savedExpeditions, setSavedExpeditions] = useState<Expedition[]>(() => JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]'));
+  const [rejectedChallenges, setRejectedChallenges] = useState<string[]>(() => JSON.parse(localStorage.getItem('motospirit_rejected_challenges') || '[]'));
+  const [sessionLastView] = useState(() => parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0'));
+  const [hasNewChallengesTab, setHasNewChallengesTab] = useState(false);
+
+  useEffect(() => {
+    const checkNew = () => {
+      const lastView = parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0');
+      const latest = parseInt(localStorage.getItem('motospirit_latest_challenge_time') || '0');
+      setHasNewChallengesTab(latest > lastView);
+    };
+    checkNew();
+    window.addEventListener('new-challenge-alert', checkNew);
+    window.addEventListener('challenge-viewed', checkNew);
+    return () => {
+      window.removeEventListener('new-challenge-alert', checkNew);
+      window.removeEventListener('challenge-viewed', checkNew);
+    };
+  }, []);
 
   useEffect(() => {
     const handleSyncUpdate = () => {
@@ -174,6 +192,12 @@ const Radar: React.FC = () => {
     }
   };
 
+  const handleRejectChallenge = (challengeId: string) => {
+    const updated = [...rejectedChallenges, challengeId];
+    setRejectedChallenges(updated);
+    localStorage.setItem('motospirit_rejected_challenges', JSON.stringify(updated));
+  };
+
   const handleDeactivate = async (rider: RiderProfile) => {
     if (!currentUser?.isAdmin) return;
     if (!window.confirm(`Opravdu chceš deaktivovat uživatele ${rider.user.nickname}?`)) return;
@@ -216,9 +240,12 @@ const Radar: React.FC = () => {
           </button>
           <button 
             onClick={() => setActiveTab('challenges')}
-            className={`pb-2 text-[10px] font-bold uppercase tracking-widest transition-all shrink-0 ${activeTab === 'challenges' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-slate-500 hover:text-slate-300'}`}
+            className={`pb-2 text-[10px] font-bold uppercase tracking-widest transition-all shrink-0 relative ${activeTab === 'challenges' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-slate-500 hover:text-slate-300'}`}
           >
             VÝZVY K JÍZDĚ
+            {hasNewChallengesTab && activeTab !== 'challenges' && (
+              <span className="absolute top-0 -right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+            )}
           </button>
           <button 
             onClick={() => setActiveTab('poi')}
@@ -375,11 +402,24 @@ const Radar: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {challenges.map(challenge => (
-                <div key={challenge.id} className="bg-slate-800 rounded-[2rem] border border-slate-700 p-6 space-y-4 relative overflow-hidden group hover:border-orange-500/50 transition-all">
+              {challenges
+                .filter(c => new Date(c.dateTime).getTime() > Date.now())
+                .map(challenge => {
+                const isNew = new Date(challenge.createdAt).getTime() > sessionLastView && challenge.creatorSyncCode !== currentUserSyncCode;
+                const isRejected = rejectedChallenges.includes(challenge.id);
+                const isJoined = challenge.participants.includes(currentUserSyncCode);
+
+                return (
+                <div key={challenge.id} className={`bg-slate-800 rounded-[2rem] border p-6 space-y-4 relative overflow-hidden transition-all ${isRejected ? 'opacity-50 grayscale border-slate-700' : 'border-slate-700 hover:border-orange-500/50 group'}`}>
+                  {isNew && !isRejected && (
+                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                      <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest animate-pulse">Nová</span>
+                      <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="text-lg font-brand font-bold text-white uppercase tracking-tight">{challenge.title}</h3>
+                      <h3 className="text-lg font-brand font-bold text-white uppercase tracking-tight pr-16">{challenge.title}</h3>
                       <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Od: {challenge.creatorNickname}</p>
                     </div>
                     <div className="bg-slate-900 px-3 py-1 rounded-lg border border-slate-700 text-[9px] font-bold text-slate-400 uppercase">
@@ -419,21 +459,46 @@ const Radar: React.FC = () => {
                           <i className="fas fa-trash-can"></i>
                         </button>
                       )}
-                      <button 
-                        onClick={() => handleJoinChallenge(challenge)}
-                        className={`px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
-                          challenge.participants.includes(currentUserSyncCode)
-                            ? 'bg-slate-700 text-slate-400'
-                            : 'bg-orange-600 text-white shadow-lg'
-                        }`}
-                      >
-                        {challenge.participants.includes(currentUserSyncCode) ? 'ODHLÁSIT' : 'PŘIDAT SE'}
-                      </button>
+                      
+                      {!isRejected && !isJoined && challenge.creatorSyncCode !== currentUserSyncCode && (
+                        <button 
+                          onClick={() => handleRejectChallenge(challenge.id)}
+                          className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-slate-700 text-slate-400 hover:bg-slate-600"
+                        >
+                          ODMÍTNOUT
+                        </button>
+                      )}
+
+                      {!isRejected && (
+                        <button 
+                          onClick={() => handleJoinChallenge(challenge)}
+                          className={`px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
+                            isJoined
+                              ? 'bg-slate-700 text-slate-400'
+                              : 'bg-orange-600 text-white shadow-lg'
+                          }`}
+                        >
+                          {isJoined ? 'ODHLÁSIT' : 'PŘIDAT SE'}
+                        </button>
+                      )}
+
+                      {isRejected && (
+                        <button 
+                          onClick={() => {
+                            const updated = rejectedChallenges.filter(id => id !== challenge.id);
+                            setRejectedChallenges(updated);
+                            localStorage.setItem('motospirit_rejected_challenges', JSON.stringify(updated));
+                          }}
+                          className="px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-slate-700 text-white"
+                        >
+                          ZRUŠIT ODMÍTNUTÍ
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
-              {challenges.length === 0 && (
+              )})}
+              {challenges.filter(c => new Date(c.dateTime).getTime() > Date.now()).length === 0 && (
                 <div className="col-span-full text-center py-20">
                   <p className="text-slate-600 text-xs uppercase font-bold tracking-widest">Zatím žádné výzvy. Buď první!</p>
                 </div>
