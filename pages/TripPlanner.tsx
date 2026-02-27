@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
 import { planExpedition, refineExpedition } from '../services/geminiService';
 import { shareExpeditionPublicly, syncDataToCloud, fetchInbox, sendTripToRider, deleteInboxMessage, getAllPublicProfiles } from '../services/syncService';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 
 const TripPlanner: React.FC = () => {
+  const navigate = useNavigate();
+  
   // --- FORM STATE ---
   const [origin, setOrigin] = useState('Praha');
   const [days, setDays] = useState(3);
@@ -64,6 +67,14 @@ const TripPlanner: React.FC = () => {
     { id: 'food', label: 'Gastro', icon: 'fa-utensils' },
     { id: 'offroad', label: 'Off-road', icon: 'fa-mound' },
     { id: 'views', label: 'Vyhlídky', icon: 'fa-mountain' },
+  ];
+
+  const quickRefines = [
+    "Zkrať trasu o 20%",
+    "Přidej více zatáček",
+    "Najdi levnější ubytování",
+    "Vyhni se dálnicím",
+    "Přidej více vyhlídek"
   ];
 
   // --- PERSISTENCE ---
@@ -264,34 +275,33 @@ const TripPlanner: React.FC = () => {
   };
 
   const handleCreateChallengeWithExp = (ex: Expedition, audience: 'all' | 'party' | 'private') => {
-    // This will be handled by navigating to Radar or similar, 
-    // but for now we'll just alert that it's ready for the next step
-    alert(`Vytvářím výzvu pro: ${audience === 'all' ? 'Všechny' : audience === 'party' ? 'Partu' : 'Soukromé'}`);
-    // In a real app, we'd redirect to Radar with state
+    navigate('/radar', { state: { createChallenge: true, expedition: ex, audience } });
   };
 
   const exportGPX = () => {
     if (!expedition) return;
-    const currentDay = expedition.days[activeDayIdx];
-    if (currentDay.waypoints.length === 0) {
-      alert("Pro tento den nejsou dostupná GPS data.");
-      return;
-    }
 
     let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="SpiritWanderer" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata><name>${expedition.name} - Den ${currentDay.dayNumber}</name></metadata>
-  <trk><name>Den ${currentDay.dayNumber}</name><trkseg>`;
-    currentDay.waypoints.forEach(([lat, lon]) => {
-      gpx += `\n      <trkpt lat="${lat}" lon="${lon}"></trkpt>`;
+  <metadata><name>${expedition.name}</name></metadata>`;
+
+    expedition.days.forEach(day => {
+      if (day.waypoints && day.waypoints.length > 0) {
+        gpx += `\n  <trk><name>Den ${day.dayNumber}: ${day.startLocation} - ${day.endLocation}</name><trkseg>`;
+        day.waypoints.forEach(([lat, lon]) => {
+          gpx += `\n      <trkpt lat="${lat}" lon="${lon}"></trkpt>`;
+        });
+        gpx += `\n    </trkseg></trk>`;
+      }
     });
-    gpx += `\n    </trkseg></trk></gpx>`;
+
+    gpx += `\n</gpx>`;
 
     const blob = new Blob([gpx], { type: 'application/gpx+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${expedition.name.replace(/\s+/g, '_')}_den_${currentDay.dayNumber}.gpx`;
+    a.download = `${expedition.name.replace(/\s+/g, '_')}.gpx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -698,7 +708,7 @@ const TripPlanner: React.FC = () => {
                     {showRefine && (
                       <div className="mb-8 p-6 bg-slate-950/80 rounded-[2rem] border border-orange-500/30 animate-slideUp">
                         <label className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-2 block">Co chceš na expedici změnit?</label>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 mb-4">
                           <input 
                             type="text" 
                             value={refinePrompt}
@@ -714,6 +724,17 @@ const TripPlanner: React.FC = () => {
                           >
                             UPRAVIT
                           </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {quickRefines.map((qr, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setRefinePrompt(qr)}
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-slate-700 transition-all"
+                            >
+                              {qr}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}

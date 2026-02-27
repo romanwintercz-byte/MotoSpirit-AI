@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getAllPublicProfiles, updateProfileStatus, deleteProfile, sendWave, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge } from '../services/syncService';
 import { Motorcycle, UserProfile, POI, RideChallenge, Expedition } from '../types';
 import { searchNearbyPOI } from '../services/geminiService';
@@ -10,6 +11,7 @@ interface RiderProfile {
 }
 
 const Radar: React.FC = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'riders' | 'poi' | 'challenges'>('riders');
   
   // Rider Radar State
@@ -34,6 +36,22 @@ const Radar: React.FC = () => {
   const [rejectedChallenges, setRejectedChallenges] = useState<string[]>(() => JSON.parse(localStorage.getItem('motospirit_rejected_challenges') || '[]'));
   const [sessionLastView] = useState(() => parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0'));
   const [hasNewChallengesTab, setHasNewChallengesTab] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.createChallenge && location.state?.expedition) {
+      setActiveTab('challenges');
+      setShowCreateChallenge(true);
+      setNewChallenge({
+        title: location.state.expedition.name,
+        description: `Přidej se na expedici: ${location.state.expedition.name}\n\nTrasa: ${location.state.expedition.totalDistance}\nDní: ${location.state.expedition.days.length}`,
+        dateTime: location.state.expedition.startDate,
+        meetingPoint: location.state.expedition.days[0].startLocation,
+        style: location.state.expedition.tripType === 'ride' ? 'Road' : 'Adventure'
+      });
+      // Clear state so it doesn't reopen on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   useEffect(() => {
     const checkNew = () => {
