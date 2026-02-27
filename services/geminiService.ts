@@ -33,7 +33,7 @@ export const planExpedition = async (
       ? "Jedná se o jednodenní vyjížďku (ride). Zaměř se na scénický okruh se startem i cílem v místě startu. Hledej nejlepší asfalt a 'Coffee & Cake' zastávky."
       : "Jedná se o vícedenní expedici. Naplánuj denní etapy, přesuny a logistiku ubytování.";
 
-    const prompt = `Naplánuj detailní ${days}-denní ${tripType === 'ride' ? 'vyjížďku' : 'expedici'} z ${origin} pro ${travelers} osoby/osob. 
+    const prompt = `Jsi expert na plánování motorkářských tras a expedic. Naplánuj detailní ${days}-denní ${tripType === 'ride' ? 'vyjížďku' : 'expedici'} z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
     ${typeContext}
     
@@ -43,6 +43,13 @@ export const planExpedition = async (
     - Tempo: ${preferences.pace} (chill=kochačka, standard=běžné, fast=rychlé/dlouhé přejezdy)
     - Rozpočet: ${preferences.budget}
     - Poznámka: ${preferences.customNote}
+    
+    KRITICKÁ PRAVIDLA PRO GEOGRAFII A TRASU:
+    1. Trasa MUSÍ dávat absolutní geografický smysl. Cesta musí vést logicky z bodu A do bodu B.
+    2. ZABRAŇ NESMYSLNÝM ZAJÍŽĎKÁM! (Např. z Teplic na Oravu se nejezdí přes východní Polsko, ze Slovenska do ČR se nejezdí přes Německo).
+    3. Trasa musí kopírovat reálné silnice, ideálně ty nejhezčí pro motorkáře (pokud není zvoleno tempo "fast" pro dálnice).
+    4. U waypoints vygeneruj alespoň 20-30 bodů (souřadnic [latitude, longitude]) pro každý den. Tyto body musí tvořit plynulou a reálnou křivku po silnicích mezi startLocation a endLocation daného dne.
+    5. Zkontroluj si, že souřadnice opravdu leží na trase a neodhazují trasu do jiných států.
     
     Vrať POUZE validní JSON objekt s následující strukturou (bez markdown bloků, jen čistý JSON):
     {
@@ -164,8 +171,14 @@ export const refineExpedition = async (
     ÚKOL:
     Přeplánuj expedici podle požadavku. Můžeš změnit trasy, ubytování, popisy nebo i počet dní, pokud je to nutné.
     
-    Vrať POUZE validní JSON objekt se stejnou strukturou jako původní expedice (bez markdown bloků, jen čistý JSON).
-    DŮLEŽITÉ: U waypoints vygeneruj alespoň 15-20 bodů pro každý den, aby trasa na mapě byla plynulá.`;
+    KRITICKÁ PRAVIDLA PRO GEOGRAFII A TRASU:
+    1. Trasa MUSÍ dávat absolutní geografický smysl. Cesta musí vést logicky z bodu A do bodu B.
+    2. ZABRAŇ NESMYSLNÝM ZAJÍŽĎKÁM! (Např. z Teplic na Oravu se nejezdí přes východní Polsko, ze Slovenska do ČR se nejezdí přes Německo).
+    3. Trasa musí kopírovat reálné silnice, ideálně ty nejhezčí pro motorkáře.
+    4. U waypoints vygeneruj alespoň 20-30 bodů (souřadnic [latitude, longitude]) pro každý den. Tyto body musí tvořit plynulou a reálnou křivku po silnicích.
+    5. Zkontroluj si, že souřadnice opravdu leží na trase a neodhazují trasu do jiných států.
+    
+    Vrať POUZE validní JSON objekt se stejnou strukturou jako původní expedice (bez markdown bloků, jen čistý JSON).`;
 
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
