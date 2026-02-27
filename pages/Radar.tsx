@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllPublicProfiles, updateProfileStatus, deleteProfile, sendWave, createRideChallenge, fetchRideChallenges, joinRideChallenge } from '../services/syncService';
+import { getAllPublicProfiles, updateProfileStatus, deleteProfile, sendWave, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge } from '../services/syncService';
 import { Motorcycle, UserProfile, POI, RideChallenge, Expedition } from '../types';
 import { searchNearbyPOI } from '../services/geminiService';
 
@@ -92,8 +92,21 @@ const Radar: React.FC = () => {
       const data = await fetchRideChallenges();
       setChallenges(data);
       setLoadingChallenges(false);
+      
+      if (activeTab === 'challenges') {
+        localStorage.setItem('motospirit_last_challenge_view', Date.now().toString());
+        window.dispatchEvent(new Event('challenge-viewed'));
+      }
     };
     if (activeTab === 'challenges') loadChallenges();
+
+    const handleNewChallenge = () => {
+      if (activeTab === 'challenges') {
+        loadChallenges();
+      }
+    };
+    window.addEventListener('new-challenge-alert', handleNewChallenge);
+    return () => window.removeEventListener('new-challenge-alert', handleNewChallenge);
   }, [activeTab]);
 
   const handleSearchPOI = async () => {
@@ -147,6 +160,17 @@ const Radar: React.FC = () => {
     const success = await joinRideChallenge(challenge.id, newParticipants);
     if (success) {
       setChallenges(prev => prev.map(c => c.id === challenge.id ? { ...c, participants: newParticipants } : c));
+    }
+  };
+
+  const handleDeleteChallenge = async (challenge: RideChallenge) => {
+    if (!window.confirm(`Opravdu chceš smazat výzvu "${challenge.title}"?`)) return;
+    
+    const success = await deleteRideChallenge(challenge.id);
+    if (success) {
+      setChallenges(prev => prev.filter(c => c.id !== challenge.id));
+    } else {
+      alert("Nepodařilo se smazat výzvu.");
     }
   };
 
@@ -385,16 +409,27 @@ const Radar: React.FC = () => {
                       ))}
                       <span className="pl-4 text-[10px] font-bold text-slate-500 uppercase self-center">{challenge.participants.length} JEDE</span>
                     </div>
-                    <button 
-                      onClick={() => handleJoinChallenge(challenge)}
-                      className={`px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
-                        challenge.participants.includes(currentUserSyncCode)
-                          ? 'bg-slate-700 text-slate-400'
-                          : 'bg-orange-600 text-white shadow-lg'
-                      }`}
-                    >
-                      {challenge.participants.includes(currentUserSyncCode) ? 'ODHLÁSIT' : 'PŘIDAT SE'}
-                    </button>
+                    <div className="flex gap-2">
+                      {(challenge.creatorSyncCode === currentUserSyncCode || currentUser?.isAdmin) && (
+                        <button 
+                          onClick={() => handleDeleteChallenge(challenge)}
+                          className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-red-500/20"
+                          title="Smazat výzvu"
+                        >
+                          <i className="fas fa-trash-can"></i>
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => handleJoinChallenge(challenge)}
+                        className={`px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${
+                          challenge.participants.includes(currentUserSyncCode)
+                            ? 'bg-slate-700 text-slate-400'
+                            : 'bg-orange-600 text-white shadow-lg'
+                        }`}
+                      >
+                        {challenge.participants.includes(currentUserSyncCode) ? 'ODHLÁSIT' : 'PŘIDAT SE'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -523,12 +558,14 @@ const Radar: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Kdy (Datum a čas)</label>
-                  <input 
-                    type="datetime-local"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-sm text-white focus:border-orange-500 outline-none"
-                    value={newChallenge.dateTime}
-                    onChange={e => setNewChallenge({...newChallenge, dateTime: e.target.value})}
-                  />
+                  <div className="relative">
+                    <input 
+                      type="datetime-local"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-sm text-white focus:border-orange-500 outline-none [&::-webkit-calendar-picker-indicator]:filter-[invert(1)] [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                      value={newChallenge.dateTime}
+                      onChange={e => setNewChallenge({...newChallenge, dateTime: e.target.value})}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Styl</label>

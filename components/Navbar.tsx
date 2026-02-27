@@ -3,7 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserProfile } from '../types';
 
-const Navbar: React.FC = () => {
+interface NavbarProps {
+  hasNewChallenge?: boolean;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
   const location = useLocation();
   const [user, setUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('motospirit_user');
@@ -22,7 +26,7 @@ const Navbar: React.FC = () => {
   const navItems = [
     { path: '/', label: 'Domů', icon: 'fa-home' },
     { path: '/garage', label: 'Garáž', icon: 'fa-motorcycle' },
-    { path: '/radar', label: 'Radar', icon: 'fa-satellite-dish' },
+    { path: '/radar', label: 'Radar', icon: 'fa-satellite-dish', hasNotification: hasNewChallenge },
     { path: '/logbook', label: 'Kniha jízd', icon: 'fa-book' },
     { path: '/planner', label: 'Plánovač', icon: 'fa-map-location-dot' },
     { path: '/assistant', label: 'AI Asistent', icon: 'fa-robot' },
@@ -45,11 +49,16 @@ const Navbar: React.FC = () => {
             <Link 
               key={item.path}
               to={item.path} 
-              className={`flex items-center gap-2 font-semibold transition-colors text-sm ${
+              className={`flex items-center gap-2 font-semibold transition-colors text-sm relative ${
                 location.pathname === item.path ? 'text-orange-500' : 'text-slate-300 hover:text-white'
               }`}
             >
-              <i className={`fas ${item.icon}`}></i>
+              <div className="relative">
+                <i className={`fas ${item.icon}`}></i>
+                {item.hasNotification && (
+                  <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                )}
+              </div>
               {item.label}
             </Link>
           ))}

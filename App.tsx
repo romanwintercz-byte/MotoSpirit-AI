@@ -9,21 +9,34 @@ import Logbook from './pages/Logbook';
 import Radar from './pages/Radar';
 import SharedTrip from './pages/SharedTrip';
 import Navbar from './components/Navbar';
-import { subscribeToCloudChanges } from './services/syncService';
+import { subscribeToCloudChanges, subscribeToNewChallenges } from './services/syncService';
 
 const App: React.FC = () => {
   const [checking, setChecking] = useState<boolean>(true);
+  const [hasNewChallenge, setHasNewChallenge] = useState<boolean>(false);
 
   useEffect(() => {
     // API key is obtained exclusively from process.env.API_KEY per guidelines.
     // The application must not ask the user for it or provide UI for it unless using Veo/Pro Image models.
     setChecking(false);
 
+    const checkNewChallenges = () => {
+      const lastView = parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0');
+      const latestChallenge = parseInt(localStorage.getItem('motospirit_latest_challenge_time') || '0');
+      setHasNewChallenge(latestChallenge > lastView);
+    };
+
+    checkNewChallenges();
+    window.addEventListener('challenge-viewed', checkNewChallenges);
+
     const syncCode = localStorage.getItem('motospirit_sync_code');
     const isAuth = localStorage.getItem('motospirit_auth') === 'true';
     
+    let channel: any;
+    let challengeChannel: any;
+
     if (syncCode && isAuth) {
-      const channel = subscribeToCloudChanges(syncCode, (cloudData) => {
+      channel = subscribeToCloudChanges(syncCode, (cloudData) => {
         if (cloudData) {
           if (cloudData.user) localStorage.setItem('motospirit_user', JSON.stringify(cloudData.user));
           if (cloudData.bikes) localStorage.setItem('motospirit_bikes', JSON.stringify(cloudData.bikes));
@@ -39,10 +52,26 @@ const App: React.FC = () => {
           }, 100);
         }
       });
-      return () => {
-        if (channel) channel.unsubscribe();
-      };
+
+      challengeChannel = subscribeToNewChallenges((challenge) => {
+        if (challenge && challenge.createdAt) {
+          const challengeTime = new Date(challenge.createdAt).getTime();
+          const lastView = parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0');
+          
+          if (challengeTime > lastView && challenge.creatorSyncCode !== syncCode) {
+            localStorage.setItem('motospirit_latest_challenge_time', challengeTime.toString());
+            setHasNewChallenge(true);
+            window.dispatchEvent(new Event('new-challenge-alert'));
+          }
+        }
+      });
     }
+
+    return () => {
+      if (channel) channel.unsubscribe();
+      if (challengeChannel) challengeChannel.unsubscribe();
+      window.removeEventListener('challenge-viewed', checkNewChallenges);
+    };
   }, []);
 
   if (checking) return null;
@@ -50,7 +79,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <div className="min-h-screen flex flex-col bg-slate-900 text-slate-100">
-        <Navbar />
+        <Navbar hasNewChallenge={hasNewChallenge} />
         <main className="flex-grow container mx-auto px-4 py-6 mb-20 md:mb-6">
           <Routes>
             <Route path="/" element={<Home />} />
@@ -66,7 +95,7 @@ const App: React.FC = () => {
         {/* Mobile Navigation */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800/90 backdrop-blur-md border-t border-slate-700 flex justify-around py-3 z-50">
           <NavLink to="/" icon="fa-home" label="Domů" />
-          <NavLink to="/radar" icon="fa-satellite-dish" label="Radar" />
+          <NavLink to="/radar" icon="fa-satellite-dish" label="Radar" hasNotification={hasNewChallenge} />
           <NavLink to="/logbook" icon="fa-book" label="Kniha" />
           <NavLink to="/planner" icon="fa-map-location-dot" label="Trasy" />
           <NavLink to="/assistant" icon="fa-robot" label="AI" />
@@ -76,12 +105,17 @@ const App: React.FC = () => {
   );
 };
 
-const NavLink: React.FC<{ to: string, icon: string, label: string }> = ({ to, icon, label }) => {
+const NavLink: React.FC<{ to: string, icon: string, label: string, hasNotification?: boolean }> = ({ to, icon, label, hasNotification }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
-    <Link to={to} className={`flex flex-col items-center ${isActive ? 'text-orange-500' : 'text-slate-500'}`}>
-      <i className={`fas ${icon} text-lg mb-1`}></i>
+    <Link to={to} className={`flex flex-col items-center relative ${isActive ? 'text-orange-500' : 'text-slate-500'}`}>
+      <div className="relative">
+        <i className={`fas ${icon} text-lg mb-1`}></i>
+        {hasNotification && (
+          <span className="absolute -top-1 -right-2 w-3 h-3 bg-red-500 border-2 border-slate-800 rounded-full animate-pulse"></span>
+        )}
+      </div>
       <span className="text-[10px] uppercase font-bold">{label}</span>
     </Link>
   );

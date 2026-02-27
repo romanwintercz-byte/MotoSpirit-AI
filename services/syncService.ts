@@ -328,6 +328,21 @@ export const fetchRideChallenges = async () => {
   }
 };
 
+export const subscribeToNewChallenges = (callback: (challenge: any) => void) => {
+  const channel = supabase
+    .channel('public:moto_shared_trips')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'moto_shared_trips', filter: "slug=like.challenge-%" },
+      (payload) => {
+        callback(payload.new.expedition_data);
+      }
+    )
+    .subscribe();
+
+  return channel;
+};
+
 export const joinRideChallenge = async (challengeId: string, participants: string[]) => {
   try {
     const { data, error: fetchError } = await supabase
@@ -352,6 +367,21 @@ export const joinRideChallenge = async (challengeId: string, participants: strin
     return true;
   } catch (error) {
     console.error("Error joining challenge:", error);
+    return false;
+  }
+};
+
+export const deleteRideChallenge = async (challengeId: string) => {
+  try {
+    const { error } = await supabase
+      .from('moto_shared_trips')
+      .delete()
+      .eq('slug', `challenge-${challengeId}`);
+      
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error deleting challenge:", error);
     return false;
   }
 };
