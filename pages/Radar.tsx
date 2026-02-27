@@ -30,7 +30,17 @@ const Radar: React.FC = () => {
   const [newChallenge, setNewChallenge] = useState<Partial<RideChallenge>>({
     title: '', dateTime: '', meetingPoint: '', style: 'Road', description: ''
   });
-  const [savedExpeditions] = useState<Expedition[]>(() => JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]'));
+  const [savedExpeditions, setSavedExpeditions] = useState<Expedition[]>(() => JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]'));
+
+  useEffect(() => {
+    const handleSyncUpdate = () => {
+      const savedUser = localStorage.getItem('motospirit_user');
+      setCurrentUser(savedUser ? JSON.parse(savedUser) : null);
+      setSavedExpeditions(JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]'));
+    };
+    window.addEventListener('sync-update', handleSyncUpdate);
+    return () => window.removeEventListener('sync-update', handleSyncUpdate);
+  }, []);
 
   const toggleFollow = (syncCode: string) => {
     if (!currentUser) return;

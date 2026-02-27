@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Motorcycle, MaintenanceRecord, UserProfile } from '../types';
 import { analyzeMaintenance } from '../services/geminiService';
 import { supabase } from '../services/supabaseClient';
-import { syncDataToCloud, fetchDataFromCloud, checkProfileExists, authenticateProfile, subscribeToCloudChanges } from '../services/syncService';
+import { syncDataToCloud, fetchDataFromCloud, checkProfileExists, authenticateProfile, subscribeToCloudChanges, wipeDatabase } from '../services/syncService';
 
 const Garage: React.FC = () => {
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
@@ -108,41 +108,22 @@ const Garage: React.FC = () => {
 
   // --- REALTIME SUBSCRIPTION ---
   useEffect(() => {
-    if (!syncCode) return;
-    
-    const channel = subscribeToCloudChanges(syncCode, (cloudData) => {
-      if (!cloudData) return;
-      
-      // Update local state if cloud data is newer or different
-      // To avoid loops, we only update if there's a meaningful change
-      if (cloudData.user) {
-        setUser(prev => JSON.stringify(prev) !== JSON.stringify(cloudData.user) ? cloudData.user : prev);
-      }
-      if (cloudData.bikes) {
-        setBikes(prev => JSON.stringify(prev) !== JSON.stringify(cloudData.bikes) ? cloudData.bikes : prev);
-      }
-      if (cloudData.records) {
-        setRecords(prev => JSON.stringify(prev) !== JSON.stringify(cloudData.records) ? cloudData.records : prev);
-      }
-      if (cloudData.fuel) {
-        localStorage.setItem('motospirit_fuel', JSON.stringify(cloudData.fuel));
-      }
-      if (cloudData.expeditions) {
-        localStorage.setItem('spirit_wanderer_trips', JSON.stringify(cloudData.expeditions));
-      }
+    const handleSyncUpdate = () => {
+      setUser(safeParse(safeGetItem('motospirit_user', ''), { name: '', nickname: 'Rider', experienceYears: 0, ridingStyle: 'Road', avatar: '', isPublic: true }));
+      setBikes(safeParse(safeGetItem('motospirit_bikes', '[]'), []));
+      setRecords(safeParse(safeGetItem('motospirit_records', '[]'), []));
       setLastSyncTime(new Date());
-    });
-
-    return () => {
-      if (channel) supabase.removeChannel(channel);
     };
-  }, [syncCode]);
+    window.addEventListener('sync-update', handleSyncUpdate);
+    return () => window.removeEventListener('sync-update', handleSyncUpdate);
+  }, []);
 
   // --- AUTO-SYNC ON CHANGES ---
   const autoSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     if (!syncCode) return;
+    if ((window as any).__isSyncingFromCloud) return;
     
     // Debounce sync to avoid too many requests
     if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
@@ -936,21 +917,73 @@ const Garage: React.FC = () => {
                       onChange={e => setEmail(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center"
                     />
-                    <input 
-                      type="password"
-                      placeholder="PIN (např. 1234)"
-                      value={pin}
-                      onChange={e => setPin(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-sm text-white text-center tracking-widest"
-                    />
+                    <div className="relative">
+                      <input 
+                        type="password"
+                        placeholder="PIN"
+                        value={pin}
+                        readOnly
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 focus:border-orange-500 outline-none text-2xl text-white text-center tracking-[1em] font-mono"
+                      />
+                      {pin.length > 0 && (
+                        <button 
+                          onClick={() => setPin(pin.slice(0, -1))}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                        >
+                          <i className="fas fa-backspace text-xl"></i>
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Numeric Keypad */}
+                    <div className="grid grid-cols-3 gap-2 mt-4 max-w-[240px] mx-auto">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                        <button
+                          key={num}
+                          onClick={() => setPin(prev => prev.length < 6 ? prev + num : prev)}
+                          className="bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 rounded-2xl py-4 text-xl font-mono font-bold text-white transition-colors"
+                        >
+                          {num}
+                        </button>
+                      ))}
+                      <div className="col-start-2">
+                        <button
+                          onClick={() => setPin(prev => prev.length < 6 ? prev + '0' : prev)}
+                          className="w-full bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 rounded-2xl py-4 text-xl font-mono font-bold text-white transition-colors"
+                        >
+                          0
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <button 
                     onClick={handleAuth}
-                    disabled={isSyncing}
+                    disabled={isSyncing || !email || pin.length < 4}
                     className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isSyncing ? 'ZPRACOVÁVÁM...' : 'PŘIHLÁSIT / REGISTROVAT'}
                   </button>
+                  {email.toLowerCase() === 'roman.winter.cz@gmail.com' && (
+                    <button 
+                      onClick={async () => {
+                        if (window.confirm('Opravdu vymazat celou databázi?')) {
+                          setIsSyncing(true);
+                          const success = await wipeDatabase();
+                          setIsSyncing(false);
+                          if (success) {
+                            alert('Databáze vymazána.');
+                            localStorage.clear();
+                            window.location.reload();
+                          } else {
+                            alert('Chyba při mazání databáze.');
+                          }
+                        }
+                      }}
+                      className="w-full bg-red-900/50 hover:bg-red-800 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest text-red-200 border border-red-500/30 transition-all mt-4"
+                    >
+                      <i className="fas fa-skull mr-2"></i> WIPE DATABASE
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-8">

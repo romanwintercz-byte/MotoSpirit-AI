@@ -74,7 +74,7 @@ const TripPlanner: React.FC = () => {
     
     // Auto-sync with debounce
     const syncCode = localStorage.getItem('motospirit_sync_code');
-    if (syncCode) {
+    if (syncCode && !(window as any).__isSyncingFromCloud) {
       if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
       autoSyncTimeoutRef.current = setTimeout(() => {
         const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');
@@ -103,7 +103,11 @@ const TripPlanner: React.FC = () => {
       if (saved) setSavedExpeditions(JSON.parse(saved));
     };
     window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
+    window.addEventListener('sync-update', sync);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('sync-update', sync);
+    };
   }, []);
 
   // Fetch Inbox and Followed Riders

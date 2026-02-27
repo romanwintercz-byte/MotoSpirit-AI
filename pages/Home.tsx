@@ -4,14 +4,26 @@ import { Link } from 'react-router-dom';
 import { UserProfile, FuelRecord, MaintenanceRecord, Motorcycle } from '../types';
 
 const Home: React.FC = () => {
-  const [user] = useState<UserProfile | null>(() => {
+  const [user, setUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('motospirit_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [fuel] = useState<FuelRecord[]>(() => JSON.parse(localStorage.getItem('motospirit_fuel') || '[]'));
-  const [expenses] = useState<MaintenanceRecord[]>(() => JSON.parse(localStorage.getItem('motospirit_records') || '[]'));
-  const [bikes] = useState<Motorcycle[]>(() => JSON.parse(localStorage.getItem('motospirit_bikes') || '[]'));
+  const [fuel, setFuel] = useState<FuelRecord[]>(() => JSON.parse(localStorage.getItem('motospirit_fuel') || '[]'));
+  const [expenses, setExpenses] = useState<MaintenanceRecord[]>(() => JSON.parse(localStorage.getItem('motospirit_records') || '[]'));
+  const [bikes, setBikes] = useState<Motorcycle[]>(() => JSON.parse(localStorage.getItem('motospirit_bikes') || '[]'));
+
+  useEffect(() => {
+    const handleSyncUpdate = () => {
+      const savedUser = localStorage.getItem('motospirit_user');
+      setUser(savedUser ? JSON.parse(savedUser) : null);
+      setFuel(JSON.parse(localStorage.getItem('motospirit_fuel') || '[]'));
+      setExpenses(JSON.parse(localStorage.getItem('motospirit_records') || '[]'));
+      setBikes(JSON.parse(localStorage.getItem('motospirit_bikes') || '[]'));
+    };
+    window.addEventListener('sync-update', handleSyncUpdate);
+    return () => window.removeEventListener('sync-update', handleSyncUpdate);
+  }, []);
 
   const totalCost = fuel.reduce((acc, curr) => acc + curr.cost, 0) + expenses.reduce((acc, curr) => acc + curr.cost, 0);
   

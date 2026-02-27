@@ -54,9 +54,17 @@ const Logbook: React.FC = () => {
     const sync = () => {
       const savedBikes = JSON.parse(localStorage.getItem('motospirit_bikes') || '[]');
       setBikes(savedBikes);
+      const savedFuel = JSON.parse(localStorage.getItem('motospirit_fuel') || '[]');
+      setFuelRecords(savedFuel);
+      const savedExpenses = JSON.parse(localStorage.getItem('motospirit_records') || '[]');
+      setExpenses(savedExpenses);
     };
     window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
+    window.addEventListener('sync-update', sync);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('sync-update', sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -70,7 +78,7 @@ const Logbook: React.FC = () => {
     
     // Auto-sync with debounce
     const syncCode = localStorage.getItem('motospirit_sync_code');
-    if (syncCode) {
+    if (syncCode && !(window as any).__isSyncingFromCloud) {
       if (autoSyncTimeoutRef.current) clearTimeout(autoSyncTimeoutRef.current);
       autoSyncTimeoutRef.current = setTimeout(() => {
         const user = JSON.parse(localStorage.getItem('motospirit_user') || '{}');

@@ -9,6 +9,7 @@ import Logbook from './pages/Logbook';
 import Radar from './pages/Radar';
 import SharedTrip from './pages/SharedTrip';
 import Navbar from './components/Navbar';
+import { subscribeToCloudChanges } from './services/syncService';
 
 const App: React.FC = () => {
   const [checking, setChecking] = useState<boolean>(true);
@@ -17,6 +18,31 @@ const App: React.FC = () => {
     // API key is obtained exclusively from process.env.API_KEY per guidelines.
     // The application must not ask the user for it or provide UI for it unless using Veo/Pro Image models.
     setChecking(false);
+
+    const syncCode = localStorage.getItem('motospirit_sync_code');
+    const isAuth = localStorage.getItem('motospirit_auth') === 'true';
+    
+    if (syncCode && isAuth) {
+      const channel = subscribeToCloudChanges(syncCode, (cloudData) => {
+        if (cloudData) {
+          if (cloudData.user) localStorage.setItem('motospirit_user', JSON.stringify(cloudData.user));
+          if (cloudData.bikes) localStorage.setItem('motospirit_bikes', JSON.stringify(cloudData.bikes));
+          if (cloudData.records) localStorage.setItem('motospirit_records', JSON.stringify(cloudData.records));
+          if (cloudData.fuel) localStorage.setItem('motospirit_fuel', JSON.stringify(cloudData.fuel));
+          if (cloudData.expeditions) localStorage.setItem('spirit_wanderer_trips', JSON.stringify(cloudData.expeditions));
+          
+          // Dispatch event so all pages can re-render
+          (window as any).__isSyncingFromCloud = true;
+          window.dispatchEvent(new Event('sync-update'));
+          setTimeout(() => {
+            (window as any).__isSyncingFromCloud = false;
+          }, 100);
+        }
+      });
+      return () => {
+        if (channel) channel.unsubscribe();
+      };
+    }
   }, []);
 
   if (checking) return null;
