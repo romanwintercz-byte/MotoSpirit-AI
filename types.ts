@@ -8,6 +8,7 @@ export interface UserProfile {
   ridingStyle: string;
   avatar?: string;
   isPublic?: boolean;
+  publicBikes?: boolean;
   isAdmin?: boolean;
   isDeactivated?: boolean;
   following?: string[]; // List of syncCodes

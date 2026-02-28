@@ -36,6 +36,7 @@ const Radar: React.FC = () => {
   const [rejectedChallenges, setRejectedChallenges] = useState<string[]>(() => JSON.parse(localStorage.getItem('motospirit_rejected_challenges') || '[]'));
   const [sessionLastView] = useState(() => parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0'));
   const [hasNewChallengesTab, setHasNewChallengesTab] = useState(false);
+  const [selectedBikeImage, setSelectedBikeImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (location.state?.createChallenge && location.state?.expedition) {
@@ -364,8 +365,17 @@ const Radar: React.FC = () => {
                         <span className="text-[10px] text-slate-600 italic">Garáž je prázdná</span>
                       ) : (
                         rider.bikes.map((bike, idx) => (
-                          <span key={idx} className="bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-700 text-[10px] text-white font-medium">
+                          <span 
+                            key={idx} 
+                            onClick={() => {
+                              if (rider.user.publicBikes && bike.image) {
+                                setSelectedBikeImage(bike.image);
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-xl border border-slate-700 text-[10px] text-white font-medium flex items-center gap-1 ${rider.user.publicBikes && bike.image ? 'bg-slate-800 hover:bg-slate-700 hover:border-orange-500 cursor-pointer transition-all' : 'bg-slate-900/50'}`}
+                          >
                             {bike.brand} {bike.model}
+                            {rider.user.publicBikes && bike.image && <i className="fas fa-camera text-orange-500 ml-1"></i>}
                           </span>
                         ))
                       )}
@@ -702,6 +712,20 @@ const Radar: React.FC = () => {
                 VYHLÁSIT VÝZVU
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: Bike Image */}
+      {selectedBikeImage && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-fadeIn" onClick={() => setSelectedBikeImage(null)}>
+          <div className="relative w-full max-w-lg animate-slideUp" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedBikeImage(null)} 
+              className="absolute -top-12 right-0 text-white p-2 text-xl font-bold flex items-center gap-2"
+            >
+              <i className="fas fa-times"></i> ZAVŘÍT
+            </button>
+            <img src={selectedBikeImage} alt="Bike" className="w-full h-auto rounded-2xl shadow-2xl border border-slate-700" />
           </div>
         </div>
       )}

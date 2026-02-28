@@ -474,6 +474,16 @@ const Garage: React.FC = () => {
                       />
                       <label htmlFor="isPublic" className="text-[10px] font-bold text-slate-400 uppercase">Veřejný profil (viditelný v Radaru)</label>
                     </div>
+                    <div className="flex items-center gap-3 px-2">
+                      <input 
+                        type="checkbox" 
+                        id="publicBikes"
+                        checked={user.publicBikes} 
+                        onChange={e => setUser({...user, publicBikes: e.target.checked})}
+                        className="w-4 h-4 accent-orange-500"
+                      />
+                      <label htmlFor="publicBikes" className="text-[10px] font-bold text-slate-400 uppercase">Zobrazit fotky mých motorek v Radaru</label>
+                    </div>
                     {!user.isAdmin && (
                       <button 
                         onClick={() => {
