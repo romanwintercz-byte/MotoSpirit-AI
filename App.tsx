@@ -9,14 +9,22 @@ import Logbook from './pages/Logbook';
 import Radar from './pages/Radar';
 import SharedTrip from './pages/SharedTrip';
 import Navbar from './components/Navbar';
+import Onboarding from './components/Onboarding';
 import { subscribeToCloudChanges, subscribeToNewChallenges } from './services/syncService';
 import { supabase } from './services/supabaseClient';
 
 const App: React.FC = () => {
   const [checking, setChecking] = useState<boolean>(true);
   const [hasNewChallenge, setHasNewChallenge] = useState<boolean>(false);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
   useEffect(() => {
+    // Check onboarding status
+    const onboardingCompleted = localStorage.getItem('motospirit_onboarding_completed') === 'true';
+    if (!onboardingCompleted) {
+      setShowOnboarding(true);
+    }
+
     // API key is obtained exclusively from process.env.API_KEY per guidelines.
     // The application must not ask the user for it or provide UI for it unless using Veo/Pro Image models.
     setChecking(false);
@@ -104,6 +112,10 @@ const App: React.FC = () => {
   }, []);
 
   if (checking) return null;
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={() => setShowOnboarding(false)} />;
+  }
 
   return (
     <HashRouter>
