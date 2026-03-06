@@ -238,10 +238,62 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
           
           <button 
-            onClick={handleFinish}
+            onClick={handleNext}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-bold text-lg uppercase tracking-widest transition-all shadow-xl shadow-emerald-900/20 active:scale-95 mt-8"
           >
             VYJET NA TRAŤ
+          </button>
+        </div>
+      )}
+
+      {step === 5 && (
+        <div className="max-w-md w-full space-y-6 animate-slideUp text-left">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-blue-500/20 rounded-full mx-auto flex items-center justify-center border-2 border-blue-500/50 mb-4">
+              <i className="fas fa-mobile-screen text-blue-500 text-2xl"></i>
+            </div>
+            <h2 className="text-2xl font-brand font-bold text-white mb-2">
+              🛠️ Tip do garáže: Udělej si z MotoSpirit opravdovou appku!
+            </h2>
+            <p className="text-slate-400 text-sm">
+              Aplikaci nemusíš hledat v prohlížeči. Hoď si ji rovnou na plochu telefonu mezi ostatní aplikace.
+            </p>
+          </div>
+
+          <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 space-y-3">
+            <h3 className="text-white font-bold flex items-center gap-2">
+              <i className="fab fa-apple text-slate-300 text-lg"></i> Pro Jablíčkáře (iPhone)
+            </h3>
+            <ol className="text-sm text-slate-400 space-y-2 ml-2 list-decimal list-inside">
+              <li>Musíš být v prohlížeči <strong>Safari</strong>.</li>
+              <li>Dole klikni na <strong>ikonu sdílení</strong> <i className="fas fa-arrow-up-from-bracket mx-1 text-slate-300"></i>.</li>
+              <li>Vyber možnost <strong>"Přidat na plochu"</strong> <i className="fas fa-plus-square mx-1 text-slate-300"></i>.</li>
+            </ol>
+          </div>
+
+          <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 space-y-3">
+            <h3 className="text-white font-bold flex items-center gap-2">
+              <i className="fab fa-android text-emerald-500 text-lg"></i> Pro Androiďáky
+            </h3>
+            <ol className="text-sm text-slate-400 space-y-2 ml-2 list-decimal list-inside">
+              <li>Musíš být v prohlížeči <strong>Chrome</strong>.</li>
+              <li>Nahoře klikni na <strong>tři tečky</strong> <i className="fas fa-ellipsis-vertical mx-1 text-slate-300"></i>.</li>
+              <li>Vyber možnost <strong>"Přidat na plochu"</strong>.</li>
+            </ol>
+          </div>
+
+          <div className="bg-red-900/20 border border-red-500/30 rounded-2xl p-4 flex gap-3 items-start">
+            <i className="fas fa-triangle-exclamation text-red-500 mt-1"></i>
+            <p className="text-xs text-red-200 leading-relaxed">
+              <strong>Otevřel jsi odkaz z Facebooku, Messengeru nebo WhatsAppu?</strong> Tam to fungovat nebude! Musíš kliknout na tři tečky vpravo nahoře a vybrat <strong>"Otevřít v systémovém prohlížeči"</strong> (Safari/Chrome). Až pak si můžeš appku přidat na plochu.
+            </p>
+          </div>
+
+          <button 
+            onClick={handleFinish}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white py-5 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all shadow-xl shadow-orange-900/20 active:scale-95 mt-4"
+          >
+            ROZUMÍM, JDU JEZDIT
           </button>
         </div>
       )}
