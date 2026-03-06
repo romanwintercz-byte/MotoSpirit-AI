@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { planExpedition, refineExpedition } from '../services/geminiService';
-import { shareExpeditionPublicly, syncDataToCloud, fetchInbox, sendTripToRider, deleteInboxMessage, getAllPublicProfiles } from '../services/syncService';
+import { shareExpeditionPublicly, syncDataToCloud, sendTripToRider, getAllPublicProfiles } from '../services/syncService';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
@@ -96,8 +96,6 @@ const TripPlanner: React.FC = () => {
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [inbox, setInbox] = useState<any[]>([]);
-  const [showInbox, setShowInbox] = useState(false);
   const [showSendToRider, setShowSendToRider] = useState(false);
   const [followedRiders, setFollowedRiders] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -175,34 +173,12 @@ const TripPlanner: React.FC = () => {
     };
   }, []);
 
-  // Fetch Inbox and Followed Riders
+  // Fetch Followed Riders
   useEffect(() => {
     const syncCode = localStorage.getItem('motospirit_sync_code');
     if (!syncCode) return;
 
     const loadData = async () => {
-      const msgs = await fetchInbox(syncCode);
-      
-      // Auto-accept trips
-      const tripMsgs = msgs.filter(m => m.expedition_data);
-      if (tripMsgs.length > 0) {
-        const newTrips: Expedition[] = [];
-        for (const msg of tripMsgs) {
-          const newExp = { 
-            ...msg.expedition_data, 
-            id: Date.now().toString() + Math.random().toString().substring(2, 6), 
-            name: msg.expedition_data.name, 
-            sharedBy: msg.from_code 
-          };
-          newTrips.push(newExp);
-          await deleteInboxMessage(msg.id);
-        }
-        setSavedExpeditions(prev => [...newTrips, ...prev]);
-        setInbox(msgs.filter(m => !m.expedition_data));
-      } else {
-        setInbox(msgs);
-      }
-
       const userStr = localStorage.getItem('motospirit_user');
       if (userStr) {
         const user = JSON.parse(userStr) as UserProfile;
@@ -407,15 +383,6 @@ const TripPlanner: React.FC = () => {
           <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mt-1 opacity-70">AI Roadtrip Engine v2.5</p>
         </div>
         <div className="flex items-center gap-4">
-          {inbox.length > 0 && (
-            <button 
-              onClick={() => setShowInbox(true)}
-              className="relative bg-orange-600/20 text-orange-500 w-12 h-12 rounded-2xl border border-orange-500/30 flex items-center justify-center animate-pulse"
-            >
-              <i className="fas fa-envelope"></i>
-              <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900">{inbox.length}</span>
-            </button>
-          )}
           {expedition && (
             <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md overflow-x-auto">
               <button onClick={() => setViewMode('info')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'info' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ITINERÁŘ</button>
@@ -1276,50 +1243,6 @@ const TripPlanner: React.FC = () => {
       )}
 
       {/* Inbox Modal */}
-      {showInbox && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
-          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
-            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">PŘIJATÉ <span className="text-orange-500">ZPRÁVY</span></h2>
-               <button onClick={() => setShowInbox(false)} className="text-slate-500 hover:text-white p-2">
-                 <i className="fas fa-times text-xl"></i>
-               </button>
-            </div>
-            <div className="p-8 space-y-4">
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {inbox.map(msg => (
-                  <div key={msg.id} className="bg-slate-900 border border-slate-700 p-5 rounded-3xl space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center text-orange-500">
-                        <i className={`fas ${msg.type === 'wave' ? 'fa-hand-peace' : 'fa-map-location-dot'}`}></i>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-white uppercase tracking-tight">
-                          {msg.type === 'wave' ? 'Někdo ti mává!' : msg.expedition_data.name}
-                        </p>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
-                          {msg.type === 'wave' ? msg.message : `Od: ${msg.from_code.slice(0, 8)}...`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => {
-                          deleteInboxMessage(msg.id);
-                          setInbox(prev => prev.filter(m => m.id !== msg.id));
-                        }}
-                        className="flex-1 px-4 py-3 bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-500 rounded-xl border border-slate-700 transition-all font-bold text-[10px] uppercase tracking-widest"
-                      >
-                        ZAVŘÍT
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

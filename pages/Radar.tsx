@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getAllPublicProfiles, updateProfileStatus, deleteProfile, sendWave, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge } from '../services/syncService';
+import { getAllPublicProfiles, updateProfileStatus, deleteProfile, sendWave, sendMessageToRider, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge } from '../services/syncService';
 import { Motorcycle, UserProfile, POI, RideChallenge, Expedition } from '../types';
 import { searchNearbyPOI } from '../services/geminiService';
 
@@ -24,6 +24,8 @@ const Radar: React.FC = () => {
     const saved = localStorage.getItem('motospirit_user');
     return saved ? JSON.parse(saved) : null;
   });
+  
+  const [messageModal, setMessageModal] = useState<{ isOpen: boolean, rider: RiderProfile | null, text: string }>({ isOpen: false, rider: null, text: '' });
 
   // Ride Challenges State
   const [challenges, setChallenges] = useState<RideChallenge[]>([]);
@@ -163,6 +165,17 @@ const Radar: React.FC = () => {
     const success = await sendWave(currentUserSyncCode, rider.syncCode, currentUser.nickname);
     if (success) {
       alert(`Pozdrav odeslán jezdci ${rider.user.nickname}! ✌️`);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!currentUserSyncCode || !currentUser || !messageModal.rider || !messageModal.text.trim()) return;
+    const success = await sendMessageToRider(currentUserSyncCode, messageModal.rider.syncCode, messageModal.text);
+    if (success) {
+      alert(`Zpráva odeslána jezdci ${messageModal.rider.user.nickname}! ✉️`);
+      setMessageModal({ isOpen: false, rider: null, text: '' });
+    } else {
+      alert('Něco se pokazilo, zkus to prosím znovu.');
     }
   };
 
@@ -353,6 +366,13 @@ const Radar: React.FC = () => {
                           title="Pozdravit"
                         >
                           <i className="fas fa-hand-peace"></i>
+                        </button>
+                        <button 
+                          onClick={() => setMessageModal({ isOpen: true, rider, text: '' })}
+                          className="w-10 h-10 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center text-blue-500 hover:border-blue-500 transition-all"
+                          title="Napsat zprávu"
+                        >
+                          <i className="fas fa-envelope"></i>
                         </button>
                       </>
                     )}
@@ -726,6 +746,50 @@ const Radar: React.FC = () => {
               <i className="fas fa-times"></i> ZAVŘÍT
             </button>
             <img src={selectedBikeImage} alt="Bike" className="w-full h-auto rounded-2xl shadow-2xl border border-slate-700" />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Send Message */}
+      {messageModal.isOpen && messageModal.rider && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn" onClick={() => setMessageModal({ isOpen: false, rider: null, text: '' })}>
+          <div className="bg-slate-900 border border-slate-700 rounded-[2rem] p-6 w-full max-w-md animate-slideUp shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-brand font-bold text-white uppercase tracking-tight flex items-center gap-3">
+                <i className="fas fa-envelope text-blue-500"></i> Nová zpráva
+              </h2>
+              <button onClick={() => setMessageModal({ isOpen: false, rider: null, text: '' })} className="text-slate-500 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-800">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Komu</label>
+                <div className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-sm text-white mt-1 font-bold">
+                  {messageModal.rider.user.nickname}
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Zpráva</label>
+                <textarea 
+                  rows={4}
+                  value={messageModal.text}
+                  onChange={e => setMessageModal({ ...messageModal, text: e.target.value })}
+                  placeholder="Napiš zprávu..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-blue-500 text-sm text-white mt-1 resize-none"
+                ></textarea>
+              </div>
+
+              <button 
+                onClick={handleSendMessage}
+                disabled={!messageModal.text.trim()}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl uppercase tracking-widest text-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+              >
+                <i className="fas fa-paper-plane"></i> ODESLAT ZPRÁVU
+              </button>
+            </div>
           </div>
         </div>
       )}

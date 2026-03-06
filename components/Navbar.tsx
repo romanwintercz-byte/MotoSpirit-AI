@@ -2,13 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserProfile } from '../types';
+import { submitFeedback, fetchInbox } from '../services/syncService';
 
 interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.3.0';
+const CURRENT_VERSION = '1.4.0';
 const CHANGELOG = [
+  {
+    version: '1.4.0',
+    date: '6. 3. 2026',
+    changes: [
+      'Moto Pošta: Nová sekce pro přímou komunikaci mezi jezdci.',
+      'Možnost poslat textovou zprávu libovolnému jezdci přímo z Radaru.',
+      'Napsat vývojáři: Nové tlačítko (🐞) pro snadné odesílání nápadů a hlášení chyb.',
+      'Sjednocení upozornění: Všechny pozdravy, zprávy a sdílené trasy najdeš na jednom místě v Moto Poště.'
+    ]
+  },
   {
     version: '1.3.0',
     date: '6. 3. 2026',
@@ -60,6 +71,12 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
   });
   
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackType, setFeedbackType] = useState('idea');
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
   const [hasNewUpdates, setHasNewUpdates] = useState(() => {
     const lastSeen = localStorage.getItem('motospirit_last_changelog');
     return lastSeen !== CURRENT_VERSION;
@@ -73,7 +90,36 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-  
+
+  useEffect(() => {
+    const checkInbox = async () => {
+      const syncCode = localStorage.getItem('motospirit_sync_code');
+      if (syncCode) {
+        const msgs = await fetchInbox(syncCode);
+        setUnreadMessages(msgs.length);
+      }
+    };
+    checkInbox();
+    // Refresh inbox count every 30 seconds
+    const interval = setInterval(checkInbox, 30000);
+    return () => clearInterval(interval);
+  }, [location.pathname]); // Re-check when navigating
+
+  const handleSendFeedback = async () => {
+    if (!feedbackText.trim()) return;
+    setFeedbackSending(true);
+    const syncCode = localStorage.getItem('motospirit_sync_code') || 'UNKNOWN';
+    const success = await submitFeedback(syncCode, feedbackType, feedbackText);
+    setFeedbackSending(false);
+    if (success) {
+      alert('Díky za zprávu! Vývojář byl informován.');
+      setShowFeedback(false);
+      setFeedbackText('');
+    } else {
+      alert('Něco se pokazilo, zkus to prosím znovu.');
+    }
+  };
+
   const openChangelog = () => {
     setShowChangelog(true);
     setHasNewUpdates(false);
@@ -123,6 +169,37 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
         </div>
 
         <div className="flex items-center gap-4">
+          {user?.email === 'Roman.Winter.cz@gmail.com' && (
+            <Link 
+              to="/dev-console"
+              className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+              title="Vývojářská konzole"
+            >
+              <i className="fas fa-terminal"></i>
+            </Link>
+          )}
+
+          <button 
+            onClick={() => setShowFeedback(true)}
+            className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+            title="Napsat vývojáři"
+          >
+            <i className="fas fa-bug"></i>
+          </button>
+
+          <Link 
+            to="/inbox"
+            className="relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+            title="Moto Pošta"
+          >
+            <i className="fas fa-envelope"></i>
+            {unreadMessages > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 border-2 border-slate-800 rounded-full flex items-center justify-center text-[8px] font-bold text-white">
+                {unreadMessages}
+              </span>
+            )}
+          </Link>
+
           <button 
             onClick={openChangelog}
             className="relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10"
@@ -180,6 +257,59 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
                 </ul>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    )}
+    {/* Feedback Modal */}
+    {showFeedback && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn" onClick={() => setShowFeedback(false)}>
+        <div className="bg-slate-900 border border-slate-700 rounded-[2rem] p-6 w-full max-w-md animate-slideUp shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-brand font-bold text-white uppercase tracking-tight flex items-center gap-3">
+              <i className="fas fa-bug text-orange-500"></i> Napsat vývojáři
+            </h2>
+            <button onClick={() => setShowFeedback(false)} className="text-slate-500 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-800">
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Typ zprávy</label>
+              <select 
+                value={feedbackType}
+                onChange={e => setFeedbackType(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-orange-500 text-sm text-white mt-1"
+              >
+                <option value="idea">💡 Nápad na zlepšení</option>
+                <option value="bug">🐞 Nahlásit chybu</option>
+                <option value="other">💬 Jen tak pozdravit</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Tvoje zpráva</label>
+              <textarea 
+                rows={4}
+                value={feedbackText}
+                onChange={e => setFeedbackText(e.target.value)}
+                placeholder="Co máš na srdci?"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 outline-none focus:border-orange-500 text-sm text-white mt-1 resize-none"
+              ></textarea>
+            </div>
+
+            <button 
+              onClick={handleSendFeedback}
+              disabled={feedbackSending || !feedbackText.trim()}
+              className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-xl uppercase tracking-widest text-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+            >
+              {feedbackSending ? (
+                <><i className="fas fa-spinner fa-spin"></i> ODESÍLÁM...</>
+              ) : (
+                <><i className="fas fa-paper-plane"></i> ODESLAT ZPRÁVU</>
+              )}
+            </button>
           </div>
         </div>
       </div>

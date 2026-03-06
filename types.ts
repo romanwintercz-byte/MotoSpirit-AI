@@ -22,6 +22,10 @@ export interface Motorcycle {
   vin?: string;
   mileage: number;
   image?: string;
+  lastServiceDate?: string;
+  lastServiceMileage?: number;
+  serviceIntervalKm?: number;
+  serviceIntervalMonths?: number;
 }
 
 export type TransportMode = 'moto' | 'car' | 'walk' | 'cablecar';
