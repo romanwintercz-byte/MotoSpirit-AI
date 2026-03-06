@@ -116,7 +116,8 @@ const Radar: React.FC = () => {
       setLoadingRiders(true);
       const data = await getAllPublicProfiles();
       const filtered = data.filter(r => {
-        if (currentUser?.isAdmin) return true;
+        const isAdmin = currentUser?.isAdmin || currentUser?.email?.toLowerCase() === 'roman.winter.cz@gmail.com';
+        if (isAdmin) return true;
         return r.user.isPublic && !r.user.isDeactivated;
       });
       setRiders(filtered);
@@ -231,7 +232,8 @@ const Radar: React.FC = () => {
   };
 
   const handleDeactivate = async (rider: RiderProfile) => {
-    if (!currentUser?.isAdmin) return;
+    const isAdmin = currentUser?.isAdmin || currentUser?.email?.toLowerCase() === 'roman.winter.cz@gmail.com';
+    if (!isAdmin) return;
     if (!window.confirm(`Opravdu chceš deaktivovat uživatele ${rider.user.nickname}?`)) return;
 
     const updatedUser = { ...rider.user, isDeactivated: !rider.user.isDeactivated };
@@ -242,7 +244,8 @@ const Radar: React.FC = () => {
   };
 
   const handleDelete = async (rider: RiderProfile) => {
-    if (!currentUser?.isAdmin) return;
+    const isAdmin = currentUser?.isAdmin || currentUser?.email?.toLowerCase() === 'roman.winter.cz@gmail.com';
+    if (!isAdmin) return;
     if (!window.confirm(`VAROVÁNÍ: Opravdu chceš trvale vymazat uživatele ${rider.user.nickname} a všechna jeho data? Tato akce je nevratná!`)) return;
 
     const success = await deleteProfile(rider.syncCode);
@@ -340,7 +343,10 @@ const Radar: React.FC = () => {
                     <div>
                       <h3 className="text-lg font-brand font-bold text-white leading-tight">
                         {rider.user.nickname}
-                        {rider.syncCode === currentUserSyncCode && <span className="text-orange-500 ml-2 text-xs">(TY)</span>}
+                        {rider.syncCode === currentUserSyncCode && <span className="text-orange-500 ml-2 text-xs">(TY - AKTIVNÍ)</span>}
+                        {rider.syncCode !== currentUserSyncCode && currentUser?.email && rider.user.email === currentUser.email && (
+                          <span className="text-slate-500 ml-2 text-xs">(JINÉ ZAŘÍZENÍ)</span>
+                        )}
                       </h3>
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{rider.user.ridingStyle || 'Road'} Rider</p>
                     </div>
@@ -402,7 +408,7 @@ const Radar: React.FC = () => {
                     </div>
                   </div>
 
-                  {currentUser?.isAdmin && rider.syncCode !== currentUserSyncCode && (
+                  {currentUser && (currentUser.isAdmin || currentUser.email?.toLowerCase() === 'roman.winter.cz@gmail.com') && rider.syncCode !== currentUserSyncCode && (
                     <div className="mt-6 pt-6 border-t border-slate-700 flex justify-end gap-2">
                       <button 
                         onClick={() => handleDeactivate(rider)}
@@ -498,7 +504,7 @@ const Radar: React.FC = () => {
                       <span className="pl-4 text-[10px] font-bold text-slate-500 uppercase self-center">{challenge.participants.length} JEDE</span>
                     </div>
                     <div className="flex gap-2">
-                      {(challenge.creatorSyncCode === currentUserSyncCode || currentUser?.isAdmin) && (
+                      {(challenge.creatorSyncCode === currentUserSyncCode || currentUser?.isAdmin || currentUser?.email?.toLowerCase() === 'roman.winter.cz@gmail.com') && (
                         <button 
                           onClick={() => handleDeleteChallenge(challenge)}
                           className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-red-500/20"

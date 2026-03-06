@@ -169,7 +169,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {user?.email === 'Roman.Winter.cz@gmail.com' && (
+          {user?.email?.toLowerCase() === 'roman.winter.cz@gmail.com' && (
             <Link 
               to="/dev-console"
               className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
