@@ -7,8 +7,18 @@ interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.1.0';
+const CURRENT_VERSION = '1.2.0';
 const CHANGELOG = [
+  {
+    version: '1.2.0',
+    date: '6. 3. 2026',
+    changes: [
+      'Přidán Uvítací průvodce pro nové jezdce (rychlé založení profilu a motorky).',
+      'Návod na přidání aplikace na plochu telefonu (Add to Home Screen).',
+      'Plánovač tras nyní podporuje přidávání průjezdních bodů.',
+      'Hlasové zadávání cílů a průjezdních bodů v Plánovači (ikonka mikrofonu).'
+    ]
+  },
   {
     version: '1.1.0',
     date: '28. 2. 2026',
