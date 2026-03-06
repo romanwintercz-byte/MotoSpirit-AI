@@ -5,9 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { planExpedition, refineExpedition } from '../services/geminiService';
 import { shareExpeditionPublicly, syncDataToCloud, fetchInbox, sendTripToRider, deleteInboxMessage, getAllPublicProfiles } from '../services/syncService';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
+import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
 const TripPlanner: React.FC = () => {
   const navigate = useNavigate();
+  const { activeState, startExpedition } = useActiveExpedition();
   
   // --- FORM STATE ---
   const [origin, setOrigin] = useState('Praha');
@@ -804,9 +806,19 @@ const TripPlanner: React.FC = () => {
                           <i className="fas fa-download"></i> GPX
                         </button>
                         {savedExpeditions.some(ex => ex.id === expedition.id) ? (
-                          <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
-                             <i className="fas fa-check"></i> ULOŽENO
-                          </span>
+                          <div className="flex gap-2">
+                            <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
+                               <i className="fas fa-check"></i> ULOŽENO
+                            </span>
+                            {activeState?.expeditionId !== expedition.id && expedition.status !== 'completed' && (
+                              <button 
+                                onClick={() => startExpedition(expedition)}
+                                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl shadow-lg text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                              >
+                                <i className="fas fa-play"></i> ODSTARTOVAT
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <button 
                             onClick={saveExpedition}

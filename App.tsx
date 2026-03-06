@@ -10,6 +10,7 @@ import Radar from './pages/Radar';
 import SharedTrip from './pages/SharedTrip';
 import Navbar from './components/Navbar';
 import Onboarding from './components/Onboarding';
+import { ActiveExpeditionBanner } from './components/ActiveExpeditionBanner';
 import { subscribeToCloudChanges, subscribeToNewChallenges } from './services/syncService';
 import { supabase } from './services/supabaseClient';
 
@@ -120,6 +121,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <div className="min-h-screen flex flex-col bg-slate-900 text-slate-100">
+        <ActiveExpeditionBanner />
         <Navbar hasNewChallenge={hasNewChallenge} />
         <main className="flex-grow container mx-auto px-4 py-6 mb-20 md:mb-6">
           <Routes>

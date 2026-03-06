@@ -1,10 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { FuelRecord, MaintenanceRecord, Motorcycle } from '../types';
+import { FuelRecord, MaintenanceRecord, Motorcycle, OtherExpenseRecord } from '../types';
 import { processReceiptAI } from '../services/geminiService';
 import { syncDataToCloud } from '../services/syncService';
+import { useActiveExpedition } from '../hooks/useActiveExpedition';
+import { useLocation } from 'react-router-dom';
 
 const Logbook: React.FC = () => {
+  const { activeState } = useActiveExpedition();
+  const location = useLocation();
+  
   // --- POMOCNÉ FUNKCE PRO IMAGE RESIZING ---
   const resizeImage = (file: File, maxWidth: number = 600): Promise<string> => {
     return new Promise((resolve) => {
@@ -98,7 +103,7 @@ const Logbook: React.FC = () => {
     };
   }, [expenses, fuelRecords, bikes]);
 
-  const [filterType, setFilterType] = useState<'all' | 'fuel' | 'service'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'fuel' | 'service' | 'expedition'>('all');
   const [showManualEntry, setShowManualEntry] = useState(false);
 
   const currentBikeFuel = fuelRecords.filter(f => f.bikeId === selectedBikeId).sort((a,b) => b.mileage - a.mileage);
@@ -178,22 +183,25 @@ const Logbook: React.FC = () => {
     const date = pendingRecord.date || new Date().toISOString().split('T')[0];
     const mileage = parseInt(pendingRecord.mileage) || 0;
     const cost = parseFloat(pendingRecord.cost) || 0;
+    const expeditionId = activeState ? activeState.expeditionId : undefined;
 
     if (pendingRecord.type === 'fuel') {
       const newRec: FuelRecord = {
         id, bikeId: selectedBikeId, date,
         mileage, liters: parseFloat(pendingRecord.liters) || 0, cost,
-        isFull: true, receiptImage: pendingRecord.receiptImage
+        isFull: true, receiptImage: pendingRecord.receiptImage,
+        expeditionId
       };
       setFuelRecords([newRec, ...fuelRecords]);
       updateBikeMileage(selectedBikeId, mileage);
     } else {
       const newExp: MaintenanceRecord = {
         id, bikeId: selectedBikeId, date,
-        type: pendingRecord.type === 'service' ? 'Servis' : 'Ostatní',
+        type: pendingRecord.type === 'service' ? 'Servis' : (pendingRecord.type === 'toll' ? 'Mýto' : 'Ostatní'),
         description: pendingRecord.description || 'Zadáno AI',
         mileage, cost,
-        receiptImage: pendingRecord.receiptImage
+        receiptImage: pendingRecord.receiptImage,
+        expeditionId
       };
       setExpenses([newExp, ...expenses]);
       if (mileage > 0) updateBikeMileage(selectedBikeId, mileage);
@@ -222,6 +230,15 @@ const Logbook: React.FC = () => {
       setExpenses(expenses.filter(r => r.id !== id));
     }
   };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('addExpense') === 'true') {
+      handleManualEntry();
+      // Remove query param without reloading
+      window.history.replaceState({}, '', location.pathname);
+    }
+  }, [location]);
 
   const handleManualEntry = () => {
     setPendingRecord({
@@ -310,12 +327,17 @@ const Logbook: React.FC = () => {
 
       <div className="space-y-4">
         <div className="flex justify-between items-center px-2">
-          <div className="flex gap-2">
-            <button onClick={() => setFilterType('all')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${filterType === 'all' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Vše</button>
-            <button onClick={() => setFilterType('fuel')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${filterType === 'fuel' ? 'bg-orange-600/20 text-orange-500' : 'text-slate-500 hover:text-slate-300'}`}>Benzín</button>
-            <button onClick={() => setFilterType('service')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${filterType === 'service' ? 'bg-blue-500/20 text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}>Servis</button>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <button onClick={() => setFilterType('all')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'all' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Vše</button>
+            <button onClick={() => setFilterType('fuel')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'fuel' ? 'bg-orange-600/20 text-orange-500' : 'text-slate-500 hover:text-slate-300'}`}>Benzín</button>
+            <button onClick={() => setFilterType('service')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'service' ? 'bg-blue-500/20 text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}>Servis</button>
+            {activeState && (
+              <button onClick={() => setFilterType('expedition')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex items-center gap-1 ${filterType === 'expedition' ? 'bg-emerald-500/20 text-emerald-500' : 'text-slate-500 hover:text-slate-300'}`}>
+                <i className="fas fa-motorcycle"></i> Expedice
+              </button>
+            )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <button 
               onClick={() => {
                 const csvContent = "data:text/csv;charset=utf-8," 
@@ -349,7 +371,13 @@ const Logbook: React.FC = () => {
         
         <div className="space-y-3">
           {[...currentBikeFuel, ...currentBikeExpenses]
-            .filter(rec => filterType === 'all' || (filterType === 'fuel' && 'liters' in rec) || (filterType === 'service' && !('liters' in rec)))
+            .filter(rec => {
+              if (filterType === 'all') return true;
+              if (filterType === 'fuel') return 'liters' in rec;
+              if (filterType === 'service') return !('liters' in rec) && rec.type === 'Servis';
+              if (filterType === 'expedition') return activeState && rec.expeditionId === activeState.expeditionId;
+              return true;
+            })
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .map((rec: any) => (
               <div 
@@ -357,10 +385,10 @@ const Logbook: React.FC = () => {
                 className={`bg-slate-800/40 border border-slate-700 p-4 rounded-3xl flex items-center gap-4 transition-all group ${rec.receiptImage ? 'hover:border-orange-500/30 shadow-md' : ''}`}
               >
                 <div 
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${'liters' in rec ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'} ${rec.receiptImage ? 'cursor-pointer' : ''}`}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${'liters' in rec ? 'bg-orange-500/10 text-orange-500' : (rec.type === 'Mýto' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500')} ${rec.receiptImage ? 'cursor-pointer' : ''}`}
                   onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}
                 >
-                  <i className={`fas ${'liters' in rec ? 'fa-gas-pump' : 'fa-tools'} text-sm`}></i>
+                  <i className={`fas ${'liters' in rec ? 'fa-gas-pump' : (rec.type === 'Mýto' ? 'fa-ticket' : 'fa-tools')} text-sm`}></i>
                 </div>
                 <div className="flex-grow min-w-0" onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}>
                   <h4 className={`font-bold text-sm truncate text-white ${rec.receiptImage ? 'cursor-pointer' : ''}`}>
@@ -370,6 +398,7 @@ const Logbook: React.FC = () => {
                     <span>{rec.date}</span>
                     <span>•</span>
                     <span>{rec.mileage.toLocaleString()} km</span>
+                    {rec.expeditionId && <span className="text-emerald-500"><i className="fas fa-mountain-sun"></i> EXPEDICE</span>}
                   </div>
                 </div>
                 <div className="text-right shrink-0 flex flex-col items-end gap-1">
@@ -391,7 +420,13 @@ const Logbook: React.FC = () => {
               </div>
             ))}
             
-          {[...currentBikeFuel, ...currentBikeExpenses].filter(rec => filterType === 'all' || (filterType === 'fuel' && 'liters' in rec) || (filterType === 'service' && !('liters' in rec))).length === 0 && (
+          {[...currentBikeFuel, ...currentBikeExpenses].filter(rec => {
+              if (filterType === 'all') return true;
+              if (filterType === 'fuel') return 'liters' in rec;
+              if (filterType === 'service') return !('liters' in rec) && rec.type === 'Servis';
+              if (filterType === 'expedition') return activeState && rec.expeditionId === activeState.expeditionId;
+              return true;
+            }).length === 0 && (
             <div className="text-center py-10">
               <p className="text-slate-600 text-xs uppercase font-bold tracking-widest">Žádné záznamy</p>
             </div>
@@ -424,6 +459,7 @@ const Logbook: React.FC = () => {
                   >
                     <option value="fuel">Benzín</option>
                     <option value="service">Servis</option>
+                    <option value="toll">Mýto / Dálnice</option>
                     <option value="other">Ostatní</option>
                   </select>
                 </div>

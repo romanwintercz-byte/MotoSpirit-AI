@@ -93,6 +93,8 @@ export interface Expedition {
   travelersCount: number;
   tripType?: 'ride' | 'expedition';
   sharedBy?: string;
+  status?: 'planned' | 'active' | 'completed';
+  realDistanceKm?: number;
 }
 
 export interface MaintenanceRecord {
@@ -104,6 +106,7 @@ export interface MaintenanceRecord {
   mileage: number;
   cost: number;
   receiptImage?: string;
+  expeditionId?: string;
 }
 
 export interface FuelRecord {
@@ -114,6 +117,18 @@ export interface FuelRecord {
   liters: number;
   cost: number;
   isFull: boolean;
+  receiptImage?: string;
+  expeditionId?: string;
+}
+
+export interface OtherExpenseRecord {
+  id: string;
+  bikeId: string;
+  date: string;
+  category: 'toll' | 'food' | 'accommodation' | 'other';
+  description: string;
+  cost: number;
+  expeditionId?: string;
   receiptImage?: string;
 }
 

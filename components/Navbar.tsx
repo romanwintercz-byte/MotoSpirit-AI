@@ -7,8 +7,19 @@ interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.2.0';
+const CURRENT_VERSION = '1.3.0';
 const CHANGELOG = [
+  {
+    version: '1.3.0',
+    date: '6. 3. 2026',
+    changes: [
+      'Možnost ODSTARTOVAT uloženou expedici z Plánovače.',
+      'Sledování aktivní expedice a ujeté vzdálenosti pomocí GPS.',
+      'Rychlé zadávání výdajů přímo z banneru aktivní expedice.',
+      'Propojení výdajů a tankování s probíhající expedicí v Knize jízd.',
+      'Nová kategorie výdajů: Mýto / Dálnice.'
+    ]
+  },
   {
     version: '1.2.0',
     date: '6. 3. 2026',
