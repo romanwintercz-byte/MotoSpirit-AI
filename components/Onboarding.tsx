@@ -93,10 +93,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[300] bg-slate-900 flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
+    <div className="fixed inset-0 z-[300] bg-slate-900 overflow-y-auto">
+      <div className="min-h-full flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
       
       {step === 1 && (
-        <div className="max-w-md w-full space-y-8 animate-slideUp">
+        <div className="max-w-md w-full space-y-8 animate-slideUp my-auto">
           <div className="bg-orange-600 w-24 h-24 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-orange-900/50">
             <i className="fas fa-helmet-safety text-white text-5xl"></i>
           </div>
@@ -118,7 +119,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       )}
 
       {step === 2 && (
-        <div className="max-w-md w-full space-y-8 animate-slideUp">
+        <div className="max-w-md w-full space-y-8 animate-slideUp my-auto">
           <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto flex items-center justify-center border-2 border-slate-700">
             <i className="fas fa-cloud text-orange-500 text-3xl"></i>
           </div>
@@ -174,7 +175,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       )}
 
       {step === 3 && (
-        <div className="max-w-md w-full space-y-8 animate-slideUp">
+        <div className="max-w-md w-full space-y-8 animate-slideUp my-auto">
           <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto flex items-center justify-center border-2 border-slate-700">
             <i className="fas fa-motorcycle text-orange-500 text-3xl"></i>
           </div>
@@ -226,7 +227,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       )}
 
       {step === 4 && (
-        <div className="max-w-md w-full space-y-8 animate-slideUp">
+        <div className="max-w-md w-full space-y-8 animate-slideUp my-auto">
           <div className="w-24 h-24 bg-emerald-500/20 rounded-full mx-auto flex items-center justify-center border-2 border-emerald-500/50">
             <i className="fas fa-flag-checkered text-emerald-500 text-4xl"></i>
           </div>
@@ -247,7 +248,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       )}
 
       {step === 5 && (
-        <div className="max-w-md w-full space-y-6 animate-slideUp text-left">
+        <div className="max-w-md w-full space-y-6 animate-slideUp text-left my-auto py-8">
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-blue-500/20 rounded-full mx-auto flex items-center justify-center border-2 border-blue-500/50 mb-4">
               <i className="fas fa-mobile-screen text-blue-500 text-2xl"></i>
@@ -298,6 +299,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </div>
       )}
 
+      </div>
     </div>
   );
 };
