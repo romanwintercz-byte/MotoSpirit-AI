@@ -23,6 +23,58 @@ const TripPlanner: React.FC = () => {
   const [prefBudget, setPrefBudget] = useState<ExpeditionPreferences['budget']>('mid');
   const [customNote, setCustomNote] = useState('');
   const [isRoundTrip, setIsRoundTrip] = useState(true);
+  const [waypoints, setWaypoints] = useState<string[]>([]);
+  const [newWaypoint, setNewWaypoint] = useState('');
+  const [isListening, setIsListening] = useState<'origin' | 'waypoint' | null>(null);
+
+  // --- VOICE INPUT ---
+  const handleVoiceInput = (target: 'origin' | 'waypoint') => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tvůj prohlížeč nepodporuje hlasové zadávání.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'cs-CZ';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(target);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      if (target === 'origin') {
+        setOrigin(transcript);
+      } else if (target === 'waypoint') {
+        setNewWaypoint(transcript);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(null);
+    };
+
+    recognition.onend = () => {
+      setIsListening(null);
+    };
+
+    recognition.start();
+  };
+
+  const addWaypoint = () => {
+    if (newWaypoint.trim()) {
+      setWaypoints([...waypoints, newWaypoint.trim()]);
+      setNewWaypoint('');
+    }
+  };
+
+  const removeWaypoint = (index: number) => {
+    setWaypoints(waypoints.filter((_, i) => i !== index));
+  };
   
   // --- APP STATE ---
   const [loading, setLoading] = useState(false);
@@ -174,7 +226,7 @@ const TripPlanner: React.FC = () => {
       experiences: prefExp,
       pace: prefPace,
       budget: prefBudget,
-      customNote
+      customNote: waypoints.length > 0 ? `Průjezdní body: ${waypoints.join(', ')}. ${customNote}` : customNote
     };
     try {
       const result = await planExpedition(origin, days, mode, prefs, travelers, tripType);
@@ -398,7 +450,62 @@ const TripPlanner: React.FC = () => {
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Start</label>
-                <input type="text" value={origin} onChange={(e) => setOrigin(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 px-5 text-sm text-white focus:border-orange-500 outline-none transition-all" />
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={origin} 
+                    onChange={(e) => setOrigin(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 pl-5 pr-12 text-sm text-white focus:border-orange-500 outline-none transition-all" 
+                  />
+                  <button 
+                    onClick={() => handleVoiceInput('origin')}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isListening === 'origin' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-slate-500 hover:text-orange-500 hover:bg-slate-800'}`}
+                    title="Zadat hlasem"
+                  >
+                    <i className="fas fa-microphone"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Průjezdní body (volitelné)</label>
+                <div className="space-y-2">
+                  {waypoints.map((wp, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl p-2 pl-4">
+                      <i className="fas fa-location-dot text-orange-500 text-xs"></i>
+                      <span className="flex-grow text-sm text-slate-300">{wp}</span>
+                      <button onClick={() => removeWaypoint(idx)} className="w-8 h-8 text-slate-500 hover:text-red-500 flex items-center justify-center rounded-lg hover:bg-slate-800">
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
+                  ))}
+                  <div className="relative flex gap-2">
+                    <div className="relative flex-grow">
+                      <input 
+                        type="text" 
+                        value={newWaypoint} 
+                        onChange={(e) => setNewWaypoint(e.target.value)} 
+                        onKeyPress={(e) => e.key === 'Enter' && addWaypoint()}
+                        placeholder="Např. Grossglockner"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-4 pr-10 text-sm text-white focus:border-orange-500 outline-none transition-all" 
+                      />
+                      <button 
+                        onClick={() => handleVoiceInput('waypoint')}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center transition-all ${isListening === 'waypoint' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-slate-500 hover:text-orange-500 hover:bg-slate-800'}`}
+                        title="Zadat hlasem"
+                      >
+                        <i className="fas fa-microphone text-xs"></i>
+                      </button>
+                    </div>
+                    <button 
+                      onClick={addWaypoint}
+                      disabled={!newWaypoint.trim()}
+                      className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white px-4 rounded-xl font-bold text-xs transition-all border border-slate-700"
+                    >
+                      PŘIDAT
+                    </button>
+                  </div>
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
