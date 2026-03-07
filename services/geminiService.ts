@@ -221,7 +221,8 @@ export const searchNearbyPOI = async (category: string, lat?: number, lon?: numb
     let locationContext = locationName ? `v lokalitě: ${locationName}` : `v okolí [${lat}, ${lon}]`;
     const prompt = `Najdi ${locationContext} nejlepší ${category}. 
     Pro každé místo uveď i "bikerTip" - užitečnou radu pro motorkáře (např. o parkování, povrchu cesty, atmosféře).
-    Vrať JSON pole (name, description, type, lat, lon, rating, bikerTip, url).`;
+    Dále pro každé místo uveď "distance" - odhadovanou vzdálenost od ${locationName || 'zadané polohy'} (např. "5 km", "12 km").
+    Vrať JSON pole (name, description, type, lat, lon, rating, bikerTip, url, distance).`;
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
       contents: prompt,

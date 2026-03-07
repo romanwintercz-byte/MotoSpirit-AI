@@ -615,11 +615,18 @@ const Radar: React.FC = () => {
                   <div className="bg-orange-600/10 w-10 h-10 rounded-xl flex items-center justify-center text-orange-500">
                     <i className={`fas ${poi.type === 'gas' ? 'fa-gas-pump' : poi.type === 'food' ? 'fa-utensils' : 'fa-map-pin'}`}></i>
                   </div>
-                  {poi.rating && (
-                    <div className="flex items-center gap-1 text-orange-500 text-xs font-bold">
-                      <i className="fas fa-star"></i> {poi.rating}
-                    </div>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {poi.rating && (
+                      <div className="flex items-center gap-1 text-orange-500 text-xs font-bold">
+                        <i className="fas fa-star"></i> {poi.rating}
+                      </div>
+                    )}
+                    {poi.distance && (
+                      <div className="flex items-center gap-1 text-slate-400 text-[10px] font-bold uppercase tracking-widest bg-slate-900 px-2 py-1 rounded-lg border border-slate-700">
+                        <i className="fas fa-route"></i> {poi.distance}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <h3 className="text-lg font-brand font-bold text-white mb-2">{poi.name}</h3>
                 <p className="text-slate-400 text-xs leading-relaxed mb-4">{poi.description}</p>

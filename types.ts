@@ -164,4 +164,5 @@ export interface POI {
   rating?: string;
   bikerTip?: string;
   url?: string;
+  distance?: string;
 }
