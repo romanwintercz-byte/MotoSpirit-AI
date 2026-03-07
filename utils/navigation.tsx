@@ -29,16 +29,17 @@ export const getGoogleMapsUrl = (day: TripDay): string => {
   }
 
   // Google Maps URL limit is around 10 waypoints for reliable routing
-  const reduced = reduceWaypoints(day.waypoints, 10);
+  const validWaypoints = day.waypoints.filter(wp => wp && wp.length >= 2);
+  const reduced = reduceWaypoints(validWaypoints, 10);
   
-  const origin = `${reduced[0][0]},${reduced[0][1]}`;
-  const destination = `${reduced[reduced.length - 1][0]},${reduced[reduced.length - 1][1]}`;
+  const origin = `${Number(reduced[0][0]).toFixed(6)},${Number(reduced[0][1]).toFixed(6)}`;
+  const destination = `${Number(reduced[reduced.length - 1][0]).toFixed(6)},${Number(reduced[reduced.length - 1][1]).toFixed(6)}`;
   
-  const waypoints = reduced.slice(1, -1).map(wp => `${wp[0]},${wp[1]}`).join('|');
+  const waypoints = reduced.slice(1, -1).map(wp => `${Number(wp[0]).toFixed(6)},${Number(wp[1]).toFixed(6)}`).join('|');
   
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
   if (waypoints) {
-    url += `&waypoints=${waypoints}`;
+    url += `&waypoints=${encodeURIComponent(waypoints)}`;
   }
   
   return url;
@@ -52,16 +53,18 @@ export const getMapyCzUrl = (day: TripDay): string => {
     return `https://mapy.cz/zakladni?q=${encodeURIComponent(day.startLocation)} do ${encodeURIComponent(day.endLocation)}`;
   }
 
-  // Mapy.cz zvládne více bodů, ale pro jistotu redukujeme na 15
-  const reduced = reduceWaypoints(day.waypoints, 15);
+  // Mapy.cz zvládne více bodů, ale pro jistotu redukujeme na 10
+  const validWaypoints = day.waypoints.filter(wp => wp && wp.length >= 2);
+  const reduced = reduceWaypoints(validWaypoints, 10);
   
   // Formát: rc=lon1,lat1~lon2,lat2...
   // Pozor: Mapy.cz používají [longitude, latitude], naše data jsou [latitude, longitude]
-  const rc = reduced.map(wp => `${wp[1]},${wp[0]}`).join('~');
+  const rc = reduced.map(wp => `${Number(wp[1]).toFixed(6)},${Number(wp[0]).toFixed(6)}`).join('~');
   
   // DŮLEŽITÉ: Mapy.cz vyžadují parametr 'rs' (route source), který říká, že jde o souřadnice ('coor')
   const rs = reduced.map(() => 'coor').join('~');
   
   // rut=1 je parametr, který Mapy.cz řekne, aby trasu rovnou vypočítaly
-  return `https://mapy.cz/zakladni?planovani-trasy&rc=${rc}&rs=${rs}&rut=1&mrp=fast`;
+  // mrp raději vynecháme, protože nevalidní hodnota může způsobit pád routování
+  return `https://mapy.cz/zakladni?planovani-trasy&rc=${encodeURIComponent(rc)}&rs=${encodeURIComponent(rs)}&rut=1`;
 };
