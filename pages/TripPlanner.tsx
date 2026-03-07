@@ -4,6 +4,7 @@ import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { planExpedition, refineExpedition } from '../services/geminiService';
 import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles } from '../services/syncService';
+import { getGoogleMapsUrl, getMapyCzUrl } from '../utils/navigation';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
@@ -99,6 +100,7 @@ const TripPlanner: React.FC = () => {
   const [followedRiders, setFollowedRiders] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [showChallengeAudience, setShowChallengeAudience] = useState(false);
+  const [showNavMenu, setShowNavMenu] = useState(false);
 
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
@@ -757,12 +759,45 @@ const TripPlanner: React.FC = () => {
                         >
                           <i className={`fas ${isSharing ? 'fa-sync-alt animate-spin' : 'fa-share-nodes'}`}></i> SDÍLET
                         </button>
-                        <button 
-                          onClick={exportGPX}
-                          className="bg-slate-900 hover:bg-slate-700 text-emerald-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
-                        >
-                          <i className="fas fa-download"></i> GPX
-                        </button>
+                        <div className="relative">
+                          <button 
+                            onClick={() => setShowNavMenu(!showNavMenu)}
+                            className="bg-slate-900 hover:bg-slate-700 text-emerald-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                          >
+                            <i className="fas fa-location-arrow"></i> NAVIGOVAT
+                          </button>
+                          {showNavMenu && (
+                            <div className="absolute top-full mt-2 right-0 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-slideUp">
+                              <a 
+                                href={getMapyCzUrl(expedition.days[activeDayIdx])}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => setShowNavMenu(false)}
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors border-b border-slate-700/50"
+                              >
+                                <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center text-white"><i className="fas fa-map"></i></div>
+                                Mapy.cz
+                              </a>
+                              <a 
+                                href={getGoogleMapsUrl(expedition.days[activeDayIdx])}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => setShowNavMenu(false)}
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors border-b border-slate-700/50"
+                              >
+                                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white"><i className="fab fa-google"></i></div>
+                                Google Maps
+                              </a>
+                              <button 
+                                onClick={() => { exportGPX(); setShowNavMenu(false); }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors text-left"
+                              >
+                                <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-white"><i className="fas fa-download"></i></div>
+                                Stáhnout GPX
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {savedExpeditions.some(ex => ex.id === expedition.id) ? (
                           <div className="flex gap-2">
                             <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
