@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { planExpedition, refineExpedition } from '../services/geminiService';
 import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles } from '../services/syncService';
 import { getGoogleMapsUrl } from '../utils/navigation';
@@ -964,68 +965,120 @@ const TripPlanner: React.FC = () => {
                 <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl animate-fadeIn">
                   <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-8">Rozpočet a statistiky</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Budget Section */}
                     <div className="space-y-6">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Plánované náklady</h4>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
-                          <div className="flex items-center gap-3">
-                            <i className="fas fa-gas-pump text-orange-500"></i>
-                            <span className="text-sm font-bold text-white">Palivo</span>
-                          </div>
-                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedFuel.toLocaleString()} Kč</span>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <i className="fas fa-wallet text-orange-500"></i> Plánované náklady
+                      </h4>
+                      
+                      <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 flex flex-col md:flex-row items-center gap-6">
+                        <div className="w-48 h-48 shrink-0">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: 'Palivo', value: expedition.budget.plannedFuel, color: '#f97316' },
+                                  { name: 'Ubytování', value: expedition.budget.plannedAccommodation, color: '#3b82f6' },
+                                  { name: 'Jídlo', value: expedition.budget.plannedFood, color: '#22c55e' },
+                                  { name: 'Mýtné', value: expedition.budget.plannedTolls, color: '#a855f7' }
+                                ]}
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {[
+                                  { color: '#f97316' },
+                                  { color: '#3b82f6' },
+                                  { color: '#22c55e' },
+                                  { color: '#a855f7' }
+                                ].map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                formatter={(value: number) => [`${value.toLocaleString()} Kč`, '']}
+                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '1rem', color: '#fff' }}
+                                itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
                         </div>
-                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
-                          <div className="flex items-center gap-3">
-                            <i className="fas fa-bed text-orange-500"></i>
-                            <span className="text-sm font-bold text-white">Ubytování</span>
+                        
+                        <div className="flex-grow space-y-3 w-full">
+                          {[
+                            { label: 'Palivo', value: expedition.budget.plannedFuel, color: 'text-orange-500', bg: 'bg-orange-500/20' },
+                            { label: 'Ubytování', value: expedition.budget.plannedAccommodation, color: 'text-blue-500', bg: 'bg-blue-500/20' },
+                            { label: 'Jídlo', value: expedition.budget.plannedFood, color: 'text-green-500', bg: 'bg-green-500/20' },
+                            { label: 'Mýtné', value: expedition.budget.plannedTolls, color: 'text-purple-500', bg: 'bg-purple-500/20' }
+                          ].map((item, i) => (
+                            <div key={i} className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-3 h-3 rounded-full ${item.bg} flex items-center justify-center`}>
+                                  <div className={`w-1.5 h-1.5 rounded-full ${item.color.replace('text-', 'bg-')}`}></div>
+                                </div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{item.label}</span>
+                              </div>
+                              <span className="font-brand font-bold text-sm text-white">{item.value.toLocaleString()} Kč</span>
+                            </div>
+                          ))}
+                          <div className="pt-3 mt-3 border-t border-slate-700 flex justify-between items-center">
+                            <span className="text-xs font-bold text-white uppercase tracking-widest">Celkem</span>
+                            <span className="font-brand font-bold text-xl text-orange-500">
+                              {(expedition.budget.plannedFuel + expedition.budget.plannedAccommodation + expedition.budget.plannedFood + expedition.budget.plannedTolls).toLocaleString()} Kč
+                            </span>
                           </div>
-                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedAccommodation.toLocaleString()} Kč</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
-                          <div className="flex items-center gap-3">
-                            <i className="fas fa-utensils text-orange-500"></i>
-                            <span className="text-sm font-bold text-white">Jídlo</span>
-                          </div>
-                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedFood.toLocaleString()} Kč</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-700">
-                          <div className="flex items-center gap-3">
-                            <i className="fas fa-ticket text-orange-500"></i>
-                            <span className="text-sm font-bold text-white">Mýtné a známky</span>
-                          </div>
-                          <span className="font-brand font-bold text-lg text-white">{expedition.budget.plannedTolls.toLocaleString()} Kč</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-orange-600/20 p-4 rounded-2xl border border-orange-500/30">
-                          <span className="text-sm font-bold text-orange-500 uppercase tracking-widest">Celkem plán</span>
-                          <span className="font-brand font-bold text-xl text-orange-500">
-                            {(expedition.budget.plannedFuel + expedition.budget.plannedAccommodation + expedition.budget.plannedFood + expedition.budget.plannedTolls).toLocaleString()} Kč
-                          </span>
                         </div>
                       </div>
                     </div>
 
+                    {/* Distance Stats Section */}
                     <div className="space-y-6">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Statistiky trasy</h4>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <i className="fas fa-route text-orange-500"></i> Denní nájezd (km)
+                      </h4>
+                      
+                      <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 h-[240px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={expedition.days.map(d => ({
+                            name: `D${d.dayNumber}`,
+                            km: d.distanceKm || parseInt(d.distance.replace(/\D/g, '')) || 0
+                          }))}>
+                            <XAxis 
+                              dataKey="name" 
+                              stroke="#64748b" 
+                              fontSize={10} 
+                              tickLine={false} 
+                              axisLine={false} 
+                            />
+                            <Tooltip 
+                              cursor={{ fill: '#1e293b' }}
+                              contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '1rem', color: '#fff' }}
+                              formatter={(value: number) => [`${value} km`, 'Vzdálenost']}
+                              labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
+                            />
+                            <Bar 
+                              dataKey="km" 
+                              fill="#f97316" 
+                              radius={[4, 4, 0, 0]} 
+                              maxBarSize={40}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 text-center">
-                          <i className="fas fa-road text-2xl text-slate-600 mb-3"></i>
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Celkem km</p>
-                          <p className="text-2xl font-brand font-bold text-white">{expedition.totalDistanceKm || expedition.totalDistance}</p>
+                        <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700 text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Celkem km</p>
+                          <p className="text-xl font-brand font-bold text-white">{expedition.totalDistanceKm || expedition.totalDistance}</p>
                         </div>
-                        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 text-center">
-                          <i className="fas fa-calendar-days text-2xl text-slate-600 mb-3"></i>
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Počet dní</p>
-                          <p className="text-2xl font-brand font-bold text-white">{expedition.days.length}</p>
-                        </div>
-                        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 text-center col-span-2">
-                          <i className="fas fa-globe-europe text-2xl text-slate-600 mb-3"></i>
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Tranzitní země</p>
-                          <div className="flex flex-wrap gap-2 justify-center mt-2">
-                            {Array.from(new Set(expedition.days.flatMap(d => d.countries || []))).map((country, i) => (
-                              <span key={i} className="bg-slate-800 px-3 py-1 rounded-lg text-xs font-bold text-slate-300 border border-slate-700">{country}</span>
-                            ))}
-                          </div>
+                        <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700 text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Průměrně denně</p>
+                          <p className="text-xl font-brand font-bold text-white">
+                            {Math.round((expedition.totalDistanceKm || parseInt(expedition.totalDistance.replace(/\D/g, '')) || 0) / expedition.days.length)} km
+                          </p>
                         </div>
                       </div>
                     </div>
