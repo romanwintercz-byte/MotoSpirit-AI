@@ -113,7 +113,6 @@ const TripPlanner: React.FC = () => {
     }
   });
   const [activeDayIdx, setActiveDayIdx] = useState(0);
-  const [viewMode, setViewMode] = useState<'info' | 'map' | 'stats' | 'countries'>('info');
   const [refinePrompt, setRefinePrompt] = useState('');
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -738,7 +737,7 @@ const TripPlanner: React.FC = () => {
           {expedition && !loading ? (
             <div className="animate-fadeIn space-y-8">
               {/* Main Info Card & Timeline */}
-              <div className={`space-y-8 ${viewMode === 'info' ? 'block' : 'hidden md:block'}`}>
+              <div className="space-y-8">
                 <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl relative group">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>
@@ -967,7 +966,7 @@ const TripPlanner: React.FC = () => {
               </div>
 
               {/* Map Section */}
-              <div className={`${viewMode === 'map' ? 'block' : 'hidden md:block'} h-[600px] bg-slate-800 rounded-[3.5rem] border border-slate-700 overflow-hidden relative shadow-2xl group`}>
+              <div className="h-[600px] bg-slate-800 rounded-[3.5rem] border border-slate-700 overflow-hidden relative shadow-2xl group">
                 <div id="exp-map" className="w-full h-full z-0"></div>
                 <div className="absolute top-8 left-8 z-10 bg-slate-950/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-700 shadow-2xl">
                    <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">Trasa dne {expedition.days[activeDayIdx].dayNumber}</p>
@@ -979,7 +978,7 @@ const TripPlanner: React.FC = () => {
               </div>
 
               {/* Stats Section */}
-              {viewMode === 'stats' && expedition.budget && (
+              {expedition.budget && (
                 <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl animate-fadeIn">
                   <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-8">Rozpočet a statistiky</h3>
                   
@@ -1105,7 +1104,7 @@ const TripPlanner: React.FC = () => {
               )}
 
               {/* Countries Section */}
-              {viewMode === 'countries' && expedition.countriesInfo && (
+              {expedition.countriesInfo && (
                 <div className="space-y-6 animate-fadeIn">
                   <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-8">Průvodce zeměmi</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
