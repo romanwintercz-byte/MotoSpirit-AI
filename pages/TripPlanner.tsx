@@ -81,6 +81,26 @@ const TripPlanner: React.FC = () => {
   
   // --- APP STATE ---
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const loadingSteps = [
+    "Studuji mapy a terén...",
+    "Hledám ty nejlepší zatáčky...",
+    "Počítám spotřebu a rozpočet...",
+    "Zjišťuji rychlostní limity...",
+    "Balím virtuální kufry..."
+  ];
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (loading) {
+      setLoadingStep(0);
+      interval = setInterval(() => {
+        setLoadingStep(prev => (prev + 1) % loadingSteps.length);
+      }, 2500);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
+
   const [expedition, setExpedition] = useState<Expedition | null>(null);
   const [savedExpeditions, setSavedExpeditions] = useState<Expedition[]>(() => {
     const saved = localStorage.getItem('spirit_wanderer_trips');
@@ -1091,14 +1111,23 @@ const TripPlanner: React.FC = () => {
           ) : (
             <div className="h-full min-h-[500px] bg-slate-800/30 border-2 border-dashed border-slate-700 rounded-[3rem] flex flex-col items-center justify-center p-12 text-center space-y-6">
               {loading ? (
-                <div className="space-y-6 animate-pulse">
+                <div className="space-y-8 animate-pulse flex flex-col items-center">
                   <div className="relative mx-auto">
-                    <div className="w-24 h-24 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
-                    <i className="fas fa-robot absolute inset-0 flex items-center justify-center text-orange-500 text-3xl"></i>
+                    <div className="w-32 h-32 border-4 border-slate-700 border-t-orange-500 rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <i className="fas fa-motorcycle text-orange-500 text-4xl animate-bounce"></i>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-brand font-bold text-white uppercase tracking-tight">AI Spirit pracuje...</h3>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest max-w-[250px]">Skenuji mapy, hledám kempy a nejlepší zatáčky pro tvůj výlet.</p>
+                  <div className="space-y-3 text-center">
+                    <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tight">AI Spirit pracuje</h3>
+                    <div className="h-6 overflow-hidden relative w-64 mx-auto">
+                      <p 
+                        key={loadingStep}
+                        className="text-xs text-orange-400 font-bold uppercase tracking-widest absolute inset-0 animate-slideUp"
+                      >
+                        {loadingSteps[loadingStep]}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : (
