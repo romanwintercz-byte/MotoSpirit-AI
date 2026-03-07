@@ -737,214 +737,232 @@ const TripPlanner: React.FC = () => {
         <div className="lg:col-span-8 space-y-8">
           {expedition && !loading ? (
             <div className="animate-fadeIn space-y-8">
-              {/* Day Tabs */}
-              <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x px-2">
-                {expedition.days.map((day, idx) => (
-                  <button 
-                    key={idx}
-                    onClick={() => setActiveDayIdx(idx)}
-                    className={`snap-center shrink-0 px-8 py-6 rounded-[2rem] border transition-all flex flex-col items-center gap-1 min-w-[120px] ${activeDayIdx === idx ? 'bg-orange-600 border-orange-400 text-white shadow-xl -translate-y-1' : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500'}`}
-                  >
-                    <span className="text-[10px] font-bold uppercase opacity-50 tracking-widest leading-none">Den</span>
-                    <span className="text-3xl font-brand font-bold leading-none">{day.dayNumber}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Main Info Card */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className={`md:col-span-2 space-y-6 ${viewMode === 'info' ? 'block' : 'hidden md:block'}`}>
-                  <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl relative group">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                      <div>
-                        <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic">{expedition.name}</h3>
-                        <p className="text-orange-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">Hvězdný deník cestovatele</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
+              {/* Main Info Card & Timeline */}
+              <div className={`space-y-8 ${viewMode === 'info' ? 'block' : 'hidden md:block'}`}>
+                <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl relative group">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                      <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic">{expedition.name}</h3>
+                      <p className="text-orange-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">Hvězdný deník cestovatele</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => setShowRefine(!showRefine)}
+                        className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase flex items-center gap-2 transition-all ${showRefine ? 'bg-slate-700 text-white' : 'bg-slate-900 text-orange-500 border border-slate-700'}`}
+                      >
+                        <i className="fas fa-wand-magic-sparkles"></i> LADIT S AI
+                      </button>
+                      <button 
+                        onClick={() => setShowChallengeAudience(true)}
+                        className="bg-slate-900 hover:bg-slate-700 text-orange-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                      >
+                        <i className="fas fa-bullhorn"></i> VYZVAT K JÍZDĚ
+                      </button>
+                      <button 
+                        onClick={handleShare}
+                        disabled={isSharing}
+                        className="bg-slate-900 hover:bg-slate-700 text-blue-400 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                      >
+                        <i className={`fas ${isSharing ? 'fa-sync-alt animate-spin' : 'fa-share-nodes'}`}></i> SDÍLET
+                      </button>
+                      <div className="relative">
                         <button 
-                          onClick={() => setShowRefine(!showRefine)}
-                          className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase flex items-center gap-2 transition-all ${showRefine ? 'bg-slate-700 text-white' : 'bg-slate-900 text-orange-500 border border-slate-700'}`}
+                          onClick={() => setShowNavMenu(!showNavMenu)}
+                          className="bg-slate-900 hover:bg-slate-700 text-emerald-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
                         >
-                          <i className="fas fa-wand-magic-sparkles"></i> LADIT S AI
+                          <i className="fas fa-location-arrow"></i> NAVIGOVAT
                         </button>
-                        <button 
-                          onClick={() => setShowChallengeAudience(true)}
-                          className="bg-slate-900 hover:bg-slate-700 text-orange-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
-                        >
-                          <i className="fas fa-bullhorn"></i> VYZVAT K JÍZDĚ
-                        </button>
-                        <button 
-                          onClick={handleShare}
-                          disabled={isSharing}
-                          className="bg-slate-900 hover:bg-slate-700 text-blue-400 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
-                        >
-                          <i className={`fas ${isSharing ? 'fa-sync-alt animate-spin' : 'fa-share-nodes'}`}></i> SDÍLET
-                        </button>
-                        <div className="relative">
-                          <button 
-                            onClick={() => setShowNavMenu(!showNavMenu)}
-                            className="bg-slate-900 hover:bg-slate-700 text-emerald-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
-                          >
-                            <i className="fas fa-location-arrow"></i> NAVIGOVAT
-                          </button>
-                          {showNavMenu && (
-                            <div className="absolute top-full mt-2 right-0 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-slideUp">
-                              <a 
-                                href={getGoogleMapsUrl(expedition.days[activeDayIdx])}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={() => setShowNavMenu(false)}
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors border-b border-slate-700/50"
-                              >
-                                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white"><i className="fab fa-google"></i></div>
-                                Google Maps
-                              </a>
-                              <button 
-                                onClick={() => { exportGPX(); setShowNavMenu(false); }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors text-left"
-                              >
-                                <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-white"><i className="fas fa-download"></i></div>
-                                Stáhnout GPX
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        {savedExpeditions.some(ex => ex.id === expedition.id) ? (
-                          <div className="flex gap-2">
-                            <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
-                               <i className="fas fa-check"></i> ULOŽENO
-                            </span>
-                            {activeState?.expeditionId !== expedition.id && expedition.status !== 'completed' && (
-                              <button 
-                                onClick={() => startExpedition(expedition)}
-                                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl shadow-lg text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
-                              >
-                                <i className="fas fa-play"></i> ODSTARTOVAT
-                              </button>
-                            )}
+                        {showNavMenu && (
+                          <div className="absolute top-full mt-2 right-0 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-slideUp">
+                            <a 
+                              href={getGoogleMapsUrl(expedition.days[activeDayIdx])}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={() => setShowNavMenu(false)}
+                              className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors border-b border-slate-700/50"
+                            >
+                              <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white"><i className="fab fa-google"></i></div>
+                              Google Maps
+                            </a>
+                            <button 
+                              onClick={() => { exportGPX(); setShowNavMenu(false); }}
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors text-left"
+                            >
+                              <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-white"><i className="fas fa-download"></i></div>
+                              Stáhnout GPX
+                            </button>
                           </div>
-                        ) : (
-                          <button 
-                            onClick={saveExpedition}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl shadow-lg text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
-                          >
-                            <i className="fas fa-save"></i> ULOŽIT TRASU
-                          </button>
                         )}
                       </div>
-                    </div>
-
-                    {showRefine && (
-                      <div className="mb-8 p-6 bg-slate-950/80 rounded-[2rem] border border-orange-500/30 animate-slideUp">
-                        <label className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-2 block">Co chceš na expedici změnit?</label>
-                        <div className="flex gap-3 mb-4">
-                          <input 
-                            type="text" 
-                            value={refinePrompt}
-                            onChange={(e) => setRefinePrompt(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
-                            placeholder="Např. 'Přidej víc zatáček ve 2. dni' nebo 'Změň ubytování na kempy'..."
-                            className="flex-grow bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-orange-500"
-                          />
-                          <button 
-                            onClick={handleRefine}
-                            disabled={loading || !refinePrompt.trim()}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase transition-all disabled:opacity-50"
-                          >
-                            UPRAVIT
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {quickRefines.map((qr, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => setRefinePrompt(qr)}
-                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-slate-700 transition-all"
+                      {savedExpeditions.some(ex => ex.id === expedition.id) ? (
+                        <div className="flex gap-2">
+                          <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
+                             <i className="fas fa-check"></i> ULOŽENO
+                          </span>
+                          {activeState?.expeditionId !== expedition.id && expedition.status !== 'completed' && (
+                            <button 
+                              onClick={() => startExpedition(expedition)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl shadow-lg text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
                             >
-                              {qr}
+                              <i className="fas fa-play"></i> ODSTARTOVAT
                             </button>
-                          ))}
+                          )}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <button 
+                          onClick={saveExpedition}
+                          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl shadow-lg text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                        >
+                          <i className="fas fa-save"></i> ULOŽIT TRASU
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
-                    <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-700/50">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 pb-6 border-b border-slate-700/50">
-                        <div className="text-center">
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Vzdálenost</p>
-                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].distanceKm || expedition.days[activeDayIdx].distance} {expedition.days[activeDayIdx].distanceKm ? 'km' : ''}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Čas jízdy</p>
-                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].estimatedTimeMins ? `${Math.floor(expedition.days[activeDayIdx].estimatedTimeMins / 60)}h ${expedition.days[activeDayIdx].estimatedTimeMins % 60}m` : '-'}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Palivo</p>
-                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].fuelLiters ? `${expedition.days[activeDayIdx].fuelLiters} l` : '-'}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Cena paliva</p>
-                          <p className="text-lg font-brand font-bold text-white">{expedition.days[activeDayIdx].fuelCost ? `${expedition.days[activeDayIdx].fuelCost} Kč` : '-'}</p>
-                        </div>
+                  {showRefine && (
+                    <div className="mb-8 p-6 bg-slate-950/80 rounded-[2rem] border border-orange-500/30 animate-slideUp">
+                      <label className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-2 block">Co chceš na expedici změnit?</label>
+                      <div className="flex gap-3 mb-4">
+                        <input 
+                          type="text" 
+                          value={refinePrompt}
+                          onChange={(e) => setRefinePrompt(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
+                          placeholder="Např. 'Přidej víc zatáček ve 2. dni' nebo 'Změň ubytování na kempy'..."
+                          className="flex-grow bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-orange-500"
+                        />
+                        <button 
+                          onClick={handleRefine}
+                          disabled={loading || !refinePrompt.trim()}
+                          className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl text-[10px] font-bold uppercase transition-all disabled:opacity-50"
+                        >
+                          UPRAVIT
+                        </button>
                       </div>
-                      <div className="markdown-body prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed">
-                        <Markdown>{expedition.days[activeDayIdx].description}</Markdown>
+                      <div className="flex flex-wrap gap-2">
+                        {quickRefines.map((qr, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setRefinePrompt(qr)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-slate-700 transition-all"
+                          >
+                            {qr}
+                          </button>
+                        ))}
                       </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-700/50">
+                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                      <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Cestující</p>
+                      <p className="text-xl font-brand font-bold text-white">{expedition.travelersCount}</p>
+                    </div>
+                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                      <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Doprava</p>
+                      <div className="h-7 flex items-center justify-center">
+                        <i className={`fas ${modes.find(m => m.val === expedition.transportMode)?.icon} text-orange-500`}></i>
+                      </div>
+                    </div>
+                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                      <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Délka</p>
+                      <p className="text-xl font-brand font-bold text-white">{expedition.days.length} dní</p>
+                    </div>
+                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
+                      <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Vzdálenost</p>
+                      <p className="text-xl font-brand font-bold text-white">{expedition.totalDistanceKm || expedition.totalDistance}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Accommodation / Stop Card */}
-                  <div className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 shadow-xl overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                      <i className={`fas ${expedition.tripType === 'ride' ? 'fa-coffee' : 'fa-hotel'} text-6xl`}></i>
-                    </div>
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center">
-                        <i className={`fas ${expedition.tripType === 'ride' ? 'fa-mug-hot' : 'fa-bed'} text-orange-500 text-[10px]`}></i>
-                      </span>
-                      {expedition.tripType === 'ride' ? 'Tip na zastávku' : 'Ubytování na noc'}
-                    </h3>
-                    
-                    {expedition.days[activeDayIdx].accommodation ? (
-                      <div className="bg-slate-950 p-5 rounded-3xl border border-slate-700 border-l-4 border-l-orange-500 shadow-inner">
-                        <p className="text-sm font-bold text-white mb-1 leading-tight">{expedition.days[activeDayIdx].accommodation?.name}</p>
-                        <p className="text-[9px] text-slate-600 uppercase font-bold tracking-widest mb-4">{expedition.days[activeDayIdx].accommodation?.type}</p>
-                        <a 
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(expedition.days[activeDayIdx].accommodation?.name || '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl border border-slate-700 flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-all"
-                        >
-                          MAPA <i className="fas fa-external-link-alt text-[8px] opacity-50"></i>
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="py-8 text-center bg-slate-900 rounded-3xl border border-slate-700 border-dashed">
-                        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-                          {expedition.tripType === 'ride' ? 'Hledám ideální pauzu...' : 'Hledám základnu...'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Expedition Summary Card */}
-                  <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-[2.5rem] border border-slate-700 shadow-xl">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Parametry výpravy</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-700/50 text-center">
-                        <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Cestující</p>
-                        <p className="text-xl font-brand font-bold text-white">{expedition.travelersCount}</p>
-                      </div>
-                      <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-700/50 text-center">
-                        <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Doprava</p>
-                        <div className="h-7 flex items-center justify-center">
-                          <i className={`fas ${modes.find(m => m.val === expedition.transportMode)?.icon} text-orange-500`}></i>
+                {/* Timeline */}
+                <div className="relative border-l-2 border-slate-700 ml-4 md:ml-8 space-y-8 py-4">
+                  {expedition.days.map((day, idx) => (
+                    <div key={idx} className="relative pl-8 md:pl-12">
+                      {/* Timeline Dot */}
+                      <div className={`absolute -left-[11px] top-6 w-5 h-5 rounded-full border-4 transition-all ${activeDayIdx === idx ? 'bg-orange-500 border-slate-900 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'bg-slate-700 border-slate-900'}`}></div>
+                      
+                      {/* Day Header (Clickable) */}
+                      <button 
+                        onClick={() => setActiveDayIdx(idx)}
+                        className={`w-full text-left p-6 rounded-[2rem] border transition-all ${activeDayIdx === idx ? 'bg-slate-800 border-orange-500/50 shadow-xl' : 'bg-slate-900/50 border-slate-700 hover:border-slate-500'}`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div>
+                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em] mb-1">Den {day.dayNumber}</p>
+                            <h4 className="text-xl font-brand font-bold text-white uppercase tracking-tight">{day.startLocation} <i className="fas fa-arrow-right text-slate-600 text-sm mx-2"></i> {day.endLocation}</h4>
+                          </div>
+                          <div className="flex gap-6">
+                            <div className="text-left md:text-right">
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Vzdálenost</p>
+                              <p className="text-sm font-bold text-white">{day.distanceKm || day.distance} {day.distanceKm ? 'km' : ''}</p>
+                            </div>
+                            <div className="text-left md:text-right">
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Čas</p>
+                              <p className="text-sm font-bold text-white">{day.estimatedTimeMins ? `${Math.floor(day.estimatedTimeMins / 60)}h ${day.estimatedTimeMins % 60}m` : '-'}</p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      </button>
+
+                      {/* Expanded Content */}
+                      {activeDayIdx === idx && (
+                        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slideDown">
+                          <div className="lg:col-span-2 bg-slate-950/50 p-6 rounded-[2rem] border border-slate-700/50">
+                            <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-700/50">
+                              <div>
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Palivo</p>
+                                <p className="text-lg font-brand font-bold text-white">{day.fuelLiters ? `${day.fuelLiters} l` : '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Cena paliva</p>
+                                <p className="text-lg font-brand font-bold text-white">{day.fuelCost ? `${day.fuelCost} Kč` : '-'}</p>
+                              </div>
+                            </div>
+                            <div className="markdown-body prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed">
+                              <Markdown>{day.description}</Markdown>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-6">
+                            {/* Accommodation Card */}
+                            <div className="bg-slate-800 p-6 rounded-[2rem] border border-slate-700 shadow-xl relative overflow-hidden">
+                              <div className="absolute top-0 right-0 p-4 opacity-10">
+                                <i className={`fas ${expedition.tripType === 'ride' ? 'fa-coffee' : 'fa-hotel'} text-6xl`}></i>
+                              </div>
+                              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center">
+                                  <i className={`fas ${expedition.tripType === 'ride' ? 'fa-mug-hot' : 'fa-bed'} text-orange-500 text-[10px]`}></i>
+                                </span>
+                                {expedition.tripType === 'ride' ? 'Tip na zastávku' : 'Ubytování na noc'}
+                              </h3>
+                              
+                              {day.accommodation ? (
+                                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-700 border-l-4 border-l-orange-500">
+                                  <p className="text-sm font-bold text-white mb-1 leading-tight">{day.accommodation?.name}</p>
+                                  <p className="text-[9px] text-slate-600 uppercase font-bold tracking-widest mb-4">{day.accommodation?.type}</p>
+                                  <a 
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(day.accommodation?.name || '')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl border border-slate-700 flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-all"
+                                  >
+                                    MAPA <i className="fas fa-external-link-alt text-[8px] opacity-50"></i>
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="py-8 text-center bg-slate-900 rounded-2xl border border-slate-700 border-dashed">
+                                  <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+                                    {expedition.tripType === 'ride' ? 'Hledám ideální pauzu...' : 'Hledám základnu...'}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
