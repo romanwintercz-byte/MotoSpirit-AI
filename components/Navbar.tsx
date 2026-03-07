@@ -190,7 +190,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <Link 
             to="/inbox"
-            className="relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+            className="relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
             title="Moto Pošta"
           >
             <i className="fas fa-envelope"></i>
@@ -203,7 +203,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <button 
             onClick={openChangelog}
-            className="hidden sm:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+            className="hidden sm:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
             title="Novinky a úpravy"
           >
             <i className="fas fa-bell"></i>
@@ -212,12 +212,12 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
             )}
           </button>
 
-          <Link to="/logbook" className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 px-4 rounded-xl transition-colors items-center gap-2 text-xs font-bold">
+          <Link to="/logbook" className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 px-4 rounded-xl transition-colors items-center gap-2 text-xs font-bold shrink-0">
             <i className="fas fa-gas-pump text-orange-500"></i>
             TANKOVAT
           </Link>
           
-          <Link to="/garage" className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white overflow-hidden border-2 border-slate-700 shadow-lg">
+          <Link to="/garage" className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white overflow-hidden border-2 border-slate-700 shadow-lg shrink-0">
             {user?.avatar ? (
               <img src={user.avatar} alt="Me" className="w-full h-full object-cover" />
             ) : (
@@ -227,7 +227,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <button 
             onClick={() => setShowMobileMenu(true)}
-            className="sm:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative"
+            className="flex sm:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative shrink-0"
           >
             <i className="fas fa-bars"></i>
             {hasNewUpdates && (
