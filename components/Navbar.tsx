@@ -76,6 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const [hasNewUpdates, setHasNewUpdates] = useState(() => {
     const lastSeen = localStorage.getItem('motospirit_last_changelog');
@@ -168,7 +169,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
           ))}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {user?.email?.toLowerCase() === 'roman.winter.cz@gmail.com' && (
             <Link 
               to="/dev-console"
@@ -202,7 +203,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <button 
             onClick={openChangelog}
-            className="relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+            className="hidden sm:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
             title="Novinky a úpravy"
           >
             <i className="fas fa-bell"></i>
@@ -215,6 +216,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
             <i className="fas fa-gas-pump text-orange-500"></i>
             TANKOVAT
           </Link>
+          
           <Link to="/garage" className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white overflow-hidden border-2 border-slate-700 shadow-lg">
             {user?.avatar ? (
               <img src={user.avatar} alt="Me" className="w-full h-full object-cover" />
@@ -222,9 +224,96 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
               user?.name ? user.name[0].toUpperCase() : 'R'
             )}
           </Link>
+
+          <button 
+            onClick={() => setShowMobileMenu(true)}
+            className="sm:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative"
+          >
+            <i className="fas fa-bars"></i>
+            {hasNewUpdates && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-slate-800 rounded-full animate-pulse"></span>
+            )}
+          </button>
         </div>
       </div>
     </nav>
+
+    {/* Mobile Menu Modal */}
+    {showMobileMenu && (
+      <div className="fixed inset-0 z-[200] flex sm:hidden bg-black/80 backdrop-blur-sm animate-fadeIn" onClick={() => setShowMobileMenu(false)}>
+        <div className="absolute right-0 top-0 bottom-0 w-64 bg-slate-900 border-l border-slate-700 p-6 animate-slideLeft shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-lg font-brand font-bold text-white uppercase tracking-tight">
+              Menu
+            </h2>
+            <button onClick={() => setShowMobileMenu(false)} className="text-slate-500 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full bg-slate-800">
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <Link 
+              to="/logbook" 
+              onClick={() => setShowMobileMenu(false)}
+              className="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl transition-colors flex items-center gap-4 text-sm font-bold text-white"
+            >
+              <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                <i className="fas fa-gas-pump text-orange-500"></i>
+              </div>
+              TANKOVAT
+            </Link>
+
+            <button 
+              onClick={() => {
+                setShowMobileMenu(false);
+                openChangelog();
+              }}
+              className="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl transition-colors flex items-center gap-4 text-sm font-bold text-white relative"
+            >
+              <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+                <i className="fas fa-bell text-slate-300"></i>
+              </div>
+              Novinky a úpravy
+              {hasNewUpdates && (
+                <span className="absolute right-4 w-3 h-3 bg-red-500 border-2 border-slate-800 rounded-full animate-pulse"></span>
+              )}
+            </button>
+
+            <button 
+              onClick={() => {
+                setShowMobileMenu(false);
+                setShowFeedback(true);
+              }}
+              className="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl transition-colors flex items-center gap-4 text-sm font-bold text-white"
+            >
+              <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+                <i className="fas fa-bug text-slate-300"></i>
+              </div>
+              Napsat vývojáři
+            </button>
+
+            {user?.email?.toLowerCase() === 'roman.winter.cz@gmail.com' && (
+              <Link 
+                to="/dev-console"
+                onClick={() => setShowMobileMenu(false)}
+                className="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl transition-colors flex items-center gap-4 text-sm font-bold text-white"
+              >
+                <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+                  <i className="fas fa-terminal text-slate-300"></i>
+                </div>
+                Vývojářská konzole
+              </Link>
+            )}
+          </div>
+          
+          <div className="mt-auto pt-8 border-t border-slate-800">
+            <p className="text-[10px] text-slate-500 text-center uppercase tracking-widest font-bold">
+              MotoSpirit v{CURRENT_VERSION}
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Changelog Modal */}
     {showChangelog && (
