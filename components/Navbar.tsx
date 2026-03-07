@@ -8,16 +8,23 @@ interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.4.0';
+const CURRENT_VERSION = '1.5.0';
 const CHANGELOG = [
+  {
+    version: '1.5.0',
+    date: '7. 3. 2026',
+    changes: [
+      'Nové sdílení tras: Nyní můžeš sdílet trasy přímo přes WhatsApp, Messenger nebo SMS pomocí nativního menu telefonu.',
+      'Vylepšené plánování vyjížděk: AI nyní správně chápe, že plánuješ vyjížďku na hodiny, nikoliv na dny.',
+      'Zjednodušení aplikace: Odstraněna interní Moto Pošta pro rychlejší a spolehlivější chod aplikace.'
+    ]
+  },
   {
     version: '1.4.0',
     date: '6. 3. 2026',
     changes: [
-      'Moto Pošta: Nová sekce pro přímou komunikaci mezi jezdci.',
-      'Možnost poslat textovou zprávu libovolnému jezdci přímo z Radaru.',
       'Napsat vývojáři: Nové tlačítko (🐞) pro snadné odesílání nápadů a hlášení chyb.',
-      'Sjednocení upozornění: Všechny pozdravy, zprávy a sdílené trasy najdeš na jednom místě v Moto Poště.'
+      'Sjednocení upozornění: Všechny pozdravy, zprávy a sdílené trasy najdeš na jednom místě.'
     ]
   },
   {
