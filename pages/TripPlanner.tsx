@@ -4,7 +4,7 @@ import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { planExpedition, refineExpedition } from '../services/geminiService';
 import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles } from '../services/syncService';
-import { getGoogleMapsUrl, getMapyCzUrl } from '../utils/navigation';
+import { getGoogleMapsUrl } from '../utils/navigation';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
@@ -768,16 +768,6 @@ const TripPlanner: React.FC = () => {
                           </button>
                           {showNavMenu && (
                             <div className="absolute top-full mt-2 right-0 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-slideUp">
-                              <a 
-                                href={getMapyCzUrl(expedition.days[activeDayIdx])}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={() => setShowNavMenu(false)}
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-700 text-white text-xs font-bold transition-colors border-b border-slate-700/50"
-                              >
-                                <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center text-white"><i className="fas fa-map"></i></div>
-                                Mapy.cz
-                              </a>
                               <a 
                                 href={getGoogleMapsUrl(expedition.days[activeDayIdx])}
                                 target="_blank"
