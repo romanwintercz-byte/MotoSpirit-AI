@@ -190,7 +190,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <Link 
             to="/inbox"
-            className="relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors flex items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
+            className="hidden lg:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
             title="Moto Pošta"
           >
             <i className="fas fa-envelope"></i>
@@ -216,6 +216,16 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
             <i className="fas fa-gas-pump text-orange-500"></i>
             TANKOVAT
           </Link>
+
+          <button 
+            onClick={() => setShowMobileMenu(true)}
+            className="flex lg:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative shrink-0"
+          >
+            <i className="fas fa-bars"></i>
+            {(hasNewUpdates || unreadMessages > 0) && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-slate-800 rounded-full animate-pulse"></span>
+            )}
+          </button>
           
           <Link to="/garage" className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white overflow-hidden border-2 border-slate-700 shadow-lg shrink-0">
             {user?.avatar ? (
@@ -224,23 +234,13 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
               user?.name ? user.name[0].toUpperCase() : 'R'
             )}
           </Link>
-
-          <button 
-            onClick={() => setShowMobileMenu(true)}
-            className="flex lg:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative shrink-0"
-          >
-            <i className="fas fa-bars"></i>
-            {hasNewUpdates && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-slate-800 rounded-full animate-pulse"></span>
-            )}
-          </button>
         </div>
       </div>
     </nav>
 
     {/* Mobile Menu Modal */}
     {showMobileMenu && (
-      <div className="fixed inset-0 z-[200] flex sm:hidden bg-black/80 backdrop-blur-sm animate-fadeIn" onClick={() => setShowMobileMenu(false)}>
+      <div className="fixed inset-0 z-[200] flex lg:hidden bg-black/80 backdrop-blur-sm animate-fadeIn" onClick={() => setShowMobileMenu(false)}>
         <div className="absolute right-0 top-0 bottom-0 w-64 bg-slate-900 border-l border-slate-700 p-6 animate-slideLeft shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-lg font-brand font-bold text-white uppercase tracking-tight">
@@ -252,6 +252,22 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
           </div>
 
           <div className="flex flex-col gap-4">
+            <Link 
+              to="/inbox" 
+              onClick={() => setShowMobileMenu(false)}
+              className="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl transition-colors flex items-center gap-4 text-sm font-bold text-white relative"
+            >
+              <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+                <i className="fas fa-envelope text-slate-300"></i>
+              </div>
+              Moto Pošta
+              {unreadMessages > 0 && (
+                <span className="absolute right-4 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white">
+                  {unreadMessages}
+                </span>
+              )}
+            </Link>
+
             <Link 
               to="/logbook" 
               onClick={() => setShowMobileMenu(false)}
