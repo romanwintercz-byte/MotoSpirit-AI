@@ -173,7 +173,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
           {user?.email?.toLowerCase() === 'roman.winter.cz@gmail.com' && (
             <Link 
               to="/dev-console"
-              className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+              className="hidden lg:flex bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
               title="Vývojářská konzole"
             >
               <i className="fas fa-terminal"></i>
@@ -182,7 +182,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <button 
             onClick={() => setShowFeedback(true)}
-            className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
+            className="hidden lg:flex bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10"
             title="Napsat vývojáři"
           >
             <i className="fas fa-bug"></i>
@@ -203,7 +203,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <button 
             onClick={openChangelog}
-            className="hidden sm:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
+            className="hidden lg:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
             title="Novinky a úpravy"
           >
             <i className="fas fa-bell"></i>
@@ -212,7 +212,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
             )}
           </button>
 
-          <Link to="/logbook" className="hidden sm:flex bg-slate-700 hover:bg-slate-600 p-2 px-4 rounded-xl transition-colors items-center gap-2 text-xs font-bold shrink-0">
+          <Link to="/logbook" className="hidden lg:flex bg-slate-700 hover:bg-slate-600 p-2 px-4 rounded-xl transition-colors items-center gap-2 text-xs font-bold shrink-0">
             <i className="fas fa-gas-pump text-orange-500"></i>
             TANKOVAT
           </Link>
@@ -227,7 +227,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
 
           <button 
             onClick={() => setShowMobileMenu(true)}
-            className="flex sm:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative shrink-0"
+            className="flex lg:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative shrink-0"
           >
             <i className="fas fa-bars"></i>
             {hasNewUpdates && (
