@@ -49,7 +49,7 @@ export const getGoogleMapsUrl = (day: TripDay): string => {
  */
 export const getMapyCzUrl = (day: TripDay): string => {
   if (!day.waypoints || day.waypoints.length === 0) {
-    return `https://mapy.cz/zakladni?planovani-trasy&rc=${encodeURIComponent(day.startLocation)}~${encodeURIComponent(day.endLocation)}&mrp=fast`;
+    return `https://mapy.cz/zakladni?planovani-trasy&rc=${encodeURIComponent(day.startLocation)}~${encodeURIComponent(day.endLocation)}&rut=1&mrp=fast`;
   }
 
   // Mapy.cz zvládne více bodů, ale pro jistotu redukujeme na 15
@@ -57,8 +57,9 @@ export const getMapyCzUrl = (day: TripDay): string => {
   
   // Formát: rc=lon1,lat1~lon2,lat2...
   // Pozor: Mapy.cz používají [longitude, latitude], naše data jsou [latitude, longitude]
-  // DŮLEŽITÉ: Souřadnice musí být zakódované jako URI komponenta, jinak se znaky jako čárka mohou rozbít
-  const rc = encodeURIComponent(reduced.map(wp => `${wp[1]},${wp[0]}`).join('~'));
+  // DŮLEŽITÉ: Znaky vlnovky (~) a čárky (,) nesmí být zakódované, Mapy.cz je používají jako oddělovače.
+  const rc = reduced.map(wp => `${wp[1]},${wp[0]}`).join('~');
   
-  return `https://mapy.cz/zakladni?planovani-trasy&rc=${rc}&mrp=fast`;
+  // rut=1 je parametr, který Mapy.cz řekne, aby trasu rovnou vypočítaly
+  return `https://mapy.cz/zakladni?planovani-trasy&rc=${rc}&rut=1&mrp=fast`;
 };
