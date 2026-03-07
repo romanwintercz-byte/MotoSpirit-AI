@@ -29,11 +29,13 @@ export const planExpedition = async (
   try {
     const ai = getAI();
     
-    const typeContext = tripType === 'ride' 
-      ? "Jedná se o jednodenní vyjížďku (ride). Zaměř se na scénický okruh se startem i cílem v místě startu. Hledej nejlepší asfalt a 'Coffee & Cake' zastávky."
-      : "Jedná se o vícedenní expedici. Naplánuj denní etapy, přesuny a logistiku ubytování.";
+    const durationText = tripType === 'ride' ? `${days}-hodinovou vyjížďku` : `${days}-denní expedici`;
 
-    const prompt = `Jsi expert na plánování motorkářských tras a expedic. Naplánuj detailní ${days}-denní ${tripType === 'ride' ? 'vyjížďku' : 'expedici'} z ${origin} pro ${travelers} osoby/osob. 
+    const typeContext = tripType === 'ride' 
+      ? `Jedná se o jednodenní vyjížďku (ride) na cca ${days} hodin. Zaměř se na scénický okruh se startem i cílem v místě startu. Hledej nejlepší asfalt a 'Coffee & Cake' zastávky. Vrať PŘESNĚ 1 den v poli "days". Název (name) musí odrážet, že jde o vyjížďku (např. "Odpolední okruh Kokořínskem"), NEPOUŽÍVEJ slovo "Expedice".`
+      : `Jedná se o vícedenní expedici na ${days} dní. Naplánuj denní etapy, přesuny a logistiku ubytování. Vrať PŘESNĚ ${days} dní v poli "days".`;
+
+    const prompt = `Jsi expert na plánování motorkářských tras a expedic. Naplánuj detailní ${durationText} z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
     ${typeContext}
     
@@ -53,7 +55,7 @@ export const planExpedition = async (
     
     Vrať POUZE validní JSON objekt s následující strukturou (bez markdown bloků, jen čistý JSON):
     {
-      "name": "Název expedice",
+      "name": "Název trasy/expedice",
       "totalDistanceKm": 1200,
       "budget": {
         "plannedFuel": 3500,
