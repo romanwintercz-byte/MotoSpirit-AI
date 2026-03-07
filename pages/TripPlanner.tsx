@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { planExpedition, refineExpedition } from '../services/geminiService';
-import { shareExpeditionPublicly, syncDataToCloud, sendTripToRider, getAllPublicProfiles } from '../services/syncService';
+import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles } from '../services/syncService';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
@@ -96,7 +96,6 @@ const TripPlanner: React.FC = () => {
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [showSendToRider, setShowSendToRider] = useState(false);
   const [followedRiders, setFollowedRiders] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [showChallengeAudience, setShowChallengeAudience] = useState(false);
@@ -246,28 +245,26 @@ const TripPlanner: React.FC = () => {
       const slug = await shareExpeditionPublicly(syncCode, expedition);
       if (slug) {
         const url = `${window.location.origin}/#/share/${slug}`;
-        setShareUrl(url);
+        
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `MotoSpirit Trasa: ${expedition.name}`,
+              text: `Koukni na tuhle super trasu na motorce: ${expedition.name}`,
+              url: url
+            });
+          } catch (err) {
+            // User cancelled or share failed, fallback to modal
+            setShareUrl(url);
+          }
+        } else {
+          setShareUrl(url);
+        }
       }
     } catch (e) {
       alert("Sdílení selhalo.");
     } finally {
       setIsSharing(false);
-    }
-  };
-
-  const handleSendToRider = async (toSyncCode: string) => {
-    if (!expedition) return;
-    const fromSyncCode = localStorage.getItem('motospirit_sync_code');
-    if (!fromSyncCode) return;
-
-    setIsSending(true);
-    const success = await sendTripToRider(fromSyncCode, toSyncCode, expedition);
-    setIsSending(false);
-    if (success) {
-      alert("Trasa byla odeslána!");
-      setShowSendToRider(false);
-    } else {
-      alert("Odeslání selhalo.");
     }
   };
 
@@ -754,12 +751,6 @@ const TripPlanner: React.FC = () => {
                           <i className="fas fa-bullhorn"></i> VYZVAT K JÍZDĚ
                         </button>
                         <button 
-                          onClick={() => setShowSendToRider(true)}
-                          className="bg-slate-900 hover:bg-slate-700 text-orange-500 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
-                        >
-                          <i className="fas fa-paper-plane"></i> POSLAT KÁMOŠI
-                        </button>
-                        <button 
                           onClick={handleShare}
                           disabled={isSharing}
                           className="bg-slate-900 hover:bg-slate-700 text-blue-400 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
@@ -1143,15 +1134,15 @@ const TripPlanner: React.FC = () => {
                 </button>
 
                 <button 
-                  onClick={() => { setShowSendToRider(true); setShowChallengeAudience(false); }}
+                  onClick={() => { handleShare(); setShowChallengeAudience(false); }}
                   className="p-5 rounded-2xl bg-slate-900 border border-slate-700 hover:border-orange-500 flex items-center gap-4 transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-purple-600/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-600 group-hover:text-white transition-all">
-                    <i className="fas fa-user-lock"></i>
+                    <i className="fas fa-share-nodes"></i>
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-bold text-white uppercase tracking-tight">SOUKROMÁ POZVÁNKA</p>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Vyber konkrétní jezdce ze seznamu</p>
+                    <p className="text-sm font-bold text-white uppercase tracking-tight">SDÍLET ODKAZ</p>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Pošli odkaz přes WhatsApp, Messenger atd.</p>
                   </div>
                 </button>
               </div>
@@ -1200,49 +1191,6 @@ const TripPlanner: React.FC = () => {
         </div>
       )}
 
-      {/* Send to Rider Modal */}
-      {showSendToRider && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
-          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
-            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">POSLAT <span className="text-orange-500">KÁMOŠI</span></h2>
-               <button onClick={() => setShowSendToRider(false)} className="text-slate-500 hover:text-white p-2">
-                 <i className="fas fa-times text-xl"></i>
-               </button>
-            </div>
-            <div className="p-8 space-y-4">
-              <p className="text-xs text-slate-400 leading-relaxed">Vyber jezdce ze své party, kterému chceš poslat tuhle trasu přímo do jeho aplikace.</p>
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                {followedRiders.length === 0 ? (
-                  <div className="text-center py-10 border-2 border-dashed border-slate-700 rounded-3xl">
-                    <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">V partě zatím nikoho nemáš</p>
-                    <a href="#/radar" className="text-orange-500 text-[10px] font-bold uppercase mt-2 inline-block">Najít jezdce v Radaru</a>
-                  </div>
-                ) : (
-                  followedRiders.map(rider => (
-                    <button 
-                      key={rider.syncCode}
-                      onClick={() => handleSendToRider(rider.syncCode)}
-                      disabled={isSending}
-                      className="w-full p-4 rounded-2xl bg-slate-900 border border-slate-700 hover:border-orange-500 flex items-center gap-4 transition-all"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700">
-                        {rider.user.avatar ? <img src={rider.user.avatar} className="w-full h-full object-cover" /> : <i className="fas fa-user text-orange-500"></i>}
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-bold text-white uppercase tracking-tight">{rider.user.nickname}</p>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{rider.user.ridingStyle}</p>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Inbox Modal */}
     </div>
   );
 };

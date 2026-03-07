@@ -237,39 +237,6 @@ export const deleteProfile = async (syncCode: string) => {
   }
 };
 
-export const sendTripToRider = async (fromSyncCode: string, toSyncCode: string, expedition: Expedition) => {
-  try {
-    const { error } = await supabase.from('moto_inbox').insert({
-      from_code: fromSyncCode,
-      to_code: toSyncCode,
-      expedition_data: expedition,
-      created_at: new Date().toISOString()
-    });
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error("Error sending trip:", error);
-    return false;
-  }
-};
-
-export const sendMessageToRider = async (fromSyncCode: string, toSyncCode: string, message: string) => {
-  try {
-    const { error } = await supabase.from('moto_inbox').insert({
-      from_code: fromSyncCode,
-      to_code: toSyncCode,
-      type: 'message',
-      message: message,
-      created_at: new Date().toISOString()
-    });
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error("Error sending message:", error);
-    return false;
-  }
-};
-
 export const submitFeedback = async (fromSyncCode: string, type: string, message: string) => {
   try {
     const { error } = await supabase.from('moto_inbox').insert({
@@ -303,22 +270,6 @@ export const fetchAllFeedback = async () => {
   }
 };
 
-export const fetchInbox = async (syncCode: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('moto_inbox')
-      .select('*')
-      .eq('to_code', syncCode)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error("Error fetching inbox:", error);
-    return [];
-  }
-};
-
 export const deleteInboxMessage = async (id: string) => {
   try {
     const { error } = await supabase.from('moto_inbox').delete().eq('id', id);
@@ -326,23 +277,6 @@ export const deleteInboxMessage = async (id: string) => {
     return true;
   } catch (error) {
     console.error("Error deleting inbox message:", error);
-    return false;
-  }
-};
-
-export const sendWave = async (fromSyncCode: string, toSyncCode: string, fromNickname: string) => {
-  try {
-    const { error } = await supabase.from('moto_inbox').insert({
-      from_code: fromSyncCode,
-      to_code: toSyncCode,
-      type: 'wave',
-      message: `${fromNickname} ti mává! ✌️`,
-      created_at: new Date().toISOString()
-    });
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error("Error sending wave:", error);
     return false;
   }
 };

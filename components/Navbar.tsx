@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserProfile } from '../types';
-import { submitFeedback, fetchInbox } from '../services/syncService';
+import { submitFeedback } from '../services/syncService';
 
 interface NavbarProps {
   hasNewChallenge?: boolean;
@@ -75,7 +75,6 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
   const [feedbackType, setFeedbackType] = useState('idea');
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSending, setFeedbackSending] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const [hasNewUpdates, setHasNewUpdates] = useState(() => {
@@ -91,20 +90,6 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-
-  useEffect(() => {
-    const checkInbox = async () => {
-      const syncCode = localStorage.getItem('motospirit_sync_code');
-      if (syncCode) {
-        const msgs = await fetchInbox(syncCode);
-        setUnreadMessages(msgs.length);
-      }
-    };
-    checkInbox();
-    // Refresh inbox count every 30 seconds
-    const interval = setInterval(checkInbox, 30000);
-    return () => clearInterval(interval);
-  }, [location.pathname]); // Re-check when navigating
 
   const handleSendFeedback = async () => {
     if (!feedbackText.trim()) return;
@@ -188,19 +173,6 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
             <i className="fas fa-bug"></i>
           </button>
 
-          <Link 
-            to="/inbox"
-            className="hidden lg:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
-            title="Moto Pošta"
-          >
-            <i className="fas fa-envelope"></i>
-            {unreadMessages > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 border-2 border-slate-800 rounded-full flex items-center justify-center text-[8px] font-bold text-white">
-                {unreadMessages}
-              </span>
-            )}
-          </Link>
-
           <button 
             onClick={openChangelog}
             className="hidden lg:flex relative bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 shrink-0"
@@ -222,7 +194,7 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
             className="flex lg:hidden bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors items-center justify-center text-slate-300 hover:text-white w-10 h-10 relative shrink-0"
           >
             <i className="fas fa-bars"></i>
-            {(hasNewUpdates || unreadMessages > 0) && (
+            {hasNewUpdates && (
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-slate-800 rounded-full animate-pulse"></span>
             )}
           </button>
@@ -252,22 +224,6 @@ const Navbar: React.FC<NavbarProps> = ({ hasNewChallenge }) => {
           </div>
 
           <div className="flex flex-col gap-4">
-            <Link 
-              to="/inbox" 
-              onClick={() => setShowMobileMenu(false)}
-              className="bg-slate-800 hover:bg-slate-700 p-4 rounded-xl transition-colors flex items-center gap-4 text-sm font-bold text-white relative"
-            >
-              <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
-                <i className="fas fa-envelope text-slate-300"></i>
-              </div>
-              Moto Pošta
-              {unreadMessages > 0 && (
-                <span className="absolute right-4 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white">
-                  {unreadMessages}
-                </span>
-              )}
-            </Link>
-
             <Link 
               to="/logbook" 
               onClick={() => setShowMobileMenu(false)}

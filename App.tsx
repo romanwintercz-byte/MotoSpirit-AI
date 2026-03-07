@@ -8,7 +8,6 @@ import Assistant from './pages/Assistant';
 import Logbook from './pages/Logbook';
 import Radar from './pages/Radar';
 import SharedTrip from './pages/SharedTrip';
-import Inbox from './pages/Inbox';
 import DevConsole from './pages/DevConsole';
 import Navbar from './components/Navbar';
 import Onboarding from './components/Onboarding';
@@ -134,7 +133,6 @@ const App: React.FC = () => {
             <Route path="/assistant" element={<Assistant />} />
             <Route path="/logbook" element={<Logbook />} />
             <Route path="/share/:slug" element={<SharedTrip />} />
-            <Route path="/inbox" element={<Inbox />} />
             <Route path="/dev-console" element={<DevConsole />} />
           </Routes>
         </main>
