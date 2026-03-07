@@ -50,9 +50,9 @@ export const planExpedition = async (
     1. Trasa MUSÍ dávat absolutní geografický smysl. Cesta musí vést logicky z bodu A do bodu B.
     2. ZABRAŇ NESMYSLNÝM ZAJÍŽĎKÁM! (Např. z Teplic na Oravu se nejezdí přes východní Polsko, ze Slovenska do ČR se nejezdí přes Německo).
     3. Trasa musí kopírovat reálné silnice, ideálně ty nejhezčí pro motorkáře (pokud není zvoleno tempo "fast" pro dálnice).
-    4. U waypoints vygeneruj PŘESNĚ 15 bodů (souřadnic [latitude, longitude]) pro každý den. Tyto body musí být přesně na silnici, kudy má trasa vést. Nevymýšlej si body mimo silnice.
+    4. U waypoints vygeneruj PŘESNĚ 25 bodů (souřadnic [latitude, longitude]) pro každý den. Tyto body musí být přesně na silnici, kudy má trasa vést. Nevymýšlej si body mimo silnice.
     5. Zkontroluj si, že souřadnice opravdu leží na trase a neodhazují trasu do jiných států.
-    6. První bod musí být přesně startLocation a poslední bod přesně endLocation. Ostatních 13 bodů rozprostři rovnoměrně po trase.
+    6. První bod musí být přesně startLocation a poslední bod přesně endLocation. Ostatních 23 bodů rozprostři rovnoměrně po trase.
     
     Vrať POUZE validní JSON objekt s následující strukturou (bez markdown bloků, jen čistý JSON):
     {
