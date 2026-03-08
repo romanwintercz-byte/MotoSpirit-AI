@@ -1254,56 +1254,72 @@ const TripPlanner: React.FC = () => {
       
       {/* Challenge Audience Modal */}
       {showChallengeAudience && expedition && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
-          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
-            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">VYHLÁSIT <span className="text-orange-500">VÝZVU</span></h2>
-               <button onClick={() => setShowChallengeAudience(false)} className="text-slate-500 hover:text-white p-2">
-                 <i className="fas fa-times text-xl"></i>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-900 w-full max-w-md rounded-[2.5rem] border border-slate-700/50 shadow-2xl overflow-hidden relative animate-slideUp">
+            {/* Decorative background */}
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-orange-600/20 to-transparent pointer-events-none"></div>
+            
+            <div className="p-8 pb-6 flex justify-between items-start relative z-10">
+               <div>
+                 <h2 className="text-3xl font-brand font-bold uppercase tracking-tighter text-white leading-none">VYHLÁSIT <br/><span className="text-orange-500">VÝZVU</span></h2>
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3">Komu chceš nabídnout tuhle trasu?</p>
+               </div>
+               <button onClick={() => setShowChallengeAudience(false)} className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all">
+                 <i className="fas fa-times"></i>
                </button>
             </div>
-            <div className="p-8 space-y-6">
-              <p className="text-xs text-slate-400 leading-relaxed text-center">Komu chceš nabídnout tuhle trasu?</p>
-              <div className="grid grid-cols-1 gap-3">
-                <button 
-                  onClick={() => { handleCreateChallengeWithExp(expedition, 'all'); setShowChallengeAudience(false); }}
-                  className="p-5 rounded-2xl bg-slate-900 border border-slate-700 hover:border-orange-500 flex items-center gap-4 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-orange-600/10 flex items-center justify-center text-orange-500 group-hover:bg-orange-600 group-hover:text-white transition-all">
-                    <i className="fas fa-globe"></i>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-white uppercase tracking-tight">VEŘEJNÁ VÝZVA</p>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Uvidí ji úplně každý na Radaru</p>
-                  </div>
-                </button>
+            
+            <div className="p-8 pt-2 space-y-3 relative z-10">
+              <button 
+                onClick={() => { handleCreateChallengeWithExp(expedition, 'all'); setShowChallengeAudience(false); }}
+                className="w-full p-5 rounded-2xl bg-slate-800/50 border border-slate-700 hover:border-orange-500 hover:bg-slate-800 flex items-center gap-5 transition-all group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-600/0 via-orange-600/0 to-orange-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-slate-700 flex items-center justify-center text-orange-500 group-hover:scale-110 group-hover:border-orange-500/50 transition-all shadow-inner">
+                  <i className="fas fa-globe text-xl"></i>
+                </div>
+                <div className="text-left flex-grow">
+                  <p className="text-sm font-bold text-white uppercase tracking-tight group-hover:text-orange-400 transition-colors">Veřejná výzva</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Uvidí ji každý na Radaru</p>
+                </div>
+                <i className="fas fa-chevron-right text-slate-600 group-hover:text-orange-500 transition-colors"></i>
+              </button>
 
-                <button 
-                  onClick={() => { handleCreateChallengeWithExp(expedition, 'party'); setShowChallengeAudience(false); }}
-                  className="p-5 rounded-2xl bg-slate-900 border border-slate-700 hover:border-orange-500 flex items-center gap-4 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                    <i className="fas fa-users"></i>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-white uppercase tracking-tight">PRO MOJI PARTU</p>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Uvidí ji jen tvoji sledovaní jezdci</p>
-                  </div>
-                </button>
+              <button 
+                onClick={() => { handleCreateChallengeWithExp(expedition, 'party'); setShowChallengeAudience(false); }}
+                className="w-full p-5 rounded-2xl bg-slate-800/50 border border-slate-700 hover:border-blue-500 hover:bg-slate-800 flex items-center gap-5 transition-all group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600/0 via-blue-600/0 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-slate-700 flex items-center justify-center text-blue-500 group-hover:scale-110 group-hover:border-blue-500/50 transition-all shadow-inner">
+                  <i className="fas fa-users text-xl"></i>
+                </div>
+                <div className="text-left flex-grow">
+                  <p className="text-sm font-bold text-white uppercase tracking-tight group-hover:text-blue-400 transition-colors">Pro moji partu</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Jen pro tvé sledující</p>
+                </div>
+                <i className="fas fa-chevron-right text-slate-600 group-hover:text-blue-500 transition-colors"></i>
+              </button>
 
-                <button 
-                  onClick={() => { handleShare(); setShowChallengeAudience(false); }}
-                  className="p-5 rounded-2xl bg-slate-900 border border-slate-700 hover:border-orange-500 flex items-center gap-4 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-purple-600/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-600 group-hover:text-white transition-all">
-                    <i className="fas fa-share-nodes"></i>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-white uppercase tracking-tight">SDÍLET ODKAZ</p>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Pošli odkaz přes WhatsApp, Messenger atd.</p>
-                  </div>
-                </button>
+              <div className="flex items-center gap-4 py-2">
+                <div className="h-[1px] flex-grow bg-slate-800"></div>
+                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Nebo</span>
+                <div className="h-[1px] flex-grow bg-slate-800"></div>
               </div>
+
+              <button 
+                onClick={() => { handleShare(); setShowChallengeAudience(false); }}
+                className="w-full p-5 rounded-2xl bg-slate-800/50 border border-slate-700 hover:border-purple-500 hover:bg-slate-800 flex items-center gap-5 transition-all group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-purple-600/0 to-purple-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-slate-700 flex items-center justify-center text-purple-500 group-hover:scale-110 group-hover:border-purple-500/50 transition-all shadow-inner">
+                  <i className="fas fa-link text-xl"></i>
+                </div>
+                <div className="text-left flex-grow">
+                  <p className="text-sm font-bold text-white uppercase tracking-tight group-hover:text-purple-400 transition-colors">Získat odkaz</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Pro WhatsApp, Messenger...</p>
+                </div>
+                <i className="fas fa-chevron-right text-slate-600 group-hover:text-purple-500 transition-colors"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -1311,36 +1327,77 @@ const TripPlanner: React.FC = () => {
 
       {/* Share Modal */}
       {shareUrl && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
-          <div className="bg-slate-800 w-full max-w-md rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp">
-            <div className="p-8 border-b border-slate-700 flex justify-between items-center">
-               <h2 className="text-xl font-brand font-bold uppercase tracking-tight text-white">SDÍLET <span className="text-orange-500">EXPEDICI</span></h2>
-               <button onClick={() => setShareUrl(null)} className="text-slate-500 hover:text-white p-2">
-                 <i className="fas fa-times text-xl"></i>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-900 w-full max-w-md rounded-[2.5rem] border border-slate-700/50 shadow-2xl overflow-hidden relative animate-slideUp">
+            {/* Decorative background */}
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-purple-600/20 to-transparent pointer-events-none"></div>
+            
+            <div className="p-8 pb-6 flex justify-between items-start relative z-10">
+               <div>
+                 <h2 className="text-3xl font-brand font-bold uppercase tracking-tighter text-white leading-none">SDÍLET <br/><span className="text-purple-500">EXPEDICI</span></h2>
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3">Pošli odkaz kamarádům</p>
+               </div>
+               <button onClick={() => setShareUrl(null)} className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-all">
+                 <i className="fas fa-times"></i>
                </button>
             </div>
-            <div className="p-8 space-y-6">
-              <p className="text-xs text-slate-400 leading-relaxed">Tvoje expedice je nyní veřejně dostupná. Pošli tento odkaz kamarádům:</p>
-              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-700 flex items-center gap-3">
+            
+            <div className="p-8 pt-2 space-y-6 relative z-10">
+              <div className="bg-slate-950 p-1 rounded-2xl border border-slate-700 flex items-center gap-2 shadow-inner">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-500 ml-1">
+                  <i className="fas fa-link text-xs"></i>
+                </div>
                 <input 
                   type="text" 
                   readOnly 
                   value={shareUrl} 
-                  className="bg-transparent flex-grow text-[10px] text-orange-500 font-mono outline-none"
+                  className="bg-transparent flex-grow text-[10px] text-slate-300 font-mono outline-none py-3"
                 />
                 <button 
                   onClick={() => {
                     navigator.clipboard.writeText(shareUrl);
-                    alert("Odkaz zkopírován!");
+                    const btn = document.getElementById('copy-btn');
+                    if (btn) {
+                      btn.innerHTML = '<i class="fas fa-check"></i>';
+                      btn.classList.add('bg-green-600', 'text-white', 'border-green-500');
+                      setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-copy"></i>';
+                        btn.classList.remove('bg-green-600', 'text-white', 'border-green-500');
+                      }, 2000);
+                    }
                   }}
-                  className="text-slate-500 hover:text-white"
+                  id="copy-btn"
+                  className="w-12 h-10 rounded-xl bg-purple-600/20 text-purple-500 hover:bg-purple-600 hover:text-white border border-purple-500/30 flex items-center justify-center transition-all mr-1"
+                  title="Kopírovat odkaz"
                 >
                   <i className="fas fa-copy"></i>
                 </button>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <a 
+                  href={`https://wa.me/?text=${encodeURIComponent(`Koukni na tuhle motorkářskou trasu: ${shareUrl}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-4 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/30 hover:bg-[#25D366] hover:text-white text-[#25D366] flex flex-col items-center justify-center gap-2 transition-all group"
+                >
+                  <i className="fab fa-whatsapp text-2xl group-hover:scale-110 transition-transform"></i>
+                  <span className="text-[9px] font-bold uppercase tracking-widest">WhatsApp</span>
+                </a>
+                <a 
+                  href={`https://www.facebook.com/dialog/send?link=${encodeURIComponent(shareUrl)}&app_id=123456789&redirect_uri=${encodeURIComponent(shareUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-4 rounded-2xl bg-[#0084FF]/10 border border-[#0084FF]/30 hover:bg-[#0084FF] hover:text-white text-[#0084FF] flex flex-col items-center justify-center gap-2 transition-all group"
+                >
+                  <i className="fab fa-facebook-messenger text-2xl group-hover:scale-110 transition-transform"></i>
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Messenger</span>
+                </a>
+              </div>
+              
               <button 
                 onClick={() => setShareUrl(null)}
-                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white transition-all"
+                className="w-full bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white transition-all border border-slate-700"
               >
                 HOTOVO
               </button>
