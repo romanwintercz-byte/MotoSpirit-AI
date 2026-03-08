@@ -406,223 +406,243 @@ const TripPlanner: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Form & Saved List */}
         <div className="lg:col-span-4 space-y-8">
-          <div className="bg-slate-800/80 p-6 rounded-[2.5rem] border border-slate-700 shadow-2xl space-y-6 backdrop-blur-md">
-            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-700">
+          <div className="bg-slate-800/80 p-6 rounded-[2.5rem] border border-slate-700 shadow-2xl backdrop-blur-md">
+            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-700 mb-8">
               <button 
                 onClick={() => { setTripType('ride'); setDays(1); }}
-                className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${tripType === 'ride' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500'}`}
+                className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${tripType === 'ride' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
               >
                 Vyjížďka
               </button>
               <button 
                 onClick={() => setTripType('expedition')}
-                className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${tripType === 'expedition' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500'}`}
+                className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${tripType === 'expedition' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
               >
                 Expedice
               </button>
             </div>
 
-            <h2 className="text-xs font-bold text-orange-500 uppercase tracking-[0.3em] ml-2">
-              {tripType === 'ride' ? 'Nová vyjížďka' : 'Nové dobrodružství'}
-            </h2>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Start</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    value={origin} 
-                    onChange={(e) => setOrigin(e.target.value)} 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 pl-5 pr-12 text-sm text-white focus:border-orange-500 outline-none transition-all" 
-                  />
-                  <button 
-                    onClick={() => handleVoiceInput('origin')}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isListening === 'origin' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-slate-500 hover:text-orange-500 hover:bg-slate-800'}`}
-                    title="Zadat hlasem"
-                  >
-                    <i className="fas fa-microphone"></i>
-                  </button>
+            <div className="space-y-8">
+              {/* Sekce 1: Základní parametry */}
+              <div className="space-y-5 relative">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-orange-500">1</div>
+                  <h2 className="text-xs font-bold text-white uppercase tracking-[0.2em]">Základní parametry</h2>
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Průjezdní body (volitelné)</label>
-                <div className="space-y-2">
-                  {waypoints.map((wp, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl p-2 pl-4">
-                      <i className="fas fa-location-dot text-orange-500 text-xs"></i>
-                      <span className="flex-grow text-sm text-slate-300">{wp}</span>
-                      <button onClick={() => removeWaypoint(idx)} className="w-8 h-8 text-slate-500 hover:text-red-500 flex items-center justify-center rounded-lg hover:bg-slate-800">
-                        <i className="fas fa-times"></i>
-                      </button>
-                    </div>
-                  ))}
-                  <div className="relative flex gap-2">
-                    <div className="relative flex-grow">
+                
+                <div className="pl-3 ml-3 border-l border-slate-700/50 space-y-5">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Odkud vyrážíš?</label>
+                    <div className="relative">
                       <input 
                         type="text" 
-                        value={newWaypoint} 
-                        onChange={(e) => setNewWaypoint(e.target.value)} 
-                        onKeyPress={(e) => e.key === 'Enter' && addWaypoint()}
-                        placeholder="Např. Grossglockner"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-4 pr-10 text-sm text-white focus:border-orange-500 outline-none transition-all" 
+                        value={origin} 
+                        onChange={(e) => setOrigin(e.target.value)} 
+                        className="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 pl-5 pr-12 text-sm text-white focus:border-orange-500 outline-none transition-all focus:bg-slate-900" 
                       />
                       <button 
-                        onClick={() => handleVoiceInput('waypoint')}
-                        className={`absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center transition-all ${isListening === 'waypoint' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-slate-500 hover:text-orange-500 hover:bg-slate-800'}`}
+                        onClick={() => handleVoiceInput('origin')}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center transition-all ${isListening === 'origin' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-slate-500 hover:text-orange-500 hover:bg-slate-800'}`}
                         title="Zadat hlasem"
                       >
                         <i className="fas fa-microphone text-xs"></i>
                       </button>
                     </div>
-                    <button 
-                      onClick={addWaypoint}
-                      disabled={!newWaypoint.trim()}
-                      className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white px-4 rounded-xl font-bold text-xs transition-all border border-slate-700"
-                    >
-                      PŘIDAT
-                    </button>
                   </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">{tripType === 'ride' ? 'Délka (h)' : 'Dny'}</label>
-                  <div className="flex items-center bg-slate-950 border border-slate-700 rounded-2xl px-2">
-                    <button onClick={() => setDays(Math.max(1, days - 1))} className="text-orange-500 p-2"><i className="fas fa-minus text-xs"></i></button>
-                    <span className="flex-grow text-center font-bold text-sm">{days}</span>
-                    <button onClick={() => setDays(Math.min(21, days + 1))} className="text-orange-500 p-2"><i className="fas fa-plus text-xs"></i></button>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Lidé</label>
-                  <div className="flex items-center bg-slate-950 border border-slate-700 rounded-2xl px-2">
-                    <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="text-orange-500 p-2"><i className="fas fa-minus text-xs"></i></button>
-                    <span className="flex-grow text-center font-bold text-sm">{travelers}</span>
-                    <button onClick={() => setTravelers(Math.min(10, travelers + 1))} className="text-orange-500 p-2"><i className="fas fa-plus text-xs"></i></button>
-                  </div>
-                </div>
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Mód</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {modes.map(m => (
-                    <button 
-                      key={m.val} 
-                      onClick={() => setMode(m.val)}
-                      className={`py-3 rounded-xl border transition-all flex items-center justify-center ${mode === m.val ? 'bg-orange-600 border-orange-400 text-white shadow-lg shadow-orange-900/40' : 'bg-slate-950 border-slate-700 text-slate-600 hover:border-slate-500'}`}
-                      title={m.label}
-                    >
-                      <i className={`fas ${m.icon} text-xs`}></i>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {tripType === 'ride' && (
-                  <div className="flex items-center justify-between bg-slate-950 border border-slate-700 rounded-2xl p-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isRoundTrip ? 'bg-orange-600/20 text-orange-500' : 'bg-slate-800 text-slate-500'}`}>
-                        <i className="fas fa-rotate"></i>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Průjezdní body (volitelné)</label>
+                    {waypoints.map((wp, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-slate-900/80 border border-slate-700 rounded-xl p-2 pl-4">
+                        <i className="fas fa-location-dot text-orange-500 text-[10px]"></i>
+                        <span className="flex-grow text-xs text-slate-300 font-medium">{wp}</span>
+                        <button onClick={() => removeWaypoint(idx)} className="w-6 h-6 text-slate-500 hover:text-red-500 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors">
+                          <i className="fas fa-times text-[10px]"></i>
+                        </button>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-white uppercase tracking-tight">Okruh</p>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Návrat do místa startu</p>
+                    ))}
+                    <div className="relative flex gap-2">
+                      <div className="relative flex-grow">
+                        <input 
+                          type="text" 
+                          value={newWaypoint} 
+                          onChange={(e) => setNewWaypoint(e.target.value)} 
+                          onKeyPress={(e) => e.key === 'Enter' && addWaypoint()}
+                          placeholder="Např. Grossglockner"
+                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 pl-4 pr-10 text-xs text-white focus:border-orange-500 outline-none transition-all focus:bg-slate-900" 
+                        />
+                        <button 
+                          onClick={() => handleVoiceInput('waypoint')}
+                          className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isListening === 'waypoint' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-slate-500 hover:text-orange-500 hover:bg-slate-800'}`}
+                        >
+                          <i className="fas fa-microphone text-[10px]"></i>
+                        </button>
+                      </div>
+                      <button 
+                        onClick={addWaypoint}
+                        disabled={!newWaypoint.trim()}
+                        className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white px-3 rounded-xl font-bold text-[9px] transition-all border border-slate-700"
+                      >
+                        PŘIDAT
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">{tripType === 'ride' ? 'Délka (h)' : 'Dny'}</label>
+                      <div className="flex items-center bg-slate-900/50 border border-slate-700 rounded-xl px-1">
+                        <button onClick={() => setDays(Math.max(1, days - 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-minus text-[10px]"></i></button>
+                        <span className="flex-grow text-center font-bold text-sm text-white">{days}</span>
+                        <button onClick={() => setDays(Math.min(21, days + 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-plus text-[10px]"></i></button>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => setIsRoundTrip(!isRoundTrip)}
-                      className={`w-12 h-6 rounded-full transition-all relative ${isRoundTrip ? 'bg-orange-600' : 'bg-slate-700'}`}
-                    >
-                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isRoundTrip ? 'left-7' : 'left-1'}`}></div>
-                    </button>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Lidé</label>
+                      <div className="flex items-center bg-slate-900/50 border border-slate-700 rounded-xl px-1">
+                        <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-minus text-[10px]"></i></button>
+                        <span className="flex-grow text-center font-bold text-sm text-white">{travelers}</span>
+                        <button onClick={() => setTravelers(Math.min(10, travelers + 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-plus text-[10px]"></i></button>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                {tripType !== 'ride' && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Ubytování</label>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Mód</label>
                     <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { id: 'wild', icon: 'fa-tents', label: 'Wild' },
-                        { id: 'camp', icon: 'fa-campground', label: 'Kemp' },
-                        { id: 'pension', icon: 'fa-house-user', label: 'Penzion' },
-                        { id: 'hotel', icon: 'fa-hotel', label: 'Hotel' }
-                      ].map(acc => (
+                      {modes.map(m => (
                         <button 
-                          key={acc.id}
-                          onClick={() => setPrefAcc(acc.id as any)}
-                          className={`py-3 rounded-xl border transition-all flex flex-col items-center gap-1 ${prefAcc === acc.id ? 'bg-orange-600 border-orange-400 text-white' : 'bg-slate-950 border-slate-700 text-slate-600'}`}
+                          key={m.val} 
+                          onClick={() => setMode(m.val)}
+                          className={`py-2.5 rounded-xl border transition-all flex items-center justify-center ${mode === m.val ? 'bg-orange-600 border-orange-400 text-white shadow-lg shadow-orange-900/40' : 'bg-slate-900/50 border-slate-700 text-slate-500 hover:border-slate-500 hover:text-white'}`}
+                          title={m.label}
                         >
-                          <i className={`fas ${acc.icon} text-[10px]`}></i>
-                          <span className="text-[8px] font-bold uppercase">{acc.label}</span>
+                          <i className={`fas ${m.icon} text-xs`}></i>
                         </button>
                       ))}
                     </div>
                   </div>
-                )}
+                </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Zážitky</label>
-                  <div className="flex flex-wrap gap-2">
-                    {experienceOptions.map(opt => (
-                      <button 
-                        key={opt.id}
-                        onClick={() => toggleExperience(opt.id)}
-                        className={`px-3 py-2 rounded-xl border text-[9px] font-bold uppercase transition-all flex items-center gap-2 ${prefExp.includes(opt.id) ? 'bg-orange-600 border-orange-400 text-white' : 'bg-slate-950 border-slate-700 text-slate-600'}`}
+              {/* Sekce 2: Styl cesty */}
+              <div className="space-y-5 relative">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-orange-500">2</div>
+                  <h2 className="text-xs font-bold text-white uppercase tracking-[0.2em]">Styl cesty</h2>
+                </div>
+                
+                <div className="pl-3 ml-3 border-l border-slate-700/50 space-y-5">
+                  {tripType === 'ride' && (
+                    <div className="flex items-center justify-between bg-slate-900/50 border border-slate-700 rounded-2xl p-4 cursor-pointer hover:border-slate-500 transition-colors" onClick={() => setIsRoundTrip(!isRoundTrip)}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isRoundTrip ? 'bg-orange-600/20 text-orange-500' : 'bg-slate-800 text-slate-500'}`}>
+                          <i className="fas fa-rotate text-xs"></i>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white uppercase tracking-tight">Okruh</p>
+                          <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Návrat do místa startu</p>
+                        </div>
+                      </div>
+                      <div className={`w-10 h-5 rounded-full transition-all relative ${isRoundTrip ? 'bg-orange-600' : 'bg-slate-700'}`}>
+                        <div className={`w-3 h-3 rounded-full bg-white absolute top-1 transition-all ${isRoundTrip ? 'left-6' : 'left-1'}`}></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {tripType !== 'ride' && (
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Ubytování</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { id: 'wild', icon: 'fa-tents', label: 'Wild' },
+                          { id: 'camp', icon: 'fa-campground', label: 'Kemp' },
+                          { id: 'pension', icon: 'fa-house-user', label: 'Penzion' },
+                          { id: 'hotel', icon: 'fa-hotel', label: 'Hotel' }
+                        ].map(acc => (
+                          <button 
+                            key={acc.id}
+                            onClick={() => setPrefAcc(acc.id as any)}
+                            className={`py-2.5 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${prefAcc === acc.id ? 'bg-orange-600 border-orange-400 text-white shadow-lg shadow-orange-900/40' : 'bg-slate-900/50 border-slate-700 text-slate-500 hover:border-slate-500 hover:text-white'}`}
+                          >
+                            <i className={`fas ${acc.icon} text-[10px]`}></i>
+                            <span className="text-[8px] font-bold uppercase tracking-widest">{acc.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Zážitky</label>
+                    <div className="flex flex-wrap gap-2">
+                      {experienceOptions.map(opt => (
+                        <button 
+                          key={opt.id}
+                          onClick={() => toggleExperience(opt.id)}
+                          className={`px-3 py-2 rounded-xl border text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${prefExp.includes(opt.id) ? 'bg-orange-600 border-orange-400 text-white shadow-md shadow-orange-900/20' : 'bg-slate-900/50 border-slate-700 text-slate-500 hover:border-slate-500 hover:text-white'}`}
+                        >
+                          <i className={`fas ${opt.icon}`}></i> {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Tempo</label>
+                      <select 
+                        value={prefPace} 
+                        onChange={(e) => setPrefPace(e.target.value as any)}
+                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-3 text-[10px] font-bold uppercase tracking-widest text-white outline-none focus:border-orange-500 appearance-none"
                       >
-                        <i className={`fas ${opt.icon}`}></i> {opt.label}
-                      </button>
-                    ))}
+                        <option value="chill">Kochačka</option>
+                        <option value="standard">Standard</option>
+                        <option value="fast">Rychlé</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Rozpočet</label>
+                      <select 
+                        value={prefBudget} 
+                        onChange={(e) => setPrefBudget(e.target.value as any)}
+                        className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2.5 px-3 text-[10px] font-bold uppercase tracking-widest text-white outline-none focus:border-orange-500 appearance-none"
+                      >
+                        <option value="low">Nízký</option>
+                        <option value="mid">Střední</option>
+                        <option value="high">Vysoký</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
+              {/* Sekce 3: AI Instrukce */}
+              <div className="space-y-5 relative">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-orange-500">3</div>
+                  <h2 className="text-xs font-bold text-white uppercase tracking-[0.2em]">Instrukce pro AI</h2>
+                </div>
+                
+                <div className="pl-3 ml-3 border-l border-slate-700/50 space-y-5">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Tempo</label>
-                    <select 
-                      value={prefPace} 
-                      onChange={(e) => setPrefPace(e.target.value as any)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 px-4 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
-                    >
-                      <option value="chill">Kochačka</option>
-                      <option value="standard">Standard</option>
-                      <option value="fast">Rychlé</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Rozpočet</label>
-                    <select 
-                      value={prefBudget} 
-                      onChange={(e) => setPrefBudget(e.target.value as any)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 px-4 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
-                    >
-                      <option value="low">Nízký</option>
-                      <option value="mid">Střední</option>
-                      <option value="high">Vysoký</option>
-                    </select>
+                    <textarea 
+                      value={customNote} 
+                      onChange={(e) => setCustomNote(e.target.value)}
+                      className="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-4 text-xs text-white focus:border-orange-500 outline-none h-24 resize-none transition-all placeholder:text-slate-600 focus:bg-slate-900"
+                      placeholder="Např. Chci vidět Grossglockner, vyhnout se dálnicím a spát blízko jezer..."
+                    />
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-3">Vlastní poznámka</label>
-                  <textarea 
-                    value={customNote} 
-                    onChange={(e) => setCustomNote(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 px-5 text-xs text-white focus:border-orange-500 outline-none h-20 resize-none transition-all"
-                    placeholder="Např. Chci vidět Grossglockner..."
-                  />
-                </div>
-
+              <div className="pt-4">
                 <button 
                   onClick={handlePlan}
                   disabled={loading}
-                  className="w-full bg-orange-600 hover:bg-orange-700 py-4 rounded-2xl font-bold text-white shadow-xl shadow-orange-900/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+                  className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-white shadow-[0_0_20px_rgba(234,88,12,0.3)] hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] active:scale-[0.98] transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs group"
                 >
-                  {loading ? <i className="fas fa-satellite-dish animate-spin"></i> : <i className="fas fa-sparkles"></i>}
+                  {loading ? <i className="fas fa-satellite-dish animate-spin"></i> : <i className="fas fa-sparkles group-hover:scale-110 transition-transform"></i>}
                   {loading ? 'Generuji...' : (tripType === 'ride' ? 'PLÁNOVAT VYJÍŽĎKU' : 'PLÁNOVAT EXPEDICI')}
                 </button>
               </div>
