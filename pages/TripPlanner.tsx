@@ -1097,68 +1097,92 @@ const TripPlanner: React.FC = () => {
               {expedition.countriesInfo && (
                 <div className="space-y-6 animate-fadeIn">
                   <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-8">Průvodce zeměmi</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {expedition.countriesInfo.map((country, idx) => (
-                      <div key={idx} className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 shadow-xl">
-                        <h4 className="text-xl font-brand font-bold text-white uppercase tracking-tight mb-6 flex items-center gap-3">
-                          <i className="fas fa-flag text-orange-500"></i>
-                          {country.name}
-                        </h4>
+                      <div key={idx} className="bg-slate-800 rounded-[3rem] border border-slate-700 shadow-2xl overflow-hidden group">
+                        {/* Country Header */}
+                        <div className="bg-slate-900/80 p-8 border-b border-slate-700 relative overflow-hidden">
+                          <div className="absolute -right-4 -top-4 opacity-5 text-9xl">
+                            <i className="fas fa-globe-europe"></i>
+                          </div>
+                          <div className="relative z-10 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-orange-600/20 flex items-center justify-center border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.2)]">
+                              <i className="fas fa-flag text-orange-500 text-xl"></i>
+                            </div>
+                            <h4 className="text-3xl font-brand font-black text-white uppercase tracking-tighter">{country.name}</h4>
+                          </div>
+                        </div>
                         
-                        <div className="space-y-4">
-                          <div className="flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
-                              <i className="fas fa-gauge-high text-slate-400 text-xs"></i>
+                        {/* Bento Grid Content */}
+                        <div className="p-6 grid grid-cols-2 gap-4">
+                          {/* Speed Limits */}
+                          <div className="col-span-2 sm:col-span-1 bg-slate-900/50 p-5 rounded-3xl border border-slate-700/50 hover:border-slate-500 transition-colors">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                                <i className="fas fa-gauge-high text-blue-400 text-xs"></i>
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rychlost</p>
                             </div>
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rychlostní limity</p>
-                              <p className="text-sm text-white font-medium">{country.speedLimits}</p>
-                            </div>
+                            <p className="text-sm text-white font-medium leading-snug">{country.speedLimits}</p>
                           </div>
                           
-                          <div className="flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
-                              <i className="fas fa-wine-glass text-slate-400 text-xs"></i>
+                          {/* Alcohol */}
+                          <div className="col-span-2 sm:col-span-1 bg-slate-900/50 p-5 rounded-3xl border border-slate-700/50 hover:border-slate-500 transition-colors">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                                <i className="fas fa-wine-glass text-red-400 text-xs"></i>
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Alkohol</p>
                             </div>
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tolerance alkoholu</p>
-                              <p className="text-sm text-white font-medium">{country.alcoholLimit}</p>
-                            </div>
+                            <p className="text-sm text-white font-medium leading-snug">{country.alcoholLimit}</p>
                           </div>
 
-                          <div className="flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
-                              <i className="fas fa-ticket text-slate-400 text-xs"></i>
-                            </div>
-                            <div>
+                          {/* Tolls */}
+                          <div className="col-span-2 bg-slate-900/50 p-5 rounded-3xl border border-slate-700/50 hover:border-slate-500 transition-colors">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                                <i className="fas fa-ticket text-purple-400 text-xs"></i>
+                              </div>
                               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Mýtné a známky</p>
-                              <p className="text-sm text-white font-medium">{country.tolls}</p>
                             </div>
+                            <p className="text-sm text-white font-medium leading-snug">{country.tolls}</p>
                           </div>
 
-                          <div className="flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shrink-0 border border-slate-700">
-                              <i className="fas fa-triangle-exclamation text-slate-400 text-xs"></i>
-                            </div>
-                            <div>
+                          {/* Equipment */}
+                          <div className="col-span-2 bg-slate-900/50 p-5 rounded-3xl border border-slate-700/50 hover:border-slate-500 transition-colors">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                                <i className="fas fa-triangle-exclamation text-emerald-400 text-xs"></i>
+                              </div>
                               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Povinná výbava</p>
-                              <ul className="list-disc list-inside text-sm text-white font-medium">
-                                {country.mandatoryEquipment.map((eq, i) => <li key={i}>{eq}</li>)}
-                              </ul>
                             </div>
+                            <ul className="space-y-2">
+                              {country.mandatoryEquipment.map((eq, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-white font-medium">
+                                  <i className="fas fa-check text-emerald-500 text-[10px] mt-1 shrink-0"></i>
+                                  <span className="leading-snug">{eq}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
 
+                          {/* Moto Rules */}
                           {country.customRules && country.customRules.length > 0 && (
-                            <div className="flex gap-4 items-start">
-                              <div className="w-8 h-8 rounded-xl bg-orange-600/20 flex items-center justify-center shrink-0 border border-orange-500/30">
-                                <i className="fas fa-motorcycle text-orange-500 text-xs"></i>
-                              </div>
-                              <div>
+                            <div className="col-span-2 bg-orange-950/30 p-5 rounded-3xl border border-orange-500/30 hover:border-orange-500/50 transition-colors">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-8 h-8 rounded-xl bg-orange-500/20 flex items-center justify-center border border-orange-500/40">
+                                  <i className="fas fa-motorcycle text-orange-500 text-xs"></i>
+                                </div>
                                 <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Motorkářská specifika</p>
-                                <ul className="list-disc list-inside text-sm text-white font-medium">
-                                  {country.customRules.map((rule, i) => <li key={i}>{rule}</li>)}
-                                </ul>
                               </div>
+                              <ul className="space-y-2">
+                                {country.customRules.map((rule, i) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm text-orange-100 font-medium">
+                                    <i className="fas fa-circle text-orange-500 text-[6px] mt-1.5 shrink-0"></i>
+                                    <span className="leading-snug">{rule}</span>
+                                  </li>
+                                ))}
+                              </ul>
                             </div>
                           )}
                         </div>
