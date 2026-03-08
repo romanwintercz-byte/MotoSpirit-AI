@@ -365,15 +365,15 @@ const TripPlanner: React.FC = () => {
   // --- MAP LOGIC ---
   useEffect(() => {
     const L = (window as any).L;
-    if (!L) return;
+    if (!L || !expedition) return;
     const initMap = () => {
       const mapEl = document.getElementById('exp-map');
       if (!mapEl || mapRef.current) return;
       mapRef.current = L.map('exp-map', { zoomControl: false, attributionControl: false }).setView([50, 15], 6);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapRef.current);
     };
-    if (viewMode === 'map') setTimeout(initMap, 100);
-  }, [viewMode]);
+    setTimeout(initMap, 100);
+  }, [expedition]);
 
   useEffect(() => {
     const L = (window as any).L;
@@ -392,7 +392,7 @@ const TripPlanner: React.FC = () => {
       markersRef.current.push(L.circleMarker(end, { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
       mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
     }
-  }, [activeDayIdx, expedition, viewMode]);
+  }, [activeDayIdx, expedition]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-32 px-4">
@@ -400,16 +400,6 @@ const TripPlanner: React.FC = () => {
         <div className="text-center md:text-left">
           <h1 className="text-4xl font-bold font-brand uppercase text-white tracking-tighter">SPIRIT <span className="text-orange-500 italic">WANDERER</span></h1>
           <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mt-1 opacity-70">AI Roadtrip Engine v2.5</p>
-        </div>
-        <div className="flex items-center gap-4">
-          {expedition && (
-            <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md overflow-x-auto">
-              <button onClick={() => setViewMode('info')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'info' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ITINERÁŘ</button>
-              <button onClick={() => setViewMode('map')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'map' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>MAPA</button>
-              <button onClick={() => setViewMode('stats')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'stats' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ROZPOČET</button>
-              <button onClick={() => setViewMode('countries')} className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${viewMode === 'countries' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>ZEMĚ</button>
-            </div>
-          )}
         </div>
       </header>
 
