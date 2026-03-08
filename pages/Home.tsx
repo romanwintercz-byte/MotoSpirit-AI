@@ -65,34 +65,56 @@ const Home: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn pb-10">
-      {/* Hero Section - Mobile Optimized */}
-      <section className="relative h-[300px] md:h-[450px] rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-700">
-        <img 
-          src="https://images.unsplash.com/photo-1599819811279-d5ad9cccf838?auto=format&fit=crop&w=1200&q=80" 
-          alt="Motorcycle lifestyle" 
-          className="w-full h-full object-cover brightness-[0.3]"
-        />
-        <div className="absolute inset-0 flex flex-col justify-center px-6 md:px-16">
-          <div className="inline-block bg-orange-600 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-3 w-fit tracking-widest uppercase">
-            MotoSpirit 2.5
-          </div>
-          <h1 className="font-brand text-3xl md:text-6xl font-bold mb-3 leading-tight uppercase">
-            {user?.name ? (
-              <>Ahoj <span className="text-orange-500">{toCzechVocative(user.nickname || user.name)}</span>!</>
-            ) : (
-              <>ŽIJ <span className="text-orange-500 italic">SVOJI</span> CESTU</>
-            )}
-          </h1>
-          <p className="text-slate-400 text-xs md:text-lg max-w-md mb-6 leading-relaxed">
-            Tvůj digitální parťák. Plánuj epické výpravy, sdílej trasy s kámoši, sleduj náklady a měj servis pod kontrolou. Vše bezpečně v cloudu.
-          </p>
-          <div className="flex gap-3">
-            <Link to="/logbook" className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-sm active:scale-95">
-              NATANKOVAT
-            </Link>
-            <Link to="/planner" className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-bold transition-all border border-slate-700 text-sm active:scale-95">
-              TRASY
-            </Link>
+      {/* Hero Section - Editorial / Magazine Style */}
+      <section className="relative h-[400px] md:h-[600px] rounded-[3rem] overflow-hidden shadow-2xl border border-slate-800 group">
+        <div className="absolute inset-0 bg-slate-950">
+          <img 
+            src="https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1600&q=80" 
+            alt="Motorcycle lifestyle" 
+            className="w-full h-full object-cover opacity-40 mix-blend-luminosity group-hover:scale-105 transition-transform duration-1000 ease-out"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent"></div>
+        </div>
+
+        <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-16">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-3 mb-6">
+              <span className="w-8 h-[2px] bg-orange-500"></span>
+              <span className="text-orange-500 text-[10px] font-bold uppercase tracking-[0.3em]">MotoSpirit 2.5</span>
+            </div>
+            
+            <h1 className="font-brand text-5xl md:text-8xl font-black text-white uppercase tracking-tighter leading-[0.85] mb-6">
+              {user?.name ? (
+                <div className="flex flex-col">
+                  <span className="text-slate-400 text-3xl md:text-5xl font-light tracking-tight mb-2">Ahoj,</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                    {toCzechVocative(user.nickname || user.name)}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">ŽIJ SVOJI</span>
+                  <span className="text-orange-500 italic pr-4">CESTU.</span>
+                </div>
+              )}
+            </h1>
+            
+            <p className="text-slate-400 text-sm md:text-lg max-w-xl mb-10 leading-relaxed font-medium">
+              Tvůj digitální parťák. Plánuj epické výpravy, sdílej trasy s kámoši, sleduj náklady a měj servis pod kontrolou. Vše bezpečně v cloudu.
+            </p>
+            
+            <div className="flex flex-wrap gap-4">
+              <Link to="/planner" className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-[0_0_30px_rgba(234,88,12,0.3)] hover:shadow-[0_0_40px_rgba(234,88,12,0.5)] text-xs uppercase tracking-widest flex items-center gap-3 group/btn">
+                PLÁNOVAT TRASU
+                <i className="fas fa-arrow-right group-hover/btn:translate-x-1 transition-transform"></i>
+              </Link>
+              <Link to="/logbook" className="bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md text-white px-8 py-4 rounded-2xl font-bold transition-all border border-slate-700 text-xs uppercase tracking-widest flex items-center gap-3">
+                <i className="fas fa-gas-pump text-orange-500"></i>
+                NATANKOVAT
+              </Link>
+            </div>
           </div>
         </div>
       </section>
