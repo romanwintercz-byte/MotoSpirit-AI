@@ -121,6 +121,7 @@ const TripPlanner: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [showChallengeAudience, setShowChallengeAudience] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
@@ -294,18 +295,36 @@ const TripPlanner: React.FC = () => {
     setPrefExp(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const saveExpedition = () => {
+  const existingExpedition = expedition ? savedExpeditions.find(ex => ex.id === expedition.id) : null;
+  const isModified = existingExpedition ? JSON.stringify(existingExpedition) !== JSON.stringify(expedition) : false;
+
+  const handleSaveClick = () => {
+    if (!expedition) return;
+    const existing = savedExpeditions.find(ex => ex.id === expedition.id);
+    if (existing) {
+      setShowSaveModal(true);
+    } else {
+      saveAsNew();
+    }
+  };
+
+  const saveAsNew = () => {
     if (!expedition) return;
     const name = window.prompt("Pojmenuj svou expedici:", expedition.name);
     if (name) {
       const newExp = { ...expedition, name, id: Date.now().toString() };
-      setSavedExpeditions(prev => {
-        const filtered = prev.filter(ex => ex.id !== newExp.id);
-        return [newExp, ...filtered];
-      });
+      setSavedExpeditions(prev => [newExp, ...prev]);
       setExpedition(newExp);
       alert("Expedice byla uložena do tvého profilu.");
+      setShowSaveModal(false);
     }
+  };
+
+  const overwriteExisting = () => {
+    if (!expedition) return;
+    setSavedExpeditions(prev => prev.map(ex => ex.id === expedition.id ? expedition : ex));
+    alert("Změny byly uloženy.");
+    setShowSaveModal(false);
   };
 
   const deleteExpedition = (id: string, e: React.MouseEvent) => {
@@ -803,11 +822,20 @@ const TripPlanner: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      {savedExpeditions.some(ex => ex.id === expedition.id) ? (
+                      {existingExpedition ? (
                         <div className="flex gap-2">
-                          <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
-                             <i className="fas fa-check"></i> ULOŽENO
-                          </span>
+                          {isModified ? (
+                            <button 
+                              onClick={handleSaveClick}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl shadow-lg text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                            >
+                              <i className="fas fa-save"></i> ULOŽIT ZMĚNY
+                            </button>
+                          ) : (
+                            <span className="bg-green-600/10 text-green-500 px-4 py-2 rounded-xl border border-green-500/20 text-[9px] font-bold uppercase flex items-center gap-2">
+                               <i className="fas fa-check"></i> ULOŽENO
+                            </span>
+                          )}
                           {activeState?.expeditionId !== expedition.id && expedition.status !== 'completed' && (
                             <button 
                               onClick={() => startExpedition(expedition)}
@@ -819,7 +847,7 @@ const TripPlanner: React.FC = () => {
                         </div>
                       ) : (
                         <button 
-                          onClick={saveExpedition}
+                          onClick={handleSaveClick}
                           className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl shadow-lg text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
                         >
                           <i className="fas fa-save"></i> ULOŽIT TRASU
@@ -1400,6 +1428,41 @@ const TripPlanner: React.FC = () => {
                 className="w-full bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white transition-all border border-slate-700"
               >
                 HOTOVO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Save Options */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-900 w-full max-w-sm rounded-[2.5rem] border border-orange-500/30 shadow-2xl overflow-hidden flex flex-col animate-slideUp">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+               <div>
+                  <h2 className="text-lg font-brand font-bold uppercase tracking-tight text-white">ULOŽIT <span className="text-orange-500">ZMĚNY</span></h2>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Jak chceš trasu uložit?</p>
+               </div>
+               <button onClick={() => setShowSaveModal(false)} className="text-slate-500 hover:text-white p-2">
+                 <i className="fas fa-times text-xl"></i>
+               </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <button 
+                onClick={overwriteExisting}
+                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white shadow-lg shadow-orange-900/20 transition-all flex items-center justify-center gap-3"
+              >
+                <i className="fas fa-save text-lg"></i>
+                PŘEPSAT STÁVAJÍCÍ
+              </button>
+              
+              <button 
+                onClick={saveAsNew}
+                className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-white transition-all flex items-center justify-center gap-3"
+              >
+                <i className="fas fa-copy text-lg"></i>
+                ULOŽIT JAKO NOVOU
               </button>
             </div>
           </div>
