@@ -110,6 +110,8 @@ export interface MaintenanceRecord {
   mileage: number;
   cost: number;
   receiptImage?: string;
+  serviceReportImage?: string;
+  invoiceImage?: string;
   expeditionId?: string;
 }
 

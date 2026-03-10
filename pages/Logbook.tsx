@@ -149,6 +149,19 @@ const Logbook: React.FC = () => {
     }
   };
 
+  const handleAdditionalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'receiptImage' | 'serviceReportImage' | 'invoiceImage') => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingRecord) return;
+    
+    try {
+      const compressedImage = await resizeImage(file);
+      setPendingRecord({ ...pendingRecord, [field]: compressedImage });
+    } catch (err) {
+      console.error("Image processing failed", err);
+      alert("Nepodařilo se zpracovat obrázek.");
+    }
+  };
+
   const handleVoiceInput = () => {
     const Recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!Recognition) {
@@ -203,6 +216,8 @@ const Logbook: React.FC = () => {
         description: pendingRecord.description || 'Zadáno AI',
         mileage, cost,
         receiptImage: pendingRecord.receiptImage,
+        serviceReportImage: pendingRecord.serviceReportImage,
+        invoiceImage: pendingRecord.invoiceImage,
         expeditionId
       };
       const updatedExpenses = [newExp, ...expenses];
@@ -386,16 +401,22 @@ const Logbook: React.FC = () => {
             .map((rec: any) => (
               <div 
                 key={rec.id} 
-                className={`bg-slate-800/40 border border-slate-700 p-4 rounded-3xl flex items-center gap-4 transition-all group ${rec.receiptImage ? 'hover:border-orange-500/30 shadow-md' : ''}`}
+                className={`bg-slate-800/40 border border-slate-700 p-4 rounded-3xl flex items-center gap-4 transition-all group ${rec.receiptImage || rec.serviceReportImage || rec.invoiceImage ? 'hover:border-orange-500/30 shadow-md' : ''}`}
               >
                 <div 
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${'liters' in rec ? 'bg-orange-500/10 text-orange-500' : (rec.type === 'Mýto' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500')} ${rec.receiptImage ? 'cursor-pointer' : ''}`}
-                  onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${'liters' in rec ? 'bg-orange-500/10 text-orange-500' : (rec.type === 'Mýto' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500')} ${rec.receiptImage || rec.serviceReportImage || rec.invoiceImage ? 'cursor-pointer' : ''}`}
+                  onClick={() => {
+                    const img = rec.receiptImage || rec.serviceReportImage || rec.invoiceImage;
+                    if (img) setViewingReceipt(img);
+                  }}
                 >
                   <i className={`fas ${'liters' in rec ? 'fa-gas-pump' : (rec.type === 'Mýto' ? 'fa-ticket' : 'fa-tools')} text-sm`}></i>
                 </div>
-                <div className="flex-grow min-w-0" onClick={() => rec.receiptImage && setViewingReceipt(rec.receiptImage)}>
-                  <h4 className={`font-bold text-sm truncate text-white ${rec.receiptImage ? 'cursor-pointer' : ''}`}>
+                <div className="flex-grow min-w-0" onClick={() => {
+                    const img = rec.receiptImage || rec.serviceReportImage || rec.invoiceImage;
+                    if (img) setViewingReceipt(img);
+                  }}>
+                  <h4 className={`font-bold text-sm truncate text-white ${rec.receiptImage || rec.serviceReportImage || rec.invoiceImage ? 'cursor-pointer' : ''}`}>
                     {'liters' in rec ? `${rec.liters} l benzínu` : rec.type}
                   </h4>
                   <div className="flex gap-2 text-[9px] text-slate-500 font-bold uppercase mt-0.5">
@@ -408,7 +429,9 @@ const Logbook: React.FC = () => {
                 <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className="font-brand font-bold text-base text-white">{rec.cost.toLocaleString()} <span className="text-[9px] font-normal">Kč</span></p>
                   <div className="flex items-center gap-3">
-                    {rec.receiptImage && <i className="fas fa-image text-orange-500 text-[10px] cursor-pointer" onClick={() => setViewingReceipt(rec.receiptImage)}></i>}
+                    {rec.receiptImage && <i className="fas fa-image text-orange-500 text-[10px] cursor-pointer" title="Účtenka" onClick={() => setViewingReceipt(rec.receiptImage)}></i>}
+                    {rec.serviceReportImage && <i className="fas fa-file-contract text-blue-500 text-[10px] cursor-pointer" title="Servisní zpráva" onClick={() => setViewingReceipt(rec.serviceReportImage)}></i>}
+                    {rec.invoiceImage && <i className="fas fa-file-invoice-dollar text-emerald-500 text-[10px] cursor-pointer" title="Faktura" onClick={() => setViewingReceipt(rec.invoiceImage)}></i>}
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -525,7 +548,54 @@ const Logbook: React.FC = () => {
                 />
               </div>
 
-              {pendingRecord.receiptImage && (
+              {pendingRecord.type === 'service' && (
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Servisní zpráva</label>
+                    <div className="relative">
+                      {pendingRecord.serviceReportImage ? (
+                        <div className="relative rounded-xl overflow-hidden border border-slate-700 h-24">
+                          <img src={pendingRecord.serviceReportImage} alt="Service Report" className="w-full h-full object-cover opacity-50" />
+                          <button onClick={() => setPendingRecord({...pendingRecord, serviceReportImage: undefined})} className="absolute top-1 right-1 bg-red-500/80 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:border-orange-500/50 hover:bg-slate-800/50 transition-all">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <i className="fas fa-file-contract text-slate-500 mb-2"></i>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase">Nahrát zprávu</p>
+                          </div>
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handleAdditionalImageUpload(e, 'serviceReportImage')} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase ml-2">Faktura</label>
+                    <div className="relative">
+                      {pendingRecord.invoiceImage ? (
+                        <div className="relative rounded-xl overflow-hidden border border-slate-700 h-24">
+                          <img src={pendingRecord.invoiceImage} alt="Invoice" className="w-full h-full object-cover opacity-50" />
+                          <button onClick={() => setPendingRecord({...pendingRecord, invoiceImage: undefined})} className="absolute top-1 right-1 bg-red-500/80 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:border-orange-500/50 hover:bg-slate-800/50 transition-all">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <i className="fas fa-file-invoice-dollar text-slate-500 mb-2"></i>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase">Nahrát fakturu</p>
+                          </div>
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handleAdditionalImageUpload(e, 'invoiceImage')} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {pendingRecord.receiptImage && pendingRecord.type !== 'service' && (
                 <div className="mt-2 rounded-xl overflow-hidden border border-slate-700">
                   <img src={pendingRecord.receiptImage} alt="Receipt Preview" className="w-full h-32 object-cover opacity-50" />
                 </div>
