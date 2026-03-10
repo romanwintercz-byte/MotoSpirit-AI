@@ -192,7 +192,9 @@ const Logbook: React.FC = () => {
         isFull: true, receiptImage: pendingRecord.receiptImage,
         expeditionId
       };
-      setFuelRecords([newRec, ...fuelRecords]);
+      const updatedFuel = [newRec, ...fuelRecords];
+      setFuelRecords(updatedFuel);
+      localStorage.setItem('motospirit_fuel', JSON.stringify(updatedFuel));
       updateBikeMileage(selectedBikeId, mileage);
     } else {
       const newExp: MaintenanceRecord = {
@@ -203,7 +205,9 @@ const Logbook: React.FC = () => {
         receiptImage: pendingRecord.receiptImage,
         expeditionId
       };
-      setExpenses([newExp, ...expenses]);
+      const updatedExpenses = [newExp, ...expenses];
+      setExpenses(updatedExpenses);
+      localStorage.setItem('motospirit_records', JSON.stringify(updatedExpenses));
       if (mileage > 0) updateBikeMileage(selectedBikeId, mileage);
     }
     setPendingRecord(null);
