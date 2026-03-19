@@ -219,7 +219,6 @@ const TripPlanner: React.FC = () => {
   // --- HANDLERS ---
   const handlePlan = async () => {
     setLoading(true);
-    setViewMode('info');
     setShowRefine(false);
     const prefs: ExpeditionPreferences = {
       accommodation: prefAcc,
@@ -338,7 +337,6 @@ const TripPlanner: React.FC = () => {
   const loadExpedition = (ex: Expedition) => {
     setExpedition(ex);
     setActiveDayIdx(0);
-    setViewMode('info');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1054,7 +1052,7 @@ const TripPlanner: React.FC = () => {
                                 ))}
                               </Pie>
                               <Tooltip 
-                                formatter={(value: number) => [`${value.toLocaleString()} Kč`, '']}
+                                formatter={(value: any) => [`${value.toLocaleString()} Kč`, '']}
                                 contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '1rem', color: '#fff' }}
                                 itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
                               />
@@ -1111,7 +1109,7 @@ const TripPlanner: React.FC = () => {
                             <Tooltip 
                               cursor={{ fill: '#1e293b' }}
                               contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '1rem', color: '#fff' }}
-                              formatter={(value: number) => [`${value} km`, 'Vzdálenost']}
+                              formatter={(value: any) => [`${value} km`, 'Vzdálenost']}
                               labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '4px' }}
                             />
                             <Bar 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getAllPublicProfiles, updateProfileStatus, deleteProfile, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge } from '../services/syncService';
 import { Motorcycle, UserProfile, POI, RideChallenge, Expedition } from '../types';
 import { searchNearbyPOI } from '../services/geminiService';
@@ -10,10 +10,84 @@ interface RiderProfile {
   bikes: Motorcycle[];
 }
 
+interface MotoEvent {
+  id: string;
+  title: string;
+  date: string;
+  endDate?: string;
+  location: string;
+  distance: string;
+  image: string;
+  type: string;
+  attendees: number;
+  isAttending: boolean;
+  description: string;
+}
+
+const mockEvents: MotoEvent[] = [
+  {
+    id: '1',
+    title: 'EuroBikeFest 2026',
+    date: '2026-05-21',
+    endDate: '2026-05-24',
+    location: 'Pasohlávky, ATC Merkur',
+    distance: '120 km',
+    image: 'https://picsum.photos/seed/eurobike/600/300',
+    type: 'Sraz',
+    attendees: 142,
+    isAttending: false,
+    description: 'Největší motofestival v ČR. Koncerty, kaskadéři, custom bikes a tisíce motorek.'
+  },
+  {
+    id: '2',
+    title: 'Prague Harley Days',
+    date: '2026-09-04',
+    endDate: '2026-09-06',
+    location: 'Výstaviště Holešovice, Praha',
+    distance: '15 km',
+    image: 'https://picsum.photos/seed/harley/600/300',
+    type: 'Výstava',
+    attendees: 356,
+    isAttending: true,
+    description: 'Tradiční setkání majitelů a příznivců značky Harley-Davidson. Spanilá jízda Prahou.'
+  },
+  {
+    id: '3',
+    title: 'Zahájení sezóny Poděbrady',
+    date: '2026-04-04',
+    location: 'Lázeňská kolonáda, Poděbrady',
+    distance: '65 km',
+    image: 'https://picsum.photos/seed/podebrady/600/300',
+    type: 'Sraz',
+    attendees: 890,
+    isAttending: false,
+    description: 'Tradiční první jarní setkání motorkářů na kolonádě v Poděbradech.'
+  },
+  {
+    id: '4',
+    title: 'Hořice - 300 zatáček',
+    date: '2026-05-16',
+    endDate: '2026-05-17',
+    location: 'Hořice v Podkrkonoší',
+    distance: '105 km',
+    image: 'https://picsum.photos/seed/horice/600/300',
+    type: 'Závod',
+    attendees: 210,
+    isAttending: false,
+    description: 'Legendární road racingový závod na přírodním okruhu.'
+  }
+];
+
 const Radar: React.FC = () => {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'riders' | 'poi' | 'challenges'>('riders');
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'riders' | 'poi' | 'challenges' | 'events'>('riders');
   
+  // Events State
+  const [events, setEvents] = useState<MotoEvent[]>([...mockEvents]);
+  const [eventFilterTime, setEventFilterTime] = useState('all');
+  const [eventFilterType, setEventFilterType] = useState('all');
+
   // Rider Radar State
   const [riders, setRiders] = useState<RiderProfile[]>([]);
   const [loadingRiders, setLoadingRiders] = useState(true);
@@ -266,6 +340,12 @@ const Radar: React.FC = () => {
             className={`pb-2 text-[10px] font-bold uppercase tracking-widest transition-all shrink-0 ${activeTab === 'poi' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-slate-500 hover:text-slate-300'}`}
           >
             MÍSTA V OKOLÍ
+          </button>
+          <button 
+            onClick={() => setActiveTab('events')}
+            className={`pb-2 text-[10px] font-bold uppercase tracking-widest transition-all shrink-0 ${activeTab === 'events' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            AKCE A SRAZY
           </button>
         </div>
       </header>
@@ -522,6 +602,103 @@ const Radar: React.FC = () => {
               )}
             </div>
           )}
+        </div>
+      ) : activeTab === 'events' ? (
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3 px-2">
+            <select 
+              value={eventFilterType}
+              onChange={e => setEventFilterType(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
+            >
+              <option value="all">Všechny typy</option>
+              <option value="Sraz">Sraz</option>
+              <option value="Výstava">Výstava</option>
+              <option value="Závod">Závod</option>
+              <option value="Vyjížďka">Vyjížďka</option>
+            </select>
+            <select 
+              value={eventFilterTime}
+              onChange={e => setEventFilterTime(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
+            >
+              <option value="all">Kdykoliv</option>
+              <option value="this_weekend">Tento víkend</option>
+              <option value="this_month">Tento měsíc</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {events
+              .filter(e => eventFilterType === 'all' || e.type === eventFilterType)
+              .filter(e => {
+                if (eventFilterTime === 'all') return true;
+                const eventDate = new Date(e.date);
+                const now = new Date();
+                if (eventFilterTime === 'this_month') {
+                  return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear();
+                }
+                if (eventFilterTime === 'this_weekend') {
+                  const diffTime = eventDate.getTime() - now.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return diffDays <= 7 && diffDays >= 0 && (eventDate.getDay() === 0 || eventDate.getDay() === 6);
+                }
+                return true;
+              })
+              .map(event => (
+              <div key={event.id} className="bg-slate-800 rounded-[2rem] border border-slate-700 p-6 space-y-4 hover:border-orange-500/50 transition-all group overflow-hidden">
+                {event.image && (
+                  <div className="h-40 -mx-6 -mt-6 mb-4 overflow-hidden relative">
+                    <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-800 to-transparent"></div>
+                    <div className="absolute bottom-4 left-6 bg-orange-600 text-white px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest shadow-lg">
+                      {event.type}
+                    </div>
+                  </div>
+                )}
+                
+                {!event.image && (
+                  <div className="flex justify-between items-start">
+                    <div className="bg-orange-600/10 text-orange-500 px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-orange-500/20">
+                      {event.type}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-xl font-brand font-bold text-white uppercase tracking-tight mb-2">{event.title}</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{event.description}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-900/50 p-3 rounded-2xl border border-slate-700/50">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase mb-1">Kdy</p>
+                    <p className="text-xs font-bold text-white">{new Date(event.date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                  <div className="bg-slate-900/50 p-3 rounded-2xl border border-slate-700/50">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase mb-1">Kde</p>
+                    <p className="text-xs font-bold text-white truncate">{event.location}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <i className="fas fa-users text-slate-500"></i>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{event.attendees} účastníků</span>
+                  </div>
+                  <button className="px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-slate-900 text-slate-400 border border-slate-700 hover:border-orange-500 hover:text-white">
+                    ZOBRAZIT DETAIL
+                  </button>
+                </div>
+              </div>
+            ))}
+            {events.length === 0 && (
+              <div className="col-span-full text-center py-20">
+                <p className="text-slate-600 text-xs uppercase font-bold tracking-widest">Zatím žádné akce v okolí.</p>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
