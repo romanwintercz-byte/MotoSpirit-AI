@@ -87,6 +87,20 @@ const Radar: React.FC = () => {
   const [events, setEvents] = useState<MotoEvent[]>([...mockEvents]);
   const [eventFilterTime, setEventFilterTime] = useState('all');
   const [eventFilterType, setEventFilterType] = useState('all');
+  const [selectedEvent, setSelectedEvent] = useState<MotoEvent | null>(null);
+
+  const toggleEventAttendance = (eventId: string) => {
+    setEvents(prev => prev.map(e => {
+      if (e.id === eventId) {
+        const newIsAttending = !e.isAttending;
+        return { ...e, isAttending: newIsAttending, attendees: e.attendees + (newIsAttending ? 1 : -1) };
+      }
+      return e;
+    }));
+    if (selectedEvent?.id === eventId) {
+      setSelectedEvent(prev => prev ? { ...prev, isAttending: !prev.isAttending, attendees: prev.attendees + (!prev.isAttending ? 1 : -1) } : null);
+    }
+  };
 
   // Rider Radar State
   const [riders, setRiders] = useState<RiderProfile[]>([]);
@@ -687,7 +701,10 @@ const Radar: React.FC = () => {
                     <i className="fas fa-users text-slate-500"></i>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">{event.attendees} účastníků</span>
                   </div>
-                  <button className="px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-slate-900 text-slate-400 border border-slate-700 hover:border-orange-500 hover:text-white">
+                  <button 
+                    onClick={() => setSelectedEvent(event)}
+                    className="px-6 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-slate-900 text-slate-400 border border-slate-700 hover:border-orange-500 hover:text-white"
+                  >
                     ZOBRAZIT DETAIL
                   </button>
                 </div>
@@ -883,6 +900,103 @@ const Radar: React.FC = () => {
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-xl shadow-orange-900/20 mt-4"
               >
                 VYHLÁSIT VÝZVU
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: Event Detail */}
+      {selectedEvent && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-fadeIn">
+          <div className="bg-slate-800 w-full max-w-lg rounded-[2.5rem] border border-slate-700 shadow-2xl overflow-hidden animate-slideUp flex flex-col max-h-[90vh]">
+            {selectedEvent.image ? (
+              <div className="relative h-64 shrink-0">
+                <img src={selectedEvent.image} alt={selectedEvent.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-800 via-slate-800/50 to-transparent"></div>
+                <button onClick={() => setSelectedEvent(null)} className="absolute top-4 right-4 w-10 h-10 bg-slate-900/50 backdrop-blur-md rounded-full text-white hover:bg-orange-500 transition-colors flex items-center justify-center">
+                  <i className="fas fa-times"></i>
+                </button>
+                <div className="absolute bottom-6 left-8 right-8">
+                  <div className="bg-orange-600 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest inline-block mb-3 shadow-lg">
+                    {selectedEvent.type}
+                  </div>
+                  <h2 className="text-3xl font-brand font-bold uppercase tracking-tight text-white leading-tight">{selectedEvent.title}</h2>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 border-b border-slate-700 flex justify-between items-start shrink-0 bg-slate-800">
+                <div>
+                  <div className="bg-orange-600/20 text-orange-500 border border-orange-500/30 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest inline-block mb-3">
+                    {selectedEvent.type}
+                  </div>
+                  <h2 className="text-2xl font-brand font-bold uppercase tracking-tight text-white">{selectedEvent.title}</h2>
+                </div>
+                <button onClick={() => setSelectedEvent(null)} className="text-slate-500 hover:text-white p-2 bg-slate-900 rounded-full w-10 h-10 flex items-center justify-center transition-colors">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            )}
+            
+            <div className="p-8 space-y-8 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-orange-500 shrink-0">
+                    <i className="fas fa-calendar-alt"></i>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Datum</p>
+                    <p className="text-sm font-bold text-white">
+                      {new Date(selectedEvent.date).toLocaleDateString('cs-CZ')}
+                      {selectedEvent.endDate && ` - ${new Date(selectedEvent.endDate).toLocaleDateString('cs-CZ')}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-blue-500 shrink-0">
+                    <i className="fas fa-map-marker-alt"></i>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Místo</p>
+                    <p className="text-sm font-bold text-white">{selectedEvent.location}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-emerald-500 shrink-0">
+                    <i className="fas fa-users"></i>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Účast</p>
+                    <p className="text-sm font-bold text-white">{selectedEvent.attendees} motorkářů</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-purple-500 shrink-0">
+                    <i className="fas fa-route"></i>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vzdálenost</p>
+                    <p className="text-sm font-bold text-white">{selectedEvent.distance}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">O akci</h3>
+                <p className="text-slate-300 text-sm leading-relaxed">{selectedEvent.description}</p>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-700 bg-slate-900/50 shrink-0 flex gap-4">
+              <button 
+                onClick={() => toggleEventAttendance(selectedEvent.id)}
+                className={`flex-1 py-4 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${
+                  selectedEvent.isAttending 
+                    ? 'bg-slate-800 text-orange-500 border border-orange-500/50 hover:bg-slate-700' 
+                    : 'bg-orange-600 text-white hover:bg-orange-700 shadow-lg shadow-orange-900/20'
+                }`}
+              >
+                <i className={`fas ${selectedEvent.isAttending ? 'fa-check' : 'fa-motorcycle'}`}></i>
+                {selectedEvent.isAttending ? 'ZÚČASTNÍM SE' : 'CHCI SE ZÚČASTNIT'}
               </button>
             </div>
           </div>
