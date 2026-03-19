@@ -87,6 +87,7 @@ const Radar: React.FC = () => {
   const [events, setEvents] = useState<MotoEvent[]>([...mockEvents]);
   const [eventFilterTime, setEventFilterTime] = useState('all');
   const [eventFilterType, setEventFilterType] = useState('all');
+  const [eventSearchLocation, setEventSearchLocation] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<MotoEvent | null>(null);
 
   const toggleEventAttendance = (eventId: string) => {
@@ -620,31 +621,48 @@ const Radar: React.FC = () => {
       ) : activeTab === 'events' ? (
         <div className="space-y-6">
           {/* Filters */}
-          <div className="flex flex-wrap gap-3 px-2">
-            <select 
-              value={eventFilterType}
-              onChange={e => setEventFilterType(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
-            >
-              <option value="all">Všechny typy</option>
-              <option value="Sraz">Sraz</option>
-              <option value="Výstava">Výstava</option>
-              <option value="Závod">Závod</option>
-              <option value="Vyjížďka">Vyjížďka</option>
-            </select>
-            <select 
-              value={eventFilterTime}
-              onChange={e => setEventFilterTime(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
-            >
-              <option value="all">Kdykoliv</option>
-              <option value="this_weekend">Tento víkend</option>
-              <option value="this_month">Tento měsíc</option>
-            </select>
+          <div className="flex flex-col sm:flex-row gap-3 px-2">
+            <div className="relative flex-grow">
+              <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+              <input 
+                type="text"
+                placeholder="Hledat podle místa nebo názvu..."
+                value={eventSearchLocation}
+                onChange={e => setEventSearchLocation(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:border-orange-500 outline-none"
+              />
+            </div>
+            <div className="flex gap-3 shrink-0">
+              <select 
+                value={eventFilterType}
+                onChange={e => setEventFilterType(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
+              >
+                <option value="all">Všechny typy</option>
+                <option value="Sraz">Sraz</option>
+                <option value="Výstava">Výstava</option>
+                <option value="Závod">Závod</option>
+                <option value="Vyjížďka">Vyjížďka</option>
+              </select>
+              <select 
+                value={eventFilterTime}
+                onChange={e => setEventFilterTime(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-[10px] font-bold uppercase text-white outline-none focus:border-orange-500"
+              >
+                <option value="all">Kdykoliv</option>
+                <option value="this_weekend">Tento víkend</option>
+                <option value="this_month">Tento měsíc</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {events
+              .filter(e => {
+                if (!eventSearchLocation.trim()) return true;
+                const query = eventSearchLocation.toLowerCase();
+                return e.location.toLowerCase().includes(query) || e.title.toLowerCase().includes(query);
+              })
               .filter(e => eventFilterType === 'all' || e.type === eventFilterType)
               .filter(e => {
                 if (eventFilterTime === 'all') return true;
