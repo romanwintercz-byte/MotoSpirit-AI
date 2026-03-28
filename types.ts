@@ -99,6 +99,7 @@ export interface Expedition {
   sharedBy?: string;
   status?: 'planned' | 'active' | 'completed';
   realDistanceKm?: number;
+  discordLink?: string;
 }
 
 export interface MaintenanceRecord {

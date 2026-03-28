@@ -8,6 +8,7 @@ export interface ActiveExpeditionState {
   currentDistanceKm: number;
   lastLat?: number;
   lastLon?: number;
+  discordLink?: string;
 }
 
 export const useActiveExpedition = () => {
@@ -100,7 +101,8 @@ export const useActiveExpedition = () => {
       expeditionId: expedition.id,
       expeditionName: expedition.name,
       startTime: new Date().toISOString(),
-      currentDistanceKm: 0
+      currentDistanceKm: 0,
+      discordLink: expedition.discordLink
     };
     localStorage.setItem('motospirit_active_expedition', JSON.stringify(newState));
     setActiveState(newState);

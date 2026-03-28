@@ -88,13 +88,28 @@ const SharedTrip: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-20">
-      <header className="text-center space-y-2">
-        <h1 className="text-3xl font-brand font-bold text-white uppercase tracking-tighter italic">{expedition.name}</h1>
-        <div className="flex justify-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          <span>{expedition.days.length} DNÍ</span>
-          <span>•</span>
-          <span>{expedition.travelersCount} LIDÉ</span>
+      <header className="text-center space-y-4">
+        <div>
+          <h1 className="text-3xl font-brand font-bold text-white uppercase tracking-tighter italic">{expedition.name}</h1>
+          <div className="flex justify-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">
+            <span>{expedition.days.length} DNÍ</span>
+            <span>•</span>
+            <span>{expedition.travelersCount} LIDÉ</span>
+          </div>
         </div>
+        
+        {expedition.discordLink && (
+          <div className="flex justify-center">
+            <a 
+              href={expedition.discordLink}
+              target="_blank"
+              rel="noreferrer"
+              className="bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border border-[#5865F2]/30 text-white px-6 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-3 shadow-[0_0_15px_rgba(88,101,242,0.2)]"
+            >
+              <i className="fab fa-discord text-lg text-[#5865F2]"></i> PŘIPOJIT SE K VYSÍLAČCE
+            </a>
+          </div>
+        )}
       </header>
 
       <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 w-fit mx-auto">

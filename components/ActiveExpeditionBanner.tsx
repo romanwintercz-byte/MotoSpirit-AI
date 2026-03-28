@@ -40,6 +40,16 @@ export const ActiveExpeditionBanner: React.FC = () => {
           </div>
           
           <div className="flex gap-2">
+            {activeState.discordLink && (
+              <a 
+                href={activeState.discordLink}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 shadow-[0_0_10px_rgba(88,101,242,0.4)]"
+              >
+                <i className="fab fa-discord"></i> VYSÍLAČKA
+              </a>
+            )}
             <button 
               onClick={handleAddExpense}
               className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2"

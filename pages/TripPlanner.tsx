@@ -908,6 +908,40 @@ const TripPlanner: React.FC = () => {
                       <p className="text-xl font-brand font-bold text-white">{expedition.totalDistanceKm || expedition.totalDistance}</p>
                     </div>
                   </div>
+                  
+                  {/* Discord Integration */}
+                  <div className="mt-6 p-4 bg-[#5865F2]/10 border border-[#5865F2]/30 rounded-2xl flex flex-col md:flex-row gap-4 items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#5865F2] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(88,101,242,0.4)]">
+                      <i className="fab fa-discord text-lg"></i>
+                    </div>
+                    <div className="flex-grow w-full flex flex-col sm:flex-row gap-3">
+                      <div className="flex-grow">
+                        <label className="text-[10px] font-bold text-[#5865F2] uppercase tracking-widest mb-1 block">Discord Vysílačka (Volitelné)</label>
+                        <input 
+                          type="text" 
+                          value={expedition.discordLink || ''}
+                          onChange={(e) => {
+                            setExpedition({...expedition, discordLink: e.target.value});
+                            setIsModified(true);
+                          }}
+                          placeholder="Vlož odkaz na Discord hlasový kanál (např. https://discord.gg/...)"
+                          className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-[#5865F2] transition-colors"
+                        />
+                      </div>
+                      {expedition.discordLink && (
+                        <div className="flex items-end pb-0.5">
+                          <a 
+                            href={expedition.discordLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2"
+                          >
+                            PŘIPOJIT SE
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Timeline */}
