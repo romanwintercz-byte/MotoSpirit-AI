@@ -113,6 +113,7 @@ const TripPlanner: React.FC = () => {
     }
   });
   const [activeDayIdx, setActiveDayIdx] = useState(0);
+  const [expandedDayIdx, setExpandedDayIdx] = useState(0);
   const [refinePrompt, setRefinePrompt] = useState('');
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -231,6 +232,7 @@ const TripPlanner: React.FC = () => {
       const result = await planExpedition(origin, days, mode, prefs, travelers, tripType);
       setExpedition(result);
       setActiveDayIdx(0);
+      setExpandedDayIdx(0);
     } catch (err) {
       alert("AI Expedice selhala. Zkuste to znovu.");
     } finally {
@@ -247,6 +249,7 @@ const TripPlanner: React.FC = () => {
       setRefinePrompt('');
       setShowRefine(false);
       setActiveDayIdx(0);
+      setExpandedDayIdx(0);
     } catch (err) {
       alert("Ladění selhalo. Zkuste to znovu.");
     } finally {
@@ -337,6 +340,7 @@ const TripPlanner: React.FC = () => {
   const loadExpedition = (ex: Expedition) => {
     setExpedition(ex);
     setActiveDayIdx(0);
+    setExpandedDayIdx(0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -949,12 +953,15 @@ const TripPlanner: React.FC = () => {
                   {expedition.days.map((day, idx) => (
                     <div key={idx} className="relative pl-8 md:pl-12">
                       {/* Timeline Dot */}
-                      <div className={`absolute -left-[11px] top-6 w-5 h-5 rounded-full border-4 transition-all ${activeDayIdx === idx ? 'bg-orange-500 border-slate-900 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'bg-slate-700 border-slate-900'}`}></div>
+                      <div className={`absolute -left-[11px] top-6 w-5 h-5 rounded-full border-4 transition-all ${expandedDayIdx === idx ? 'bg-orange-500 border-slate-900 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'bg-slate-700 border-slate-900'}`}></div>
                       
                       {/* Day Header (Clickable) */}
                       <button 
-                        onClick={() => setActiveDayIdx(idx)}
-                        className={`w-full text-left p-6 rounded-[2rem] border transition-all ${activeDayIdx === idx ? 'bg-slate-800 border-orange-500/50 shadow-xl' : 'bg-slate-900/50 border-slate-700 hover:border-slate-500'}`}
+                        onClick={() => {
+                          setExpandedDayIdx(expandedDayIdx === idx ? -1 : idx);
+                          setActiveDayIdx(idx);
+                        }}
+                        className={`w-full text-left p-6 rounded-[2rem] border transition-all ${expandedDayIdx === idx ? 'bg-slate-800 border-orange-500/50 shadow-xl' : 'bg-slate-900/50 border-slate-700 hover:border-slate-500'}`}
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
@@ -975,7 +982,7 @@ const TripPlanner: React.FC = () => {
                       </button>
 
                       {/* Expanded Content */}
-                      {activeDayIdx === idx && (
+                      {expandedDayIdx === idx && (
                         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slideDown">
                           <div className="lg:col-span-2 bg-slate-950/50 p-6 rounded-[2rem] border border-slate-700/50">
                             <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-700/50">
