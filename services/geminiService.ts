@@ -47,7 +47,7 @@ export const planExpedition = async (
     - Poznámka: ${preferences.customNote}
     
     DŮLEŽITÉ K ROZPOČTU:
-    Rozpočet (pole "budget" a "fuelCost" u dnů) MUSÍ BÝT VYPOČÍTÁN STRICTNĚ PRO 1 OSOBU (1 motocykl, 1 osoba), bez ohledu na celkový počet cestujících! Každý člen expedice si hradí své náklady sám.
+    Rozpočet (v objektu "budget" a "fuelCost" u každého dne) MUSÍ BÝT VYPOČÍTÁN STRICTNĚ PRO 1 OSOBU (1 motocykl, 1 jezdec), i když se expedice účastní ${travelers} lidí! Nikdy nenásob náklady počtem osob. Ceny jsou per capita.
     
     KRITICKÁ PRAVIDLA PRO GEOGRAFII A TRASU:
     1. Trasa MUSÍ dávat absolutní geografický smysl. Cesta musí vést logicky z bodu A do bodu B.
@@ -178,7 +178,7 @@ export const refineExpedition = async (
     Přeplánuj expedici podle požadavku. Můžeš změnit trasy, ubytování, popisy nebo i počet dní, pokud je to nutné.
     
     DŮLEŽITÉ K ROZPOČTU:
-    Rozpočet (pole "budget" a "fuelCost" u dnů) MUSÍ BÝT VYPOČÍTÁN STRICTNĚ PRO 1 OSOBU (1 motocykl, 1 osoba), bez ohledu na celkový počet cestujících! Každý člen expedice si hradí své náklady sám. Zachovej toto pravidlo i pro stávající i nově vypočítaná data.
+    Rozpočet (v objektu "budget" a "fuelCost" u každého dne) MUSÍ BÝT VYPOČÍTÁN STRICTNĚ PRO 1 OSOBU (1 motocykl, 1 jezdec), i když se expedice účastní ${currentExpedition.travelersCount} lidí! Nikdy nenásob náklady počtem osob. Pokud je požadavek na změnu, předělej ceny striktně pro 1 osobu!
     
     KRITICKÁ PRAVIDLA PRO GEOGRAFII A TRASU:
     1. Trasa MUSÍ dávat absolutní geografický smysl. Cesta musí vést logicky z bodu A do bodu B.

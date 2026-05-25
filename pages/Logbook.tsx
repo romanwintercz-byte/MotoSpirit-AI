@@ -5,6 +5,7 @@ import { processReceiptAI } from '../services/geminiService';
 import { syncDataToCloud } from '../services/syncService';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
 import { useLocation } from 'react-router-dom';
+import { LogbookStats } from '../components/LogbookStats';
 
 const Logbook: React.FC = () => {
   const { activeState } = useActiveExpedition();
@@ -105,6 +106,7 @@ const Logbook: React.FC = () => {
 
   const [filterType, setFilterType] = useState<'all' | 'fuel' | 'service' | 'expedition'>('all');
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [viewMode, setViewMode] = useState<'records' | 'stats'>('records');
 
   const currentBikeFuel = fuelRecords.filter(f => f.bikeId === selectedBikeId).sort((a,b) => b.mileage - a.mileage);
   const currentBikeExpenses = expenses.filter(e => e.bikeId === selectedBikeId);
@@ -344,19 +346,35 @@ const Logbook: React.FC = () => {
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center px-2">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            <button onClick={() => setFilterType('all')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'all' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Vše</button>
-            <button onClick={() => setFilterType('fuel')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'fuel' ? 'bg-orange-600/20 text-orange-500' : 'text-slate-500 hover:text-slate-300'}`}>Benzín</button>
-            <button onClick={() => setFilterType('service')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'service' ? 'bg-blue-500/20 text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}>Servis</button>
-            {activeState && (
-              <button onClick={() => setFilterType('expedition')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex items-center gap-1 ${filterType === 'expedition' ? 'bg-emerald-500/20 text-emerald-500' : 'text-slate-500 hover:text-slate-300'}`}>
-                <i className="fas fa-motorcycle"></i> Expedice
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2 shrink-0">
+      <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 w-fit mx-auto shadow-lg mb-4">
+        <button onClick={() => setViewMode('records')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'records' ? 'bg-orange-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+          <i className="fas fa-list-ul mr-2"></i> Záznamy
+        </button>
+        <button onClick={() => setViewMode('stats')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'stats' ? 'bg-orange-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+          <i className="fas fa-chart-bar mr-2"></i> Statistiky
+        </button>
+      </div>
+
+      {viewMode === 'stats' ? (
+        <LogbookStats 
+          fuelRecords={fuelRecords}
+          expenses={expenses}
+          bike={bikes.find(b => b.id === selectedBikeId)}
+        />
+      ) : (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center px-2">
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              <button onClick={() => setFilterType('all')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'all' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Vše</button>
+              <button onClick={() => setFilterType('fuel')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'fuel' ? 'bg-orange-600/20 text-orange-500' : 'text-slate-500 hover:text-slate-300'}`}>Benzín</button>
+              <button onClick={() => setFilterType('service')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${filterType === 'service' ? 'bg-blue-500/20 text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}>Servis</button>
+              {activeState && (
+                <button onClick={() => setFilterType('expedition')} className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex items-center gap-1 ${filterType === 'expedition' ? 'bg-emerald-500/20 text-emerald-500' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <i className="fas fa-motorcycle"></i> Expedice
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 shrink-0">
             <button 
               onClick={() => {
                 const csvContent = "data:text/csv;charset=utf-8," 
@@ -458,8 +476,9 @@ const Logbook: React.FC = () => {
               <p className="text-slate-600 text-xs uppercase font-bold tracking-widest">Žádné záznamy</p>
             </div>
           )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* MODAL: Review Pending Record */}
       {pendingRecord && (
