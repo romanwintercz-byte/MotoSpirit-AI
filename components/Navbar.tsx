@@ -8,8 +8,17 @@ interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.5.0';
+const CURRENT_VERSION = '1.6.0';
 const CHANGELOG = [
+  {
+    version: '1.6.0',
+    date: '25. 5. 2026',
+    changes: [
+      'Nové statistiky v Knize jízd: přehledné grafy měsíčních i ročních nákladů a sledování vývoje ceny benzínu.',
+      'Přesnější rozpočty v Plánovači: rozpočty expedice jsou nyní jasně označeny a vždy počítány striktně pro jednu osobu.',
+      'Vylepšené ovládání Plánovače: detaily a mapa u jednotlivých dnů expedice jdou nyní jednoduše schovat opětovným kliknutím.'
+    ]
+  },
   {
     version: '1.5.0',
     date: '7. 3. 2026',
