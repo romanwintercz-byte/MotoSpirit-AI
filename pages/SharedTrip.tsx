@@ -135,6 +135,18 @@ const SharedTrip: React.FC = () => {
           {viewMode === 'info' ? (
             <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl space-y-6">
               <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-700/50">
+                {expedition.days[activeDayIdx].mapyCzUrl && (
+                  <div className="mb-6 pb-6 border-b border-slate-700/50 flex justify-center">
+                    <a 
+                      href={expedition.days[activeDayIdx].mapyCzUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bg-[#cc0000]/10 hover:bg-[#cc0000]/20 border border-[#cc0000]/30 text-white px-6 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-3 shadow-[0_0_15px_rgba(204,0,0,0.2)]"
+                    >
+                      <i className="fas fa-map-marked-alt text-[#cc0000] text-lg"></i> OTEVŘÍT TRASU V MAPY.CZ
+                    </a>
+                  </div>
+                )}
                 <div className="markdown-body prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed">
                   <Markdown>{expedition.days[activeDayIdx].description}</Markdown>
                 </div>

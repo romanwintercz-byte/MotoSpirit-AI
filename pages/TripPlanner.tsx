@@ -988,6 +988,43 @@ const TripPlanner: React.FC = () => {
                                 <p className="text-lg font-brand font-bold text-white">{day.fuelCost ? `${day.fuelCost} Kč` : '-'}</p>
                               </div>
                             </div>
+                            
+                            {/* Mapy.cz Integration */}
+                            <div className="mb-6 p-4 bg-[#cc0000]/10 border border-[#cc0000]/30 rounded-2xl flex flex-col md:flex-row gap-4 items-center">
+                              <div className="w-8 h-8 rounded-full bg-[#cc0000] flex items-center justify-center text-white shrink-0 shadow-[0_0_10px_rgba(204,0,0,0.4)]">
+                                <i className="fas fa-map-marked-alt text-sm"></i>
+                              </div>
+                              <div className="flex-grow w-full flex flex-col sm:flex-row gap-3">
+                                <div className="flex-grow">
+                                  <label className="text-[10px] font-bold text-[#cc0000] uppercase tracking-widest mb-1 block">Odkaz na Mapy.cz</label>
+                                  <input 
+                                    type="text" 
+                                    value={day.mapyCzUrl || ''}
+                                    onChange={(e) => {
+                                      const updatedDays = [...expedition.days];
+                                      updatedDays[idx] = { ...day, mapyCzUrl: e.target.value };
+                                      setExpedition({ ...expedition, days: updatedDays });
+                                      setIsModified(true);
+                                    }}
+                                    placeholder="Vlož odkaz na trasu v Mapy.cz (např. https://mapy.cz/s/...)"
+                                    className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-[#cc0000] transition-colors"
+                                  />
+                                </div>
+                                {day.mapyCzUrl && (
+                                  <div className="flex items-end pb-0.5">
+                                    <a 
+                                      href={day.mapyCzUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="bg-[#cc0000] hover:bg-[#aa0000] text-white px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2"
+                                    >
+                                      OTEVŘÍT
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
                             <div className="markdown-body prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed">
                               <Markdown>{day.description}</Markdown>
                             </div>

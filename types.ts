@@ -73,6 +73,7 @@ export interface TripDay {
   activities: string[];
   accommodation?: Accommodation;
   waypoints: [number, number][];
+  mapyCzUrl?: string;
 }
 
 export interface ExpeditionPreferences {
