@@ -46,6 +46,9 @@ export const planExpedition = async (
     - Rozpočet: ${preferences.budget}
     - Poznámka: ${preferences.customNote}
     
+    DŮLEŽITÉ K ROZPOČTU:
+    Rozpočet (pole "budget" a "fuelCost" u dnů) MUSÍ BÝT VYPOČÍTÁN STRICTNĚ PRO 1 OSOBU (1 motocykl, 1 osoba), bez ohledu na celkový počet cestujících! Každý člen expedice si hradí své náklady sám.
+    
     KRITICKÁ PRAVIDLA PRO GEOGRAFII A TRASU:
     1. Trasa MUSÍ dávat absolutní geografický smysl. Cesta musí vést logicky z bodu A do bodu B.
     2. ZABRAŇ NESMYSLNÝM ZAJÍŽĎKÁM! (Např. z Teplic na Oravu se nejezdí přes východní Polsko, ze Slovenska do ČR se nejezdí přes Německo).

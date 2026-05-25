@@ -1087,7 +1087,8 @@ const TripPlanner: React.FC = () => {
               {/* Stats Section */}
               {expedition.budget && (
                 <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl animate-fadeIn">
-                  <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-8">Rozpočet a statistiky</h3>
+                  <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-2">Rozpočet a statistiky</h3>
+                  <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-8">Odhadované náklady na 1 osobu</p>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Budget Section */}
