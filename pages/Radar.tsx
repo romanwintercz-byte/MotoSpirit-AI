@@ -136,7 +136,9 @@ const Radar: React.FC = () => {
         description: `Přidej se na expedici: ${location.state.expedition.name}\n\nTrasa: ${location.state.expedition.totalDistance}\nDní: ${location.state.expedition.days.length}`,
         dateTime: location.state.expedition.startDate,
         meetingPoint: location.state.expedition.days[0].startLocation,
-        style: location.state.expedition.tripType === 'ride' ? 'Road' : 'Adventure'
+        style: location.state.expedition.tripType === 'ride' ? 'Road' : 'Adventure',
+        audience: location.state.audience || 'all',
+        invitedSyncCodes: []
       });
       // Clear state so it doesn't reopen on refresh
       window.history.replaceState({}, document.title);
@@ -210,8 +212,10 @@ const Radar: React.FC = () => {
       setRiders(filtered);
       setLoadingRiders(false);
     };
-    if (activeTab === 'riders') fetchRiders();
-  }, [currentUser, activeTab]);
+    if (activeTab === 'riders' || (showCreateChallenge && newChallenge.audience === 'selected')) {
+      if (riders.length === 0) fetchRiders();
+    }
+  }, [currentUser, activeTab, showCreateChallenge, newChallenge.audience]);
 
   useEffect(() => {
     const loadChallenges = async () => {
@@ -516,6 +520,11 @@ const Radar: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {challenges
                 .filter(c => new Date(c.dateTime).getTime() > Date.now())
+                .filter(c => {
+                  if (c.creatorSyncCode === currentUserSyncCode) return true;
+                  if (c.audience === 'selected' && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;
+                  return true;
+                })
                 .map(challenge => {
                 const isNew = new Date(challenge.createdAt).getTime() > sessionLastView && challenge.creatorSyncCode !== currentUserSyncCode;
                 const isRejected = rejectedChallenges.includes(challenge.id);
@@ -610,7 +619,13 @@ const Radar: React.FC = () => {
                   </div>
                 </div>
               )})}
-              {challenges.filter(c => new Date(c.dateTime).getTime() > Date.now()).length === 0 && (
+              {challenges
+                .filter(c => new Date(c.dateTime).getTime() > Date.now())
+                .filter(c => {
+                  if (c.creatorSyncCode === currentUserSyncCode) return true;
+                  if (c.audience === 'selected' && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;
+                  return true;
+                }).length === 0 && (
                 <div className="col-span-full text-center py-20">
                   <p className="text-slate-600 text-xs uppercase font-bold tracking-widest">Zatím žádné výzvy. Buď první!</p>
                 </div>
@@ -908,11 +923,75 @@ const Radar: React.FC = () => {
                     const ex = savedExpeditions.find(x => x.id === e.target.value);
                     setNewChallenge({...newChallenge, route: ex});
                   }}
+                  value={newChallenge.route?.id || ''}
                 >
                   <option value="">Žádná trasa</option>
                   {savedExpeditions.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
                 </select>
               </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Kdo výzvu uvidí?</label>
+                <select 
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-sm text-white focus:border-orange-500 outline-none"
+                  value={newChallenge.audience || 'all'}
+                  onChange={e => setNewChallenge({...newChallenge, audience: e.target.value as 'all'|'party'|'selected'})}
+                >
+                  <option value="all">Všichni na Radaru (Veřejná výzva)</option>
+                  <option value="party">Jen pro mou partu</option>
+                  <option value="selected">Pouze vybraní jezdci</option>
+                </select>
+              </div>
+
+              {newChallenge.audience === 'selected' && (
+                <div className="space-y-2 pt-2 border-t border-slate-700">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-2">Vybrat jezdce</label>
+                  <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    {riders.filter(r => r.syncCode !== currentUserSyncCode).length === 0 ? (
+                      <p className="text-xs text-slate-500 italic p-2 text-center">Zatím neznáš žádné další jezdce.</p>
+                    ) : riders.filter(r => r.syncCode !== currentUserSyncCode).map(rider => (
+                      <div 
+                        key={rider.syncCode} 
+                        onClick={() => {
+                          const currentInvites = newChallenge.invitedSyncCodes || [];
+                          const isInvited = currentInvites.includes(rider.syncCode);
+                          setNewChallenge({
+                            ...newChallenge,
+                            invitedSyncCodes: isInvited 
+                              ? currentInvites.filter(c => c !== rider.syncCode)
+                              : [...currentInvites, rider.syncCode]
+                          });
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          (newChallenge.invitedSyncCodes || []).includes(rider.syncCode) 
+                            ? 'bg-orange-600/20 border-orange-500' 
+                            : 'bg-slate-900 border-slate-700 hover:border-slate-500'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shrink-0 overflow-hidden">
+                          {rider.user.avatarUrl ? (
+                            <img src={rider.user.avatarUrl} alt={rider.user.nickname} className="w-full h-full object-cover" />
+                          ) : (
+                            <i className="fas fa-user text-slate-400 text-xs"></i>
+                          )}
+                        </div>
+                        <div className="flex-grow">
+                          <p className="text-sm font-bold text-white">{rider.user.nickname}</p>
+                          <p className="text-[10px] text-slate-400 uppercase tracking-widest">{rider.bikes?.[0]?.brand || 'Jezdec'}</p>
+                        </div>
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                          (newChallenge.invitedSyncCodes || []).includes(rider.syncCode)
+                            ? 'bg-orange-500 border-orange-500 text-white'
+                            : 'bg-slate-800 border-slate-600 text-transparent'
+                        }`}>
+                          <i className="fas fa-check text-[10px]"></i>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button 
                 onClick={handleCreateChallenge}
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-xl shadow-orange-900/20 mt-4"

@@ -157,6 +157,8 @@ export interface RideChallenge {
   route?: Expedition;
   participants: string[]; // List of syncCodes
   createdAt: string;
+  audience?: 'all' | 'party' | 'selected';
+  invitedSyncCodes?: string[];
 }
 
 export interface POI {

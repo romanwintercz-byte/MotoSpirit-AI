@@ -1405,6 +1405,21 @@ const TripPlanner: React.FC = () => {
                 <i className="fas fa-chevron-right text-slate-600 group-hover:text-blue-500 transition-colors"></i>
               </button>
 
+              <button 
+                onClick={() => { handleCreateChallengeWithExp(expedition, 'selected'); setShowChallengeAudience(false); }}
+                className="w-full p-5 rounded-2xl bg-slate-800/50 border border-slate-700 hover:border-emerald-500 hover:bg-slate-800 flex items-center gap-5 transition-all group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/0 via-emerald-600/0 to-emerald-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-slate-700 flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:border-emerald-500/50 transition-all shadow-inner">
+                  <i className="fas fa-user-check text-xl"></i>
+                </div>
+                <div className="text-left flex-grow">
+                  <p className="text-sm font-bold text-white uppercase tracking-tight group-hover:text-emerald-400 transition-colors">Pouze vybrané</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Vybreš konkrétní jezdce</p>
+                </div>
+                <i className="fas fa-chevron-right text-slate-600 group-hover:text-emerald-500 transition-colors"></i>
+              </button>
+
               <div className="flex items-center gap-4 py-2">
                 <div className="h-[1px] flex-grow bg-slate-800"></div>
                 <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Nebo</span>

@@ -8,8 +8,15 @@ interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.6.0';
+const CURRENT_VERSION = '1.7.0';
 const CHANGELOG = [
+  {
+    version: '1.7.0',
+    date: '25. 5. 2026',
+    changes: [
+      'Vybraní jezdci pro výzvy: Při vyhlašování výzvy nyní můžeš označit konkrétní jezdce z komunity, kterým chceš vyjížďku nabídnout.',
+    ]
+  },
   {
     version: '1.6.0',
     date: '25. 5. 2026',
