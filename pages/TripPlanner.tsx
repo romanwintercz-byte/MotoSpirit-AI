@@ -406,7 +406,7 @@ const TripPlanner: React.FC = () => {
     const currentDay = expedition.days[activeDayIdx];
     if (currentDay && currentDay.waypoints.length > 0) {
       const color = getDayColor(currentDay.dayNumber);
-      polylineRef.current = L.polyline(currentDay.waypoints, { color, weight: 6, opacity: 0.8 }).addTo(mapRef.current);
+      polylineRef.current = L.polyline(currentDay.waypoints, { color, weight: 3, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
       const start = currentDay.waypoints[0];
       const end = currentDay.waypoints[currentDay.waypoints.length - 1];
       markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
@@ -1084,6 +1084,13 @@ const TripPlanner: React.FC = () => {
                 <div id="exp-map" className="w-full h-full z-0"></div>
                 <div className="absolute top-8 left-8 z-10 bg-slate-950/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-700 shadow-2xl">
                    <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">Trasa dne {expedition.days[activeDayIdx].dayNumber}</p>
+                </div>
+                <div className="absolute top-8 right-8 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-700/50 flex items-center gap-3 shadow-xl max-w-xs">
+                  <i className="fas fa-info-circle text-orange-400 text-lg"></i>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-1">Schématický náhled</p>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-tight">Nejedná se o přesnou trasu pro navigaci, pouze o orientační orientaci bodů.</p>
+                  </div>
                 </div>
                 <div className="absolute bottom-8 right-8 z-10 flex flex-col gap-2">
                    <button onClick={() => mapRef.current?.zoomIn()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-plus"></i></button>

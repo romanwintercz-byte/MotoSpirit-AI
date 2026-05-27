@@ -61,7 +61,7 @@ const SharedTrip: React.FC = () => {
 
     const currentDay = expedition.days[activeDayIdx];
     if (currentDay && currentDay.waypoints.length > 0) {
-      polylineRef.current = L.polyline(currentDay.waypoints, { color: '#f97316', weight: 6, opacity: 0.8 }).addTo(mapRef.current);
+      polylineRef.current = L.polyline(currentDay.waypoints, { color: '#f97316', weight: 4, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
       const start = currentDay.waypoints[0];
       const end = currentDay.waypoints[currentDay.waypoints.length - 1];
       markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
@@ -161,8 +161,15 @@ const SharedTrip: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="h-[500px] bg-slate-800 rounded-[3rem] border border-slate-700 overflow-hidden relative shadow-2xl">
-              <div id="shared-map" className="w-full h-full"></div>
+            <div className="h-[500px] bg-slate-800 rounded-[3rem] border border-slate-700 overflow-hidden relative shadow-2xl relative">
+              <div id="shared-map" className="w-full h-full z-0"></div>
+              <div className="absolute top-4 right-4 z-10 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/50 flex items-center gap-2 shadow-xl max-w-[200px] sm:max-w-xs">
+                <i className="fas fa-info-circle text-orange-400 text-sm"></i>
+                <div className="text-left">
+                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-0.5">Schématický náhled</p>
+                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider leading-tight">Nejedná se o přesnou trasu pro navigaci, pouze orientační.</p>
+                </div>
+              </div>
             </div>
           )}
           
