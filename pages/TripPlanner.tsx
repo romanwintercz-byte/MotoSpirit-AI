@@ -212,6 +212,52 @@ const TripPlanner: React.FC = () => {
           setFollowedRiders(followed);
         }
       }
+      
+      // Auto-update linked challenge routes
+      try {
+        const challenges = await fetchRideChallenges();
+        if (challenges && challenges.length > 0) {
+          const existingTripsStr = localStorage.getItem('spirit_wanderer_trips');
+          if (existingTripsStr) {
+            const existingTrips = JSON.parse(existingTripsStr);
+            let tripsUpdated = false;
+            let newTrips = [...existingTrips];
+            
+            challenges.forEach(c => {
+               if (c.route && c.participants.includes(syncCode)) {
+                  const expeditionToSave = { ...c.route, linkedChallengeId: c.id };
+                  const tripIndex = newTrips.findIndex((e: any) => e.linkedChallengeId === c.id);
+                  if (tripIndex >= 0) {
+                    if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
+                      newTrips[tripIndex] = expeditionToSave;
+                      tripsUpdated = true;
+                    }
+                  } else if (!newTrips.some((e: any) => e.id === expeditionToSave.id)) {
+                    newTrips = [expeditionToSave, ...newTrips];
+                    tripsUpdated = true;
+                  }
+               }
+            });
+            
+            if (tripsUpdated) {
+              localStorage.setItem('spirit_wanderer_trips', JSON.stringify(newTrips));
+              setSavedExpeditions(newTrips);
+              
+              setExpedition(currentExp => {
+                if (currentExp && currentExp.linkedChallengeId) {
+                  const updatedExp = newTrips.find((e: any) => e.linkedChallengeId === currentExp.linkedChallengeId);
+                  if (updatedExp && JSON.stringify(currentExp) !== JSON.stringify(updatedExp)) {
+                     return updatedExp;
+                  }
+                }
+                return currentExp;
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to sync challenges in Planner", err);
+      }
     };
     loadData();
     const interval = setInterval(loadData, 30000); // Refresh every 30s
