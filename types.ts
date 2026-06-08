@@ -101,6 +101,7 @@ export interface Expedition {
   status?: 'planned' | 'active' | 'completed';
   realDistanceKm?: number;
   discordLink?: string;
+  linkedChallengeId?: string;
 }
 
 export interface MaintenanceRecord {
@@ -145,6 +146,14 @@ export interface ChatMessage {
   text: string;
 }
 
+export interface ChallengeMessage {
+  id: string;
+  syncCode: string;
+  nickname: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface RideChallenge {
   id: string;
   creatorSyncCode: string;
@@ -159,6 +168,8 @@ export interface RideChallenge {
   createdAt: string;
   audience?: 'all' | 'party' | 'selected';
   invitedSyncCodes?: string[];
+  editors?: string[];
+  messages?: ChallengeMessage[];
 }
 
 export interface POI {

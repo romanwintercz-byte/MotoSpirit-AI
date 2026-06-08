@@ -370,6 +370,21 @@ export const deleteRideChallenge = async (challengeId: string) => {
   }
 };
 
+export const updateRideChallenge = async (challengeId: string, updatedChallenge: any) => {
+  try {
+    const { error } = await supabase
+      .from('moto_shared_trips')
+      .update({ expedition_data: updatedChallenge })
+      .eq('slug', `challenge-${challengeId}`);
+      
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error updating challenge:", error);
+    return false;
+  }
+};
+
 export const wipeDatabase = async () => {
   try {
     await supabase.from('moto_sync_profiles').delete().neq('sync_code', 'dummy');

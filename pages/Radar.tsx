@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { getAllPublicProfiles, updateProfileStatus, deleteProfile, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge } from '../services/syncService';
-import { Motorcycle, UserProfile, POI, RideChallenge, Expedition } from '../types';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { getAllPublicProfiles, updateProfileStatus, deleteProfile, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge, updateRideChallenge } from '../services/syncService';
+import { Motorcycle, UserProfile, POI, RideChallenge, Expedition, ChallengeMessage } from '../types';
 import { searchNearbyPOI } from '../services/geminiService';
 
 interface RiderProfile {
@@ -126,6 +126,11 @@ const Radar: React.FC = () => {
   const [sessionLastView] = useState(() => parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0'));
   const [hasNewChallengesTab, setHasNewChallengesTab] = useState(false);
   const [selectedBikeImage, setSelectedBikeImage] = useState<string | null>(null);
+  const [openChatId, setOpenChatId] = useState<string | null>(null);
+  const [newMessageText, setNewMessageText] = useState((() => {
+    const text: Record<string, string> = {};
+    return text;
+  })());
 
   useEffect(() => {
     if (location.state?.createChallenge && location.state?.expedition) {
@@ -295,6 +300,51 @@ const Radar: React.FC = () => {
     } else {
       alert("Nepodařilo se smazat výzvu.");
     }
+  };
+
+  const handleSendMessage = async (challengeId: string) => {
+    const text = newMessageText[challengeId]?.trim();
+    if (!text || !currentUserSyncCode) return;
+
+    const challenge = challenges.find(c => c.id === challengeId);
+    if (!challenge) return;
+
+    const msg: ChallengeMessage = {
+      id: Date.now().toString(),
+      syncCode: currentUserSyncCode,
+      nickname: currentUser?.nickname || 'Neznámý',
+      text,
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedChallenge = {
+      ...challenge,
+      messages: [...(challenge.messages || []), msg]
+    };
+
+    const success = await updateRideChallenge(challengeId, updatedChallenge);
+    if (success) {
+      setChallenges(prev => prev.map(c => c.id === challengeId ? updatedChallenge : c));
+      setNewMessageText(prev => ({ ...prev, [challengeId]: '' }));
+    }
+  };
+
+  const handleEditChallengeRoute = (challenge: RideChallenge) => {
+    if (!challenge.route || !currentUserSyncCode) return;
+    if (challenge.creatorSyncCode !== currentUserSyncCode && !(challenge.editors || []).includes(currentUserSyncCode)) {
+      alert("Nemáš práva na editaci trasy této výzvy.");
+      return;
+    }
+
+    const expeditionToEdit: Expedition = {
+      ...challenge.route,
+      linkedChallengeId: challenge.id
+    };
+
+    const existing = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+    localStorage.setItem('spirit_wanderer_trips', JSON.stringify([expeditionToEdit, ...existing.filter((e: Expedition) => e.id !== expeditionToEdit.id)]));
+    
+    navigate('/trip-planner');
   };
 
   const handleRejectChallenge = (challengeId: string) => {
@@ -617,6 +667,84 @@ const Radar: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Route & Chat row */}
+                  <div className="flex justify-between items-center gap-2 pt-2">
+                    <div className="flex gap-2">
+                      {challenge.route && (
+                        <Link 
+                          to={`/shared/challenge-${challenge.id}`}
+                          className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300"
+                        >
+                          <i className="fas fa-map text-orange-500 mr-2"></i> Trasa
+                        </Link>
+                      )}
+                      {challenge.route && (challenge.creatorSyncCode === currentUserSyncCode || (challenge.editors || []).includes(currentUserSyncCode || '')) && (
+                        <button 
+                          onClick={() => handleEditChallengeRoute(challenge)}
+                          className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-blue-900/20 border border-blue-500/30 hover:border-blue-500 text-blue-400"
+                          title="Otevřít v Plánovači a upravit mapu"
+                        >
+                          <i className="fas fa-pen text-blue-500 mr-2"></i> Upravit trasu
+                        </button>
+                      )}
+                    </div>
+                    
+                    <button 
+                      onClick={() => setOpenChatId(openChatId === challenge.id ? null : challenge.id)}
+                      className={`px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all border ${
+                        openChatId === challenge.id 
+                          ? 'bg-slate-700 text-white border-slate-600' 
+                          : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-slate-500'
+                      }`}
+                    >
+                      <i className="fas fa-comments mr-2"></i> 
+                      Diskuze {(challenge.messages?.length || 0) > 0 && <span className="bg-orange-500 text-white rounded-full px-1.5 py-0.5 text-[8px] ml-1">{challenge.messages?.length}</span>}
+                    </button>
+                  </div>
+
+                  {/* Chat Section */}
+                  {openChatId === challenge.id && (
+                    <div className="pt-4 border-t border-slate-700 space-y-4 animate-fadeIn">
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        {(challenge.messages || []).length === 0 ? (
+                          <p className="text-xs text-slate-500 italic text-center py-4">Zatím žádné zprávy. Napiš jako první!</p>
+                        ) : (
+                          (challenge.messages || []).map(msg => (
+                            <div key={msg.id} className={`flex flex-col ${msg.syncCode === currentUserSyncCode ? 'items-end' : 'items-start'}`}>
+                              <span className="text-[8px] text-slate-500 font-bold uppercase mb-0.5 px-1">{msg.nickname}</span>
+                              <div className={`px-3 py-2 rounded-xl text-xs ${
+                                msg.syncCode === currentUserSyncCode 
+                                  ? 'bg-orange-600 text-white rounded-tr-sm' 
+                                  : 'bg-slate-700 text-slate-200 rounded-tl-sm'
+                              }`}>
+                                {msg.text}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text"
+                          value={newMessageText[challenge.id] || ''}
+                          onChange={e => setNewMessageText(prev => ({...prev, [challenge.id]: e.target.value}))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleSendMessage(challenge.id);
+                          }}
+                          placeholder="Napiš zprávu k výzvě..."
+                          className="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-orange-500 outline-none"
+                        />
+                        <button 
+                          onClick={() => handleSendMessage(challenge.id)}
+                          disabled={!newMessageText[challenge.id]?.trim()}
+                          className="bg-orange-600 hover:bg-orange-500 disabled:bg-slate-700 disabled:text-slate-500 text-white w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+                        >
+                          <i className="fas fa-paper-plane"></i>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )})}
               {challenges
@@ -979,13 +1107,36 @@ const Radar: React.FC = () => {
                           <p className="text-sm font-bold text-white">{rider.user.nickname}</p>
                           <p className="text-[10px] text-slate-400 uppercase tracking-widest">{rider.bikes?.[0]?.brand || 'Jezdec'}</p>
                         </div>
-                        <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
                           (newChallenge.invitedSyncCodes || []).includes(rider.syncCode)
                             ? 'bg-orange-500 border-orange-500 text-white'
                             : 'bg-slate-800 border-slate-600 text-transparent'
                         }`}>
                           <i className="fas fa-check text-[10px]"></i>
                         </div>
+                        
+                        {(newChallenge.invitedSyncCodes || []).includes(rider.syncCode) && (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentEditors = newChallenge.editors || [];
+                              const isEditor = currentEditors.includes(rider.syncCode);
+                              setNewChallenge({
+                                ...newChallenge,
+                                editors: isEditor
+                                  ? currentEditors.filter(c => c !== rider.syncCode)
+                                  : [...currentEditors, rider.syncCode]
+                              });
+                            }}
+                            className={`px-3 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg border flex items-center gap-1.5 shrink-0 transition-colors ${
+                              (newChallenge.editors || []).includes(rider.syncCode)
+                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-slate-300'
+                            }`}
+                          >
+                            <i className="fas fa-pen"></i> Editovat
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

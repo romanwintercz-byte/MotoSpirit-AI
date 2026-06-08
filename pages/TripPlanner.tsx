@@ -4,7 +4,7 @@ import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { planExpedition, refineExpedition } from '../services/geminiService';
-import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles } from '../services/syncService';
+import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles, fetchRideChallenges, updateRideChallenge } from '../services/syncService';
 import { getGoogleMapsUrl } from '../utils/navigation';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
@@ -322,9 +322,20 @@ const TripPlanner: React.FC = () => {
     }
   };
 
-  const overwriteExisting = () => {
+  const overwriteExisting = async () => {
     if (!expedition) return;
     setSavedExpeditions(prev => prev.map(ex => ex.id === expedition.id ? expedition : ex));
+    
+    // Auto-update linked challenge if present
+    if (expedition.linkedChallengeId) {
+      const challenges = await fetchRideChallenges();
+      const challengeToUpdate = challenges.find((c: any) => c.id === expedition.linkedChallengeId);
+      if (challengeToUpdate) {
+        const updatedChallenge = { ...challengeToUpdate, route: expedition };
+        await updateRideChallenge(challengeToUpdate.id, updatedChallenge);
+      }
+    }
+    
     alert("Změny byly uloženy.");
     setShowSaveModal(false);
   };
@@ -824,6 +835,14 @@ const TripPlanner: React.FC = () => {
                           </div>
                         )}
                       </div>
+                      
+                      <div className="flex gap-2">
+                      {expedition.linkedChallengeId && (
+                        <div className="bg-blue-900/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-lg text-[9px] font-bold uppercase flex items-center gap-2">
+                          <i className="fas fa-link"></i> SPOJENO S VÝZVOU
+                        </div>
+                      )}
+                      
                       {existingExpedition ? (
                         <div className="flex gap-2">
                           {isModified ? (
@@ -855,6 +874,7 @@ const TripPlanner: React.FC = () => {
                           <i className="fas fa-save"></i> ULOŽIT TRASU
                         </button>
                       )}
+                      </div>
                     </div>
                   </div>
 
