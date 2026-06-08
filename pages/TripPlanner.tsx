@@ -389,10 +389,15 @@ const TripPlanner: React.FC = () => {
 
   const deleteExpedition = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm("Opravdu smazat tuto expedici?")) {
-      setSavedExpeditions(prev => prev.filter(ex => ex.id !== id));
-      if (expedition?.id === id) setExpedition(null);
+    const exToDelete = savedExpeditions.find(ex => ex.id === id);
+    if (exToDelete?.linkedChallengeId) {
+       if (!window.confirm("Tato trasa je součástí Výzvy. Smazáním se z výzvy neodhlásíš (to musíš v Radaru). Chceš přesto trasu lokálně smazat? (Při další synchronizaci Radaru se dost možná znovu stáhne).")) return;
+    } else {
+       if (!window.confirm("Opravdu smazat tuto expedici?")) return;
     }
+    
+    setSavedExpeditions(prev => prev.filter(ex => ex.id !== id));
+    if (expedition?.id === id) setExpedition(null);
   };
 
   const loadExpedition = (ex: Expedition) => {

@@ -336,11 +336,19 @@ const Radar: React.FC = () => {
   };
 
   const handleDeleteChallenge = async (challenge: RideChallenge) => {
-    if (!window.confirm(`Opravdu chceš smazat výzvu "${challenge.title}"?`)) return;
+    if (challenge.creatorSyncCode !== currentUserSyncCode) {
+      if (!window.confirm(`[ADMIN] Opravdu chceš smazat výzvu "${challenge.title}" i všem ostatním uživatelům? Globální smazání!`)) return;
+    } else {
+      if (!window.confirm(`Opravdu chceš smazat výzvu "${challenge.title}"?`)) return;
+    }
     
     const success = await deleteRideChallenge(challenge.id);
     if (success) {
       setChallenges(prev => prev.filter(c => c.id !== challenge.id));
+      
+      const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+      const filteredTrips = existingTrips.filter((e: Expedition) => e.linkedChallengeId !== challenge.id);
+      localStorage.setItem('spirit_wanderer_trips', JSON.stringify(filteredTrips));
     } else {
       alert("Nepodařilo se smazat výzvu.");
     }
