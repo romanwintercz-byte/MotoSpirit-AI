@@ -134,7 +134,7 @@ const Radar: React.FC = () => {
       setNewChallenge({
         title: location.state.expedition.name,
         description: `Přidej se na expedici: ${location.state.expedition.name}\n\nTrasa: ${location.state.expedition.totalDistance}\nDní: ${location.state.expedition.days.length}`,
-        dateTime: location.state.expedition.startDate,
+        dateTime: location.state.expedition.startDate ? (location.state.expedition.startDate.includes('T') ? location.state.expedition.startDate : `${location.state.expedition.startDate}T10:00`) : '',
         meetingPoint: location.state.expedition.days[0].startLocation,
         style: location.state.expedition.tripType === 'ride' ? 'Road' : 'Adventure',
         audience: location.state.audience || 'all',
@@ -519,7 +519,7 @@ const Radar: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {challenges
-                .filter(c => new Date(c.dateTime).getTime() > Date.now())
+                .filter(c => new Date(c.dateTime).getTime() > Date.now() - 24 * 60 * 60 * 1000)
                 .filter(c => {
                   if (c.creatorSyncCode === currentUserSyncCode) return true;
                   if (c.audience === 'selected' && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;
@@ -620,7 +620,7 @@ const Radar: React.FC = () => {
                 </div>
               )})}
               {challenges
-                .filter(c => new Date(c.dateTime).getTime() > Date.now())
+                .filter(c => new Date(c.dateTime).getTime() > Date.now() - 24 * 60 * 60 * 1000)
                 .filter(c => {
                   if (c.creatorSyncCode === currentUserSyncCode) return true;
                   if (c.audience === 'selected' && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;

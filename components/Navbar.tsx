@@ -8,8 +8,15 @@ interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.7.0';
+const CURRENT_VERSION = '1.8.0';
 const CHANGELOG = [
+  {
+    version: '1.8.0',
+    date: '8. 6. 2026',
+    changes: [
+      'Oprava zobrazení Výzev: Nově vytvořené výzvy ihned po jejich přidání nemizí. Navíc výzvy zadané narychlo pro dnešní den zůstanou viditelné po celých dalších 24 hodin.'
+    ]
+  },
   {
     version: '1.7.0',
     date: '25. 5. 2026',
