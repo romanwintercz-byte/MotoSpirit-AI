@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { getAllPublicProfiles, updateProfileStatus, deleteProfile, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge, updateRideChallenge } from '../services/syncService';
+import { getAllPublicProfiles, updateProfileStatus, deleteProfile, createRideChallenge, fetchRideChallenges, joinRideChallenge, deleteRideChallenge, updateRideChallenge, syncDataToCloud } from '../services/syncService';
 import { Motorcycle, UserProfile, POI, RideChallenge, Expedition, ChallengeMessage } from '../types';
 import { searchNearbyPOI } from '../services/geminiService';
 
@@ -327,9 +327,26 @@ const Radar: React.FC = () => {
           } else {
             localStorage.setItem('spirit_wanderer_trips', JSON.stringify([expeditionToSave, ...existingTrips]));
           }
+          // Force cloud sync to ensure TripPlanner and App.tsx are aligned instantly
+          window.dispatchEvent(new Event('storage'));
+          syncDataToCloud(currentUserSyncCode, { 
+             user: JSON.parse(localStorage.getItem('motospirit_user') || '{}'),
+             bikes: JSON.parse(localStorage.getItem('motospirit_bikes') || '[]'),
+             records: JSON.parse(localStorage.getItem('motospirit_records') || '[]'),
+             fuel: JSON.parse(localStorage.getItem('motospirit_fuel') || '[]'),
+             expeditions: JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]')
+          });
         } else {
           const filteredTrips = existingTrips.filter((e: Expedition) => e.linkedChallengeId !== challenge.id);
           localStorage.setItem('spirit_wanderer_trips', JSON.stringify(filteredTrips));
+          window.dispatchEvent(new Event('storage'));
+          syncDataToCloud(currentUserSyncCode, { 
+             user: JSON.parse(localStorage.getItem('motospirit_user') || '{}'),
+             bikes: JSON.parse(localStorage.getItem('motospirit_bikes') || '[]'),
+             records: JSON.parse(localStorage.getItem('motospirit_records') || '[]'),
+             fuel: JSON.parse(localStorage.getItem('motospirit_fuel') || '[]'),
+             expeditions: JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]')
+          });
         }
       }
     }
