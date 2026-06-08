@@ -229,6 +229,33 @@ const Radar: React.FC = () => {
       setChallenges(data);
       setLoadingChallenges(false);
       
+      const mySyncCode = localStorage.getItem('motospirit_sync_code');
+      if (mySyncCode) {
+        const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+        let tripsUpdated = false;
+        let newTrips = [...existingTrips];
+        
+        data.forEach((c: RideChallenge) => {
+          if (c.route && c.participants.includes(mySyncCode)) {
+            const expeditionToSave: Expedition = { ...c.route, linkedChallengeId: c.id };
+            const tripIndex = newTrips.findIndex((e: Expedition) => e.linkedChallengeId === c.id);
+            if (tripIndex >= 0) {
+              if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
+                newTrips[tripIndex] = expeditionToSave;
+                tripsUpdated = true;
+              }
+            } else if (!newTrips.some((e: Expedition) => e.id === expeditionToSave.id)) {
+              newTrips = [expeditionToSave, ...newTrips];
+              tripsUpdated = true;
+            }
+          }
+        });
+        
+        if (tripsUpdated) {
+          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(newTrips));
+        }
+      }
+      
       if (activeTab === 'challenges') {
         localStorage.setItem('motospirit_last_challenge_view', Date.now().toString());
         window.dispatchEvent(new Event('challenge-viewed'));
@@ -288,6 +315,19 @@ const Radar: React.FC = () => {
     const success = await joinRideChallenge(challenge.id, newParticipants);
     if (success) {
       setChallenges(prev => prev.map(c => c.id === challenge.id ? { ...c, participants: newParticipants } : c));
+      
+      if (challenge.route) {
+        const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+        if (isJoining) {
+          const expeditionToSave: Expedition = { ...challenge.route, linkedChallengeId: challenge.id };
+          if (!existingTrips.some((e: Expedition) => e.id === expeditionToSave.id)) {
+            localStorage.setItem('spirit_wanderer_trips', JSON.stringify([expeditionToSave, ...existingTrips]));
+          }
+        } else {
+          const filteredTrips = existingTrips.filter((e: Expedition) => e.linkedChallengeId !== challenge.id);
+          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(filteredTrips));
+        }
+      }
     }
   };
 
@@ -344,7 +384,7 @@ const Radar: React.FC = () => {
     const existing = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
     localStorage.setItem('spirit_wanderer_trips', JSON.stringify([expeditionToEdit, ...existing.filter((e: Expedition) => e.id !== expeditionToEdit.id)]));
     
-    navigate('/trip-planner');
+    navigate('/trip-planner', { state: { editExpeditionId: expeditionToEdit.id } });
   };
 
   const handleRejectChallenge = (challengeId: string) => {
@@ -1097,8 +1137,8 @@ const Radar: React.FC = () => {
                         }`}
                       >
                         <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 shrink-0 overflow-hidden">
-                          {rider.user.avatarUrl ? (
-                            <img src={rider.user.avatarUrl} alt={rider.user.nickname} className="w-full h-full object-cover" />
+                          {rider.user.avatar ? (
+                            <img src={rider.user.avatar} alt={rider.user.nickname} className="w-full h-full object-cover" />
                           ) : (
                             <i className="fas fa-user text-slate-400 text-xs"></i>
                           )}

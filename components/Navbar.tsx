@@ -8,8 +8,16 @@ interface NavbarProps {
   hasNewChallenge?: boolean;
 }
 
-const CURRENT_VERSION = '1.8.0';
+const CURRENT_VERSION = '1.9.0';
 const CHANGELOG = [
+  {
+    version: '1.9.0',
+    date: '8. 6. 2026',
+    changes: [
+      'Kompletní propojení Výzev a Plánovače: Přijaté výzvy se nyní automaticky stahují do tvé lokální Knihovny tras.',
+      'Obousměrná synchronizace tras: Pokud máš od zakladatele editační práva, můžeš trasu výzvy otevřít v Plánovači a editovat. Tvoje úpravy (po uložení zpět do stejné trasy) se ihned bezdrátově propíší i všem ostatním do Radarů.'
+    ]
+  },
   {
     version: '1.8.0',
     date: '8. 6. 2026',

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { planExpedition, refineExpedition } from '../services/geminiService';
 import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles, fetchRideChallenges, updateRideChallenge } from '../services/syncService';
@@ -11,6 +11,7 @@ import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
 const TripPlanner: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeState, startExpedition } = useActiveExpedition();
   
   // --- FORM STATE ---
@@ -355,7 +356,16 @@ const TripPlanner: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCreateChallengeWithExp = (ex: Expedition, audience: 'all' | 'party' | 'private') => {
+  useEffect(() => {
+    if (location.state?.editExpeditionId && savedExpeditions.length > 0) {
+      const exToLoad = savedExpeditions.find(ex => ex.id === location.state.editExpeditionId);
+      if (exToLoad && (!expedition || expedition.id !== exToLoad.id)) {
+        loadExpedition(exToLoad);
+      }
+    }
+  }, [location.state?.editExpeditionId, savedExpeditions]);
+
+  const handleCreateChallengeWithExp = (ex: Expedition, audience: 'all' | 'party' | 'selected') => {
     navigate('/radar', { state: { createChallenge: true, expedition: ex, audience } });
   };
 
@@ -688,10 +698,10 @@ const TripPlanner: React.FC = () => {
              {/* Rides Group */}
              <div className="space-y-3">
                <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Moje Okruhy</h3>
-               {savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy).length === 0 ? (
+               {savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy && !ex.linkedChallengeId).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Žádné vyjížďky</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy).map(ex => (
+                 savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy && !ex.linkedChallengeId).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
@@ -717,10 +727,10 @@ const TripPlanner: React.FC = () => {
              {/* Expeditions Group */}
              <div className="space-y-3">
                <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Velké Výpravy</h3>
-               {savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy).length === 0 ? (
+               {savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy && !ex.linkedChallengeId).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Žádné expedice</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy).map(ex => (
+                 savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy && !ex.linkedChallengeId).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
@@ -745,11 +755,11 @@ const TripPlanner: React.FC = () => {
 
              {/* Shared Trips Group */}
              <div className="space-y-3">
-               <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Trasy od kámošů</h3>
-               {savedExpeditions.filter(ex => ex.sharedBy).length === 0 ? (
+               <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Výzvy a trasy od kámošů</h3>
+               {savedExpeditions.filter(ex => ex.sharedBy || ex.linkedChallengeId).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Zatím ti nikdo nic neposlal</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.sharedBy).map(ex => (
+                 savedExpeditions.filter(ex => ex.sharedBy || ex.linkedChallengeId).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
@@ -757,11 +767,13 @@ const TripPlanner: React.FC = () => {
                    >
                      <div className="flex items-center gap-4">
                        <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center border border-orange-500/30 group-hover:border-orange-500/50">
-                         <i className="fas fa-share-nodes text-orange-500 text-[10px]"></i>
+                         <i className={`fas ${ex.linkedChallengeId ? 'fa-bolt' : 'fa-share-nodes'} text-orange-500 text-[10px]`}></i>
                        </div>
                        <div>
                          <h4 className="text-[10px] font-bold text-white truncate max-w-[100px] uppercase tracking-tight">{ex.name}</h4>
-                         <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Od: {ex.sharedBy}</p>
+                         <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                            {ex.linkedChallengeId ? 'Součást výzvy' : `Od: ${ex.sharedBy}`}
+                         </p>
                        </div>
                      </div>
                      <button onClick={(e) => deleteExpedition(ex.id, e)} className="text-slate-700 hover:text-red-500 p-2 transition-colors">
@@ -946,7 +958,6 @@ const TripPlanner: React.FC = () => {
                           value={expedition.discordLink || ''}
                           onChange={(e) => {
                             setExpedition({...expedition, discordLink: e.target.value});
-                            setIsModified(true);
                           }}
                           placeholder="Vlož odkaz na Discord hlasový kanál (např. https://discord.gg/...)"
                           className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-[#5865F2] transition-colors"
@@ -1031,7 +1042,6 @@ const TripPlanner: React.FC = () => {
                                       const updatedDays = [...expedition.days];
                                       updatedDays[idx] = { ...day, mapyCzUrl: e.target.value };
                                       setExpedition({ ...expedition, days: updatedDays });
-                                      setIsModified(true);
                                     }}
                                     placeholder="Vlož odkaz na trasu v Mapy.cz (např. https://mapy.cz/s/...)"
                                     className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-[#cc0000] transition-colors"
