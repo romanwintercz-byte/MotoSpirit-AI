@@ -223,6 +223,15 @@ const Radar: React.FC = () => {
   }, [currentUser, activeTab, showCreateChallenge, newChallenge.audience]);
 
   useEffect(() => {
+    const handleStorageChange = () => {
+      setSavedExpeditions(JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('sync-update', handleStorageChange);
+    
+    // Initial fetch on mount
+    handleStorageChange();
+
     const loadChallenges = async () => {
       setLoadingChallenges(true);
       const data = await fetchRideChallenges();
@@ -253,6 +262,7 @@ const Radar: React.FC = () => {
         
         if (tripsUpdated) {
           localStorage.setItem('spirit_wanderer_trips', JSON.stringify(newTrips));
+          window.dispatchEvent(new Event('storage'));
         }
       }
       
@@ -269,7 +279,11 @@ const Radar: React.FC = () => {
       }
     };
     window.addEventListener('new-challenge-alert', handleNewChallenge);
-    return () => window.removeEventListener('new-challenge-alert', handleNewChallenge);
+    return () => {
+      window.removeEventListener('new-challenge-alert', handleNewChallenge);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sync-update', handleStorageChange);
+    };
   }, [activeTab]);
 
   const handleSearchPOI = async () => {
@@ -690,7 +704,7 @@ const Radar: React.FC = () => {
                       <span className="pl-4 text-[10px] font-bold text-slate-500 uppercase self-center">{challenge.participants.length} JEDE</span>
                     </div>
                     <div className="flex gap-2">
-                      {(challenge.creatorSyncCode === currentUserSyncCode || currentUser?.isAdmin || currentUser?.email?.toLowerCase() === 'roman.winter.cz@gmail.com') && (
+                      {challenge.creatorSyncCode === currentUserSyncCode && (
                         <button 
                           onClick={() => handleDeleteChallenge(challenge)}
                           className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-red-900/30 text-red-500 hover:bg-red-900/50 border border-red-500/20"
