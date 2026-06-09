@@ -756,7 +756,7 @@ const Radar: React.FC = () => {
                     <div className="flex gap-2">
                       {challenge.route && (
                         <Link 
-                          to={`/shared/challenge-${challenge.id}`}
+                          to={`/share/challenge-${challenge.id}`}
                           className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300"
                         >
                           <i className="fas fa-map text-orange-500 mr-2"></i> Trasa

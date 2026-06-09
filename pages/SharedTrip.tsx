@@ -26,7 +26,14 @@ const SharedTrip: React.FC = () => {
           .single();
 
         if (error) throw error;
-        if (data) setExpedition(data.expedition_data);
+        if (data && data.expedition_data) {
+           const expData = data.expedition_data;
+           if (slug.startsWith('challenge-') && expData.route) {
+             setExpedition(expData.route);
+           } else {
+             setExpedition(expData);
+           }
+        }
       } catch (e) {
         console.error("Error fetching shared trip:", e);
       } finally {
