@@ -457,6 +457,17 @@ const TripPlanner: React.FC = () => {
     return colors[(dayNum - 1) % colors.length];
   };
 
+  const getDayDateText = (startDate: string | undefined, dayIndex: number) => {
+    if (!startDate) return '';
+    const parts = startDate.split('-');
+    if (parts.length === 3) {
+      const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      dateObj.setDate(dateObj.getDate() + dayIndex);
+      return dateObj.toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
+    }
+    return '';
+  };
+
   // --- MAP LOGIC ---
   useEffect(() => {
     const L = (window as any).L;
@@ -866,7 +877,7 @@ const TripPlanner: React.FC = () => {
                     <div>
                       <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic">{expedition.name}</h3>
                       <p className="text-orange-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">
-                        {expedition.startDate ? `${new Date(expedition.startDate).toLocaleDateString('cs-CZ')} | ` : ''}Hvězdný deník cestovatele
+                        {expedition.startDate ? `${getDayDateText(expedition.startDate, 0)} | ` : ''}Hvězdný deník cestovatele
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1067,7 +1078,9 @@ const TripPlanner: React.FC = () => {
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
-                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em] mb-1">Den {day.dayNumber}</p>
+                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em] mb-1">
+                              Den {day.dayNumber} {expedition.startDate ? ` | ${getDayDateText(expedition.startDate, idx)}` : ''}
+                            </p>
                             <h4 className="text-xl font-brand font-bold text-white uppercase tracking-tight">{day.startLocation} <i className="fas fa-arrow-right text-slate-600 text-sm mx-2"></i> {day.endLocation}</h4>
                           </div>
                           <div className="flex gap-6">
@@ -1184,7 +1197,9 @@ const TripPlanner: React.FC = () => {
               <div className="h-[600px] bg-slate-800 rounded-[3.5rem] border border-slate-700 overflow-hidden relative shadow-2xl group">
                 <div id="exp-map" className="w-full h-full z-0"></div>
                 <div className="absolute top-8 left-8 z-10 bg-slate-950/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-700 shadow-2xl">
-                   <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">Trasa dne {expedition.days[activeDayIdx].dayNumber}</p>
+                   <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">
+                     Trasa dne {expedition.days[activeDayIdx].dayNumber} {expedition.startDate ? ` | ${getDayDateText(expedition.startDate, activeDayIdx)}` : ''}
+                   </p>
                 </div>
                 <div className="absolute top-8 right-8 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-700/50 flex items-center gap-3 shadow-xl max-w-xs">
                   <i className="fas fa-info-circle text-orange-400 text-lg"></i>

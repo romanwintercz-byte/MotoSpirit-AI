@@ -15,6 +15,17 @@ const SharedTrip: React.FC = () => {
   const polylineRef = useRef<any | null>(null);
   const markersRef = useRef<any[]>([]);
 
+  const getDayDateText = (startDate: string | undefined, dayIndex: number) => {
+    if (!startDate) return '';
+    const parts = startDate.split('-');
+    if (parts.length === 3) {
+      const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      dateObj.setDate(dateObj.getDate() + dayIndex);
+      return dateObj.toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
+    }
+    return '';
+  };
+
   useEffect(() => {
     const fetchSharedTrip = async () => {
       if (!slug) return;
@@ -99,6 +110,12 @@ const SharedTrip: React.FC = () => {
         <div>
           <h1 className="text-3xl font-brand font-bold text-white uppercase tracking-tighter italic">{expedition.name}</h1>
           <div className="flex justify-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">
+            {expedition.startDate && (
+              <>
+                <span className="text-orange-500">{new Date(expedition.startDate).toLocaleDateString('cs-CZ')}</span>
+                <span>•</span>
+              </>
+            )}
             <span>{expedition.days.length} DNÍ</span>
             <span>•</span>
             <span>{expedition.travelersCount} LIDÉ</span>
@@ -130,9 +147,11 @@ const SharedTrip: React.FC = () => {
             <button 
               key={idx}
               onClick={() => setActiveDayIdx(idx)}
-              className={`shrink-0 lg:w-full p-6 rounded-[2rem] border transition-all flex flex-col items-center lg:items-start gap-1 ${activeDayIdx === idx ? 'bg-orange-600 border-orange-400 text-white shadow-xl' : 'bg-slate-800 border-slate-700 text-slate-500'}`}
+              className={`shrink-0 lg:w-full p-6 rounded-[2rem] border transition-all flex flex-col items-center lg:items-start gap-1 ${activeDayIdx === idx ? 'bg-orange-600 border-orange-400 text-white shadow-xl' : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-500'}`}
             >
-              <span className="text-[10px] font-bold uppercase opacity-50">Den</span>
+              <span className="text-[10px] font-bold uppercase opacity-50">
+                Den {expedition.startDate ? ` | ${getDayDateText(expedition.startDate, idx)}` : ''}
+              </span>
               <span className="text-2xl font-brand font-bold leading-none">{day.dayNumber}</span>
             </button>
           ))}
