@@ -24,7 +24,8 @@ export const planExpedition = async (
   mode: TransportMode, 
   preferences: ExpeditionPreferences,
   travelers: number,
-  tripType: 'ride' | 'expedition' = 'expedition'
+  tripType: 'ride' | 'expedition' = 'expedition',
+  startDate?: string
 ): Promise<Expedition> => {
   try {
     const ai = getAI();
@@ -143,7 +144,7 @@ export const planExpedition = async (
     return {
       id: Date.now().toString(),
       name: parsedData.name || `Expedice z ${origin} (${days} dní)`,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: startDate || new Date().toISOString().split('T')[0],
       days: tripDays,
       transportMode: mode,
       totalDistance: `${parsedData.totalDistanceKm || 0} km`,

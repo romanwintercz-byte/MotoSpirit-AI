@@ -20,6 +20,7 @@ const TripPlanner: React.FC = () => {
   const [travelers, setTravelers] = useState(2);
   const [mode, setMode] = useState<TransportMode>('moto');
   const [tripType, setTripType] = useState<'ride' | 'expedition'>('expedition');
+  const [startDate, setStartDate] = useState('');
   
   // Enhanced Preferences
   const [prefAcc, setPrefAcc] = useState<ExpeditionPreferences['accommodation']>('camp');
@@ -274,7 +275,7 @@ const TripPlanner: React.FC = () => {
       customNote: waypoints.length > 0 ? `Průjezdní body: ${waypoints.join(', ')}. ${customNote}` : customNote
     };
     try {
-      const result = await planExpedition(origin, days, mode, prefs, travelers, tripType);
+      const result = await planExpedition(origin, days, mode, prefs, travelers, tripType, startDate);
       setExpedition(result);
       setActiveDayIdx(0);
       setExpandedDayIdx(0);
@@ -402,6 +403,9 @@ const TripPlanner: React.FC = () => {
     setExpedition(ex);
     setActiveDayIdx(0);
     setExpandedDayIdx(0);
+    if (ex.startDate) setStartDate(ex.startDate);
+    if (ex.days.length) setDays(ex.days.length);
+    if (ex.days[0] && ex.days[0].startLocation) setOrigin(ex.days[0].startLocation);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -539,6 +543,22 @@ const TripPlanner: React.FC = () => {
                         <i className="fas fa-microphone text-xs"></i>
                       </button>
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Kdy vyrážíš? (volitelné)</label>
+                    <input 
+                      type="date" 
+                      value={startDate} 
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        setStartDate(newDate);
+                        if (expedition) {
+                          setExpedition({ ...expedition, startDate: newDate });
+                        }
+                      }} 
+                      className="w-full bg-slate-900/50 border border-slate-700 rounded-2xl py-3 px-5 text-sm text-white focus:border-orange-500 outline-none transition-all focus:bg-slate-900" 
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -845,7 +865,9 @@ const TripPlanner: React.FC = () => {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>
                       <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic">{expedition.name}</h3>
-                      <p className="text-orange-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">Hvězdný deník cestovatele</p>
+                      <p className="text-orange-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">
+                        {expedition.startDate ? `${new Date(expedition.startDate).toLocaleDateString('cs-CZ')} | ` : ''}Hvězdný deník cestovatele
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button 

@@ -143,7 +143,8 @@ const Radar: React.FC = () => {
         meetingPoint: location.state.expedition.days[0].startLocation,
         style: location.state.expedition.tripType === 'ride' ? 'Road' : 'Adventure',
         audience: location.state.audience || 'all',
-        invitedSyncCodes: []
+        invitedSyncCodes: [],
+        route: location.state.expedition
       });
       // Clear state so it doesn't reopen on refresh
       window.history.replaceState({}, document.title);
