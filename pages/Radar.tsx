@@ -246,7 +246,7 @@ const Radar: React.FC = () => {
         let newTrips = [...existingTrips];
         
         data.forEach((c: RideChallenge) => {
-          if (c.route && c.participants.includes(mySyncCode)) {
+          if (c.route && c.participants.includes(mySyncCode) && c.creatorSyncCode !== mySyncCode) {
             const expeditionToSave: Expedition = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
             const tripIndex = newTrips.findIndex((e: Expedition) => e.linkedChallengeId === c.id);
             if (tripIndex >= 0) {

@@ -48,9 +48,13 @@ const App: React.FC = () => {
             const challengeTime = new Date(latestChallenge.createdAt).getTime();
             localStorage.setItem('motospirit_latest_challenge_time', challengeTime.toString());
             
-            // Don't show notification if the user created it themselves
+            // Don't show notification if the user created it themselves, or if they're not allowed to see it
             const syncCode = localStorage.getItem('motospirit_sync_code');
-            if (challengeTime > lastView && latestChallenge.creatorSyncCode !== syncCode) {
+            let canSee = true;
+            if (latestChallenge.audience === 'selected' && !(latestChallenge.invitedSyncCodes || []).includes(syncCode || '')) {
+              canSee = false;
+            }
+            if (challengeTime > lastView && latestChallenge.creatorSyncCode !== syncCode && canSee) {
               setHasNewChallenge(true);
             } else {
               setHasNewChallenge(false);
