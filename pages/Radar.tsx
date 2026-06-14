@@ -248,7 +248,7 @@ const Radar: React.FC = () => {
         data.forEach((c: RideChallenge) => {
           if (c.route && c.participants.includes(mySyncCode)) {
             const expeditionToSave: Expedition = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
-            const tripIndex = newTrips.findIndex((e: Expedition) => e.linkedChallengeId === c.id);
+            const tripIndex = newTrips.findIndex((e: Expedition) => e.id === `challenge-${c.id}-route`);
             if (tripIndex >= 0) {
               if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
                 newTrips[tripIndex] = expeditionToSave;
@@ -325,8 +325,16 @@ const Radar: React.FC = () => {
       
       if (challenge.route) {
         const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
-        const expeditionToSave: Expedition = { ...challenge.route, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
-        localStorage.setItem('spirit_wanderer_trips', JSON.stringify([expeditionToSave, ...existingTrips]));
+        const originalIndex = existingTrips.findIndex((e: Expedition) => e.id === challenge.route.id);
+        
+        if (originalIndex >= 0) {
+          existingTrips[originalIndex] = { ...existingTrips[originalIndex], linkedChallengeId: challenge.id };
+        } else {
+          const expeditionToSave: Expedition = { ...challenge.route, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
+          existingTrips.unshift(expeditionToSave);
+        }
+        
+        localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
         window.dispatchEvent(new Event('storage'));
       }
 
@@ -350,7 +358,7 @@ const Radar: React.FC = () => {
         const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
         if (isJoining) {
           const expeditionToSave: Expedition = { ...challenge.route, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
-          const tripIndex = existingTrips.findIndex((e: Expedition) => e.linkedChallengeId === challenge.id);
+          const tripIndex = existingTrips.findIndex((e: Expedition) => e.id === `challenge-${challenge.id}-route`);
           if (tripIndex >= 0) {
             existingTrips[tripIndex] = expeditionToSave;
             localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));

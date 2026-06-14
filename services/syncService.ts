@@ -317,9 +317,11 @@ export const subscribeToNewChallenges = (callback: (challenge: any) => void) => 
     .channel('public:moto_shared_trips')
     .on(
       'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'moto_shared_trips', filter: "slug=like.challenge-%" },
+      { event: '*', schema: 'public', table: 'moto_shared_trips', filter: "slug=like.challenge-%" },
       (payload) => {
-        callback(payload.new.expedition_data);
+        if (payload.new && payload.new.expedition_data) {
+          callback(payload.new.expedition_data);
+        }
       }
     )
     .subscribe();

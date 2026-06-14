@@ -226,7 +226,7 @@ const TripPlanner: React.FC = () => {
           challenges.forEach(c => {
              if (c.route && c.participants.includes(syncCode)) {
                 const expeditionToSave = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
-                const tripIndex = newTrips.findIndex((e: any) => e.linkedChallengeId === c.id);
+                const tripIndex = newTrips.findIndex((e: any) => e.id === `challenge-${c.id}-route`);
                 if (tripIndex >= 0) {
                   if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
                     newTrips[tripIndex] = expeditionToSave;
@@ -244,8 +244,8 @@ const TripPlanner: React.FC = () => {
               setSavedExpeditions(newTrips);
               
               setExpedition(currentExp => {
-                if (currentExp && currentExp.linkedChallengeId) {
-                  const updatedExp = newTrips.find((e: any) => e.linkedChallengeId === currentExp.linkedChallengeId);
+                if (currentExp && currentExp.id.startsWith('challenge-') && currentExp.linkedChallengeId) {
+                  const updatedExp = newTrips.find((e: any) => e.id === currentExp.id);
                   if (updatedExp && JSON.stringify(currentExp) !== JSON.stringify(updatedExp)) {
                      return updatedExp;
                   }
