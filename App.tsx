@@ -51,7 +51,7 @@ const App: React.FC = () => {
             // Don't show notification if the user created it themselves, or if they're not allowed to see it
             const syncCode = localStorage.getItem('motospirit_sync_code');
             let canSee = true;
-            if (latestChallenge.audience === 'selected' && !(latestChallenge.invitedSyncCodes || []).includes(syncCode || '')) {
+            if ((latestChallenge.audience === 'selected' || latestChallenge.audience === 'party') && !(latestChallenge.invitedSyncCodes || []).includes(syncCode || '')) {
               canSee = false;
             }
             if (challengeTime > lastView && latestChallenge.creatorSyncCode !== syncCode && canSee) {

@@ -246,7 +246,7 @@ const Radar: React.FC = () => {
         let newTrips = [...existingTrips];
         
         data.forEach((c: RideChallenge) => {
-          if (c.route && c.participants.includes(mySyncCode) && c.creatorSyncCode !== mySyncCode) {
+          if (c.route && c.participants.includes(mySyncCode)) {
             const expeditionToSave: Expedition = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
             const tripIndex = newTrips.findIndex((e: Expedition) => e.linkedChallengeId === c.id);
             if (tripIndex >= 0) {
@@ -304,8 +304,15 @@ const Radar: React.FC = () => {
       alert("Vyplň prosím základní údaje výzvy.");
       return;
     }
+    
+    let finalInvited = newChallenge.invitedSyncCodes || [];
+    if (newChallenge.audience === 'party') {
+      finalInvited = currentUser?.following || [];
+    }
+
     const challenge = {
       ...newChallenge,
+      invitedSyncCodes: finalInvited,
       id: Date.now().toString(),
       creatorSyncCode: currentUserSyncCode,
       creatorNickname: currentUser?.nickname || 'Jezdec',
@@ -315,6 +322,14 @@ const Radar: React.FC = () => {
     const success = await createRideChallenge(challenge);
     if (success) {
       setChallenges([challenge as RideChallenge, ...challenges]);
+      
+      if (challenge.route) {
+        const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+        const expeditionToSave: Expedition = { ...challenge.route, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
+        localStorage.setItem('spirit_wanderer_trips', JSON.stringify([expeditionToSave, ...existingTrips]));
+        window.dispatchEvent(new Event('storage'));
+      }
+
       setShowCreateChallenge(false);
       setNewChallenge({ title: '', dateTime: '', meetingPoint: '', style: 'Road', description: '' });
     }
@@ -656,7 +671,7 @@ const Radar: React.FC = () => {
                 .filter(c => new Date(c.dateTime).getTime() > Date.now() - 24 * 60 * 60 * 1000)
                 .filter(c => {
                   if (c.creatorSyncCode === currentUserSyncCode) return true;
-                  if (c.audience === 'selected' && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;
+                  if ((c.audience === 'selected' || c.audience === 'party') && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;
                   return true;
                 })
                 .map(challenge => {
@@ -835,7 +850,7 @@ const Radar: React.FC = () => {
                 .filter(c => new Date(c.dateTime).getTime() > Date.now() - 24 * 60 * 60 * 1000)
                 .filter(c => {
                   if (c.creatorSyncCode === currentUserSyncCode) return true;
-                  if (c.audience === 'selected' && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;
+                  if ((c.audience === 'selected' || c.audience === 'party') && !(c.invitedSyncCodes || []).includes(currentUserSyncCode || '')) return false;
                   return true;
                 }).length === 0 && (
                 <div className="col-span-full text-center py-20">

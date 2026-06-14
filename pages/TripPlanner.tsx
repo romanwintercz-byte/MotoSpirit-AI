@@ -224,7 +224,7 @@ const TripPlanner: React.FC = () => {
           let newTrips = [...existingTrips];
           
           challenges.forEach(c => {
-             if (c.route && c.participants.includes(syncCode) && c.creatorSyncCode !== syncCode) {
+             if (c.route && c.participants.includes(syncCode)) {
                 const expeditionToSave = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
                 const tripIndex = newTrips.findIndex((e: any) => e.linkedChallengeId === c.id);
                 if (tripIndex >= 0) {
