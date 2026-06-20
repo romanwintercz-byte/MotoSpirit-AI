@@ -21,6 +21,8 @@ const TripPlanner: React.FC = () => {
   const [mode, setMode] = useState<TransportMode>('moto');
   const [tripType, setTripType] = useState<'ride' | 'expedition'>('expedition');
   const [startDate, setStartDate] = useState('');
+  const [leftTab, setLeftTab] = useState<'new'|'saved'>('new');
+
   
   // Enhanced Preferences
   const [prefAcc, setPrefAcc] = useState<ExpeditionPreferences['accommodation']>('camp');
@@ -279,6 +281,9 @@ const TripPlanner: React.FC = () => {
       setExpedition(result);
       setActiveDayIdx(0);
       setExpandedDayIdx(0);
+      if (window.innerWidth < 1024) {
+        setTimeout(() => document.getElementById('expedition-details')?.scrollIntoView({ behavior: 'smooth' }), 100);
+      }
     } catch (err) {
       alert("AI Expedice selhala. Zkuste to znovu.");
     } finally {
@@ -296,6 +301,9 @@ const TripPlanner: React.FC = () => {
       setShowRefine(false);
       setActiveDayIdx(0);
       setExpandedDayIdx(0);
+      if (window.innerWidth < 1024) {
+        setTimeout(() => document.getElementById('expedition-details')?.scrollIntoView({ behavior: 'smooth' }), 100);
+      }
     } catch (err) {
       alert("Ladění selhalo. Zkuste to znovu.");
     } finally {
@@ -406,7 +414,13 @@ const TripPlanner: React.FC = () => {
     if (ex.startDate) setStartDate(ex.startDate);
     if (ex.days.length) setDays(ex.days.length);
     if (ex.days[0] && ex.days[0].startLocation) setOrigin(ex.days[0].startLocation);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.innerWidth < 1024) {
+      setTimeout(() => {
+        document.getElementById('expedition-details')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -511,9 +525,25 @@ const TripPlanner: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Form & Saved List */}
-        <div className="lg:col-span-4 space-y-8">
-          <div className="bg-slate-800/80 p-6 rounded-[2.5rem] border border-slate-700 shadow-2xl backdrop-blur-md">
-            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-700 mb-8">
+        <div className="lg:col-span-4 space-y-6">
+          <div className="flex bg-slate-900/50 p-1.5 rounded-2xl border border-slate-700/50">
+            <button 
+              onClick={() => setLeftTab('new')}
+              className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${leftTab === 'new' ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/20' : 'text-slate-500 hover:text-white'}`}
+            >
+              <i className="fas fa-plus mr-2"></i> Nová trasa
+            </button>
+            <button 
+              onClick={() => setLeftTab('saved')}
+              className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${leftTab === 'saved' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+            >
+              <i className="fas fa-bookmark mr-2"></i> Moje trasy {savedExpeditions.length > 0 && `(${savedExpeditions.length})`}
+            </button>
+          </div>
+
+          {leftTab === 'new' && (
+            <div className="bg-slate-800/80 p-6 rounded-[2.5rem] border border-slate-700 shadow-2xl backdrop-blur-md">
+              <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-700 mb-8">
               <button 
                 onClick={() => { setTripType('ride'); setDays(1); }}
                 className={`flex-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${tripType === 'ride' ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
@@ -769,11 +799,13 @@ const TripPlanner: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+           </div>
+          )}
 
           {/* Saved Expeditions List */}
-          <div className="bg-slate-800/40 p-6 rounded-[2.5rem] border border-slate-700/50 space-y-6">
-             <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] ml-2">Knihovna tras</h2>
+          {leftTab === 'saved' && (
+            <div className="bg-slate-800/40 p-6 rounded-[2.5rem] border border-slate-700/50 space-y-6">
+               <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] ml-2">Knihovna tras</h2>
              
              {/* Rides Group */}
              <div className="space-y-3">
@@ -863,11 +895,12 @@ const TripPlanner: React.FC = () => {
                  ))
                )}
              </div>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Content */}
-        <div className="lg:col-span-8 space-y-8">
+        <div id="expedition-details" className="lg:col-span-8 space-y-8">
           {expedition && !loading ? (
             <div className="animate-fadeIn space-y-8">
               {/* Main Info Card & Timeline */}
