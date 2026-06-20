@@ -106,6 +106,32 @@ const App: React.FC = () => {
             canSee = false;
           }
           
+          // Auto-update locally saved route if we are a participant
+          if (challenge.route && challenge.participants?.includes(syncCode)) {
+            const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
+            const tripIndex = existingTrips.findIndex((e: any) => e.linkedChallengeId === challenge.id);
+            let updated = false;
+            
+            if (tripIndex >= 0) {
+              const expeditionToSave = { ...challenge.route, id: existingTrips[tripIndex].id, linkedChallengeId: challenge.id, challengeCreatorSyncCode: challenge.creatorSyncCode };
+              if (JSON.stringify(existingTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
+                existingTrips[tripIndex] = expeditionToSave;
+                updated = true;
+              }
+            } else {
+              const expeditionToSave = { ...challenge.route, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id, challengeCreatorSyncCode: challenge.creatorSyncCode };
+              existingTrips.unshift(expeditionToSave);
+              updated = true;
+            }
+            
+            if (updated) {
+               localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+               window.dispatchEvent(new Event('storage'));
+            }
+          }
+          
+          window.dispatchEvent(new CustomEvent('challenge-updated', { detail: challenge }));
+          
           if (challengeTime > lastView && challenge.creatorSyncCode !== syncCode && canSee) {
             localStorage.setItem('motospirit_latest_challenge_time', challengeTime.toString());
             setHasNewChallenge(true);

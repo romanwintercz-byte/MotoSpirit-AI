@@ -249,13 +249,13 @@ const Radar: React.FC = () => {
           if (c.route && c.participants.includes(mySyncCode)) {
             const tripIndex = newTrips.findIndex((e: Expedition) => e.linkedChallengeId === c.id);
             if (tripIndex >= 0) {
-              const expeditionToSave: Expedition = { ...c.route, id: newTrips[tripIndex].id, linkedChallengeId: c.id };
+              const expeditionToSave: Expedition = { ...c.route, id: newTrips[tripIndex].id, linkedChallengeId: c.id, challengeCreatorSyncCode: c.creatorSyncCode };
               if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
                 newTrips[tripIndex] = expeditionToSave;
                 tripsUpdated = true;
               }
             } else {
-              const expeditionToSave: Expedition = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
+              const expeditionToSave: Expedition = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id, challengeCreatorSyncCode: c.creatorSyncCode };
               newTrips = [expeditionToSave, ...newTrips];
               tripsUpdated = true;
             }

@@ -129,6 +129,17 @@ const TripPlanner: React.FC = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [editingCustomAcc, setEditingCustomAcc] = useState<{dayIndex: number | null, name: string, url: string}>({ dayIndex: null, name: '', url: '' });
 
+  const currentUserSyncCode = localStorage.getItem('motospirit_sync_code');
+
+  const sharedTripsFilter = (ex: any) => {
+    if (ex.sharedBy) return true;
+    if (ex.id?.startsWith('challenge-')) {
+      if (ex.challengeCreatorSyncCode && ex.challengeCreatorSyncCode === currentUserSyncCode) return false;
+      return true;
+    }
+    return false;
+  };
+
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
   const polylineRef = useRef<any | null>(null);
@@ -190,8 +201,20 @@ const TripPlanner: React.FC = () => {
 
   useEffect(() => {
     const sync = () => {
-      const saved = localStorage.getItem('spirit_wanderer_trips');
-      if (saved) setSavedExpeditions(JSON.parse(saved));
+      const savedStr = localStorage.getItem('spirit_wanderer_trips');
+      if (savedStr) {
+        const parsed = JSON.parse(savedStr);
+        setSavedExpeditions(parsed);
+        setExpedition(currentExp => {
+          if (currentExp && currentExp.id) {
+            const updatedExp = parsed.find((e: any) => e.id === currentExp.id);
+            if (updatedExp && JSON.stringify(currentExp) !== JSON.stringify(updatedExp)) {
+               return updatedExp;
+            }
+          }
+          return currentExp;
+        });
+      }
     };
     window.addEventListener('storage', sync);
     window.addEventListener('sync-update', sync);
@@ -230,13 +253,13 @@ const TripPlanner: React.FC = () => {
              if (c.route && c.participants.includes(syncCode)) {
                 const tripIndex = newTrips.findIndex((e: any) => e.linkedChallengeId === c.id);
                 if (tripIndex >= 0) {
-                  const expeditionToSave = { ...c.route, id: newTrips[tripIndex].id, linkedChallengeId: c.id };
+                  const expeditionToSave = { ...c.route, id: newTrips[tripIndex].id, linkedChallengeId: c.id, challengeCreatorSyncCode: c.creatorSyncCode };
                   if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
                     newTrips[tripIndex] = expeditionToSave;
                     tripsUpdated = true;
                   }
                 } else {
-                  const expeditionToSave = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
+                  const expeditionToSave = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id, challengeCreatorSyncCode: c.creatorSyncCode };
                   newTrips = [expeditionToSave, ...newTrips];
                   tripsUpdated = true;
                 }
@@ -378,19 +401,27 @@ const TripPlanner: React.FC = () => {
     }
   };
 
+  const handleAutoChallengeSync = async (expToSync: Expedition) => {
+    if (expToSync.linkedChallengeId) {
+      try {
+        const challenges = await fetchRideChallenges();
+        const challengeToUpdate = challenges.find((c: any) => c.id === expToSync.linkedChallengeId);
+        if (challengeToUpdate) {
+          const updatedChallenge = { ...challengeToUpdate, route: expToSync };
+          await updateRideChallenge(challengeToUpdate.id, updatedChallenge);
+        }
+      } catch (err) {
+        console.error("Failed to auto-sync challenge:", err);
+      }
+    }
+  };
+
   const overwriteExisting = async () => {
     if (!expedition) return;
     setSavedExpeditions(prev => prev.map(ex => ex.id === expedition.id ? expedition : ex));
     
     // Auto-update linked challenge if present
-    if (expedition.linkedChallengeId) {
-      const challenges = await fetchRideChallenges();
-      const challengeToUpdate = challenges.find((c: any) => c.id === expedition.linkedChallengeId);
-      if (challengeToUpdate) {
-        const updatedChallenge = { ...challengeToUpdate, route: expedition };
-        await updateRideChallenge(challengeToUpdate.id, updatedChallenge);
-      }
-    }
+    await handleAutoChallengeSync(expedition);
     
     alert("Změny byly uloženy.");
     setShowSaveModal(false);
@@ -492,6 +523,9 @@ const TripPlanner: React.FC = () => {
       setSavedExpeditions(existingTrips);
       localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
       window.dispatchEvent(new Event('storage'));
+      
+      // Auto-update linked challenge if present
+      handleAutoChallengeSync(newExpedition);
     }
   };
 
@@ -1282,6 +1316,7 @@ const TripPlanner: React.FC = () => {
                                           existingTrips[tripIndex] = newExp;
                                           setSavedExpeditions(existingTrips);
                                           localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+                                          handleAutoChallengeSync(newExp);
                                         }
                                       }}
                                       className="w-10 h-8 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl flex items-center justify-center transition-all border border-red-500/20"
