@@ -247,14 +247,15 @@ const Radar: React.FC = () => {
         
         data.forEach((c: RideChallenge) => {
           if (c.route && c.participants.includes(mySyncCode)) {
-            const expeditionToSave: Expedition = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
-            const tripIndex = newTrips.findIndex((e: Expedition) => e.id === `challenge-${c.id}-route`);
+            const tripIndex = newTrips.findIndex((e: Expedition) => e.linkedChallengeId === c.id);
             if (tripIndex >= 0) {
+              const expeditionToSave: Expedition = { ...c.route, id: newTrips[tripIndex].id, linkedChallengeId: c.id };
               if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
                 newTrips[tripIndex] = expeditionToSave;
                 tripsUpdated = true;
               }
             } else {
+              const expeditionToSave: Expedition = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
               newTrips = [expeditionToSave, ...newTrips];
               tripsUpdated = true;
             }

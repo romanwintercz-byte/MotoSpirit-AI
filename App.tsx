@@ -101,7 +101,12 @@ const App: React.FC = () => {
           const challengeTime = new Date(challenge.createdAt).getTime();
           const lastView = parseInt(localStorage.getItem('motospirit_last_challenge_view') || '0');
           
-          if (challengeTime > lastView && challenge.creatorSyncCode !== syncCode) {
+          let canSee = true;
+          if ((challenge.audience === 'selected' || challenge.audience === 'party') && !(challenge.invitedSyncCodes || []).includes(syncCode || '')) {
+            canSee = false;
+          }
+          
+          if (challengeTime > lastView && challenge.creatorSyncCode !== syncCode && canSee) {
             localStorage.setItem('motospirit_latest_challenge_time', challengeTime.toString());
             setHasNewChallenge(true);
             window.dispatchEvent(new Event('new-challenge-alert'));

@@ -227,14 +227,15 @@ const TripPlanner: React.FC = () => {
           
           challenges.forEach(c => {
              if (c.route && c.participants.includes(syncCode)) {
-                const expeditionToSave = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
-                const tripIndex = newTrips.findIndex((e: any) => e.id === `challenge-${c.id}-route`);
+                const tripIndex = newTrips.findIndex((e: any) => e.linkedChallengeId === c.id);
                 if (tripIndex >= 0) {
+                  const expeditionToSave = { ...c.route, id: newTrips[tripIndex].id, linkedChallengeId: c.id };
                   if (JSON.stringify(newTrips[tripIndex]) !== JSON.stringify(expeditionToSave)) {
                     newTrips[tripIndex] = expeditionToSave;
                     tripsUpdated = true;
                   }
                 } else {
+                  const expeditionToSave = { ...c.route, id: `challenge-${c.id}-route`, linkedChallengeId: c.id };
                   newTrips = [expeditionToSave, ...newTrips];
                   tripsUpdated = true;
                 }
@@ -246,8 +247,8 @@ const TripPlanner: React.FC = () => {
               setSavedExpeditions(newTrips);
               
               setExpedition(currentExp => {
-                if (currentExp && currentExp.id.startsWith('challenge-') && currentExp.linkedChallengeId) {
-                  const updatedExp = newTrips.find((e: any) => e.id === currentExp.id);
+                if (currentExp && currentExp.linkedChallengeId) {
+                  const updatedExp = newTrips.find((e: any) => e.linkedChallengeId === currentExp.linkedChallengeId);
                   if (updatedExp && JSON.stringify(currentExp) !== JSON.stringify(updatedExp)) {
                      return updatedExp;
                   }
@@ -810,10 +811,10 @@ const TripPlanner: React.FC = () => {
              {/* Rides Group */}
              <div className="space-y-3">
                <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Moje Okruhy</h3>
-               {savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy && !ex.linkedChallengeId).length === 0 ? (
+               {savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy && !ex.id?.startsWith('challenge-')).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Žádné vyjížďky</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy && !ex.linkedChallengeId).map(ex => (
+                 savedExpeditions.filter(ex => ex.tripType === 'ride' && !ex.sharedBy && !ex.id?.startsWith('challenge-')).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
@@ -839,10 +840,10 @@ const TripPlanner: React.FC = () => {
              {/* Expeditions Group */}
              <div className="space-y-3">
                <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Velké Výpravy</h3>
-               {savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy && !ex.linkedChallengeId).length === 0 ? (
+               {savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy && !ex.id?.startsWith('challenge-')).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Žádné expedice</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy && !ex.linkedChallengeId).map(ex => (
+                 savedExpeditions.filter(ex => ex.tripType !== 'ride' && !ex.sharedBy && !ex.id?.startsWith('challenge-')).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
@@ -868,10 +869,10 @@ const TripPlanner: React.FC = () => {
              {/* Shared Trips Group */}
              <div className="space-y-3">
                <h3 className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ml-2">Výzvy a trasy od kámošů</h3>
-               {savedExpeditions.filter(ex => ex.sharedBy || ex.linkedChallengeId).length === 0 ? (
+               {savedExpeditions.filter(ex => ex.sharedBy || ex.id?.startsWith('challenge-')).length === 0 ? (
                  <p className="text-[8px] text-slate-700 italic ml-2 uppercase">Zatím ti nikdo nic neposlal</p>
                ) : (
-                 savedExpeditions.filter(ex => ex.sharedBy || ex.linkedChallengeId).map(ex => (
+                 savedExpeditions.filter(ex => ex.sharedBy || ex.id?.startsWith('challenge-')).map(ex => (
                    <div 
                     key={ex.id}
                     onClick={() => loadExpedition(ex)}
