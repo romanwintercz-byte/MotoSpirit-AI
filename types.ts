@@ -72,6 +72,7 @@ export interface TripDay {
   description: string;
   activities: string[];
   accommodation?: Accommodation;
+  customAccommodation?: Accommodation;
   waypoints: [number, number][];
   mapyCzUrl?: string;
 }

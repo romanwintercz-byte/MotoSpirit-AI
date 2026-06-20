@@ -127,6 +127,7 @@ const TripPlanner: React.FC = () => {
   const [showChallengeAudience, setShowChallengeAudience] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [editingCustomAcc, setEditingCustomAcc] = useState<{dayIndex: number | null, name: string, url: string}>({ dayIndex: null, name: '', url: '' });
 
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
@@ -465,6 +466,33 @@ const TripPlanner: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleSaveCustomAcc = () => {
+    if (editingCustomAcc.dayIndex === null || !expedition) return;
+    const newExpedition = { ...expedition };
+    
+    // Create Accommodation object if name is provided, else undefined
+    const acc = editingCustomAcc.name.trim() ? {
+      name: editingCustomAcc.name,
+      url: editingCustomAcc.url,
+      type: 'vlastní ubytování',
+      rating: ''
+    } : undefined;
+    
+    newExpedition.days[editingCustomAcc.dayIndex].customAccommodation = acc;
+    setExpedition(newExpedition);
+    setEditingCustomAcc({ dayIndex: null, name: '', url: '' });
+    
+    // Auto-save logic
+    const existingTrips = [...savedExpeditions];
+    const tripIndex = existingTrips.findIndex(t => t.id === newExpedition.id);
+    if (tripIndex >= 0) {
+      existingTrips[tripIndex] = newExpedition;
+      setSavedExpeditions(existingTrips);
+      localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+      window.dispatchEvent(new Event('storage'));
+    }
   };
 
   const getDayColor = (dayNum: number) => {
@@ -1198,25 +1226,113 @@ const TripPlanner: React.FC = () => {
                                 {expedition.tripType === 'ride' ? 'Tip na zastávku' : 'Ubytování na noc'}
                               </h3>
                               
-                              {day.accommodation ? (
-                                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-700 border-l-4 border-l-orange-500">
-                                  <p className="text-sm font-bold text-white mb-1 leading-tight">{day.accommodation?.name}</p>
+                              {day.accommodation && (
+                                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-700 border-l-4 border-l-orange-500 mb-4 opacity-80">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <p className="text-sm font-bold text-white leading-tight">{day.accommodation?.name}</p>
+                                    <span className="text-[8px] bg-orange-600/20 text-orange-500 px-2 py-0.5 rounded uppercase tracking-widest border border-orange-500/20 whitespace-nowrap ml-2">AI TIP</span>
+                                  </div>
                                   <p className="text-[9px] text-slate-600 uppercase font-bold tracking-widest mb-4">{day.accommodation?.type}</p>
                                   <a 
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(day.accommodation?.name || '')}`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl border border-slate-700 flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-all"
+                                    className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl border border-slate-700 flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-all"
                                   >
                                     MAPA <i className="fas fa-external-link-alt text-[8px] opacity-50"></i>
                                   </a>
                                 </div>
-                              ) : (
-                                <div className="py-8 text-center bg-slate-900 rounded-2xl border border-slate-700 border-dashed">
-                                  <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-                                    {expedition.tripType === 'ride' ? 'Hledám ideální pauzu...' : 'Hledám základnu...'}
-                                  </p>
+                              )}
+                              
+                              {day.customAccommodation ? (
+                                <div className="bg-slate-900 p-5 rounded-2xl border border-blue-500/30 border-l-4 border-l-blue-500 relative">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <p className="text-sm font-bold text-white leading-tight">{day.customAccommodation.name}</p>
+                                    <span className="text-[8px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded uppercase tracking-widest border border-blue-500/20">MOJE</span>
+                                  </div>
+                                  <div className="flex gap-2 mt-4">
+                                    {day.customAccommodation.url ? (
+                                      <a 
+                                        href={day.customAccommodation.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl border border-slate-700 flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-all"
+                                      >
+                                        ODKAZ <i className="fas fa-external-link-alt text-[8px] opacity-50"></i>
+                                      </a>
+                                    ) : (
+                                       <a 
+                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(day.customAccommodation.name)}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl border border-slate-700 flex items-center justify-center gap-2 text-[10px] font-bold uppercase transition-all"
+                                      >
+                                        MAPA <i className="fas fa-external-link-alt text-[8px] opacity-50"></i>
+                                      </a>
+                                    )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newExp = {...expedition};
+                                        newExp.days[idx].customAccommodation = undefined;
+                                        setExpedition(newExp);
+                                        const existingTrips = [...savedExpeditions];
+                                        const tripIndex = existingTrips.findIndex(t => t.id === newExp.id);
+                                        if (tripIndex >= 0) {
+                                          existingTrips[tripIndex] = newExp;
+                                          setSavedExpeditions(existingTrips);
+                                          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+                                        }
+                                      }}
+                                      className="w-10 h-8 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl flex items-center justify-center transition-all border border-red-500/20"
+                                      title="Smazat ubytování"
+                                    >
+                                      <i className="fas fa-trash text-[10px]"></i>
+                                    </button>
+                                  </div>
                                 </div>
+                              ) : editingCustomAcc.dayIndex === idx ? (
+                                <div className="space-y-3 bg-slate-900 border border-slate-700 rounded-2xl p-4">
+                                  <input
+                                    type="text"
+                                    placeholder="Název (např. Penzion u Nováků)"
+                                    value={editingCustomAcc.name}
+                                    onChange={e => setEditingCustomAcc({...editingCustomAcc, name: e.target.value})}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:border-orange-500 outline-none"
+                                    autoFocus
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Odkaz (volitelné)"
+                                    value={editingCustomAcc.url}
+                                    onChange={e => setEditingCustomAcc({...editingCustomAcc, url: e.target.value})}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:border-orange-500 outline-none"
+                                  />
+                                  <div className="flex gap-2 pt-2">
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); handleSaveCustomAcc() }}
+                                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase tracking-widest py-2 rounded-xl transition-all"
+                                    >
+                                      ULOŽIT
+                                    </button>
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setEditingCustomAcc({ dayIndex: null, name: '', url: '' }) }}
+                                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] uppercase tracking-widest py-2 rounded-xl transition-all border border-slate-700"
+                                    >
+                                      ZRUŠIT
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingCustomAcc({ dayIndex: idx, name: day.customAccommodation?.name || '', url: day.customAccommodation?.url || '' });
+                                  }}
+                                  className="w-full py-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 border-dashed rounded-2xl text-[10px] text-slate-400 font-bold uppercase tracking-widest transition-all hover:text-white flex items-center justify-center gap-2"
+                                >
+                                  <i className="fas fa-plus"></i> {expedition.tripType === 'ride' ? 'PŘIDAT VLASTNÍ ZASTÁVKU' : 'PŘIDAT VLASTNÍ UBYTOVÁNÍ'}
+                                </button>
                               )}
                             </div>
                           </div>
