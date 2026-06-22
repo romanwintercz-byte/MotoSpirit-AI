@@ -122,6 +122,7 @@ const TripPlanner: React.FC = () => {
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [followedRiders, setFollowedRiders] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [showChallengeAudience, setShowChallengeAudience] = useState(false);
@@ -143,6 +144,7 @@ const TripPlanner: React.FC = () => {
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
   const polylineRef = useRef<any | null>(null);
+  const gpxPolylineRef = useRef<any | null>(null);
   const markersRef = useRef<any[]>([]);
 
   const modes: { val: TransportMode, icon: string, label: string }[] = [
@@ -372,6 +374,45 @@ const TripPlanner: React.FC = () => {
     }
   };
 
+  const handleManualSyncFromCloud = async () => {
+    if (!expedition || !expedition.linkedChallengeId) return;
+    setIsSyncing(true);
+    try {
+      const challenges = await fetchRideChallenges();
+      const updatedChallenge = challenges.find((c: any) => c.id === expedition.linkedChallengeId);
+      
+      if (updatedChallenge && updatedChallenge.route) {
+        const existingTrips = [...savedExpeditions];
+        const tripIndex = existingTrips.findIndex(t => t.id === expedition.id);
+        
+        let newExpToSave = { 
+          ...updatedChallenge.route, 
+          id: expedition.id, 
+          linkedChallengeId: expedition.linkedChallengeId, 
+          challengeCreatorSyncCode: updatedChallenge.creatorSyncCode 
+        };
+        
+        if (tripIndex >= 0) {
+          existingTrips[tripIndex] = newExpToSave;
+        } else {
+          existingTrips.unshift(newExpToSave);
+        }
+        
+        setSavedExpeditions(existingTrips);
+        localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+        setExpedition(newExpToSave);
+        alert("Trasa byla úspěšně aktualizována z cloudu!");
+      } else {
+        alert("Na serveru nebyla nalezena žádná novější verze.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Chyba při stahování změn.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const toggleExperience = (id: string) => {
     setPrefExp(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
@@ -425,6 +466,47 @@ const TripPlanner: React.FC = () => {
     
     alert("Změny byly uloženy.");
     setShowSaveModal(false);
+  };
+
+  const handleGpxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !expedition) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const gpxText = event.target?.result as string;
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(gpxText, "text/xml");
+      
+      let points = Array.from(xmlDoc.getElementsByTagName("trkpt"));
+      if (points.length === 0) {
+        points = Array.from(xmlDoc.getElementsByTagName("rtept"));
+      }
+      
+      if (points.length > 0) {
+        const gpxRoute: [number, number][] = points.map(pt => [
+          parseFloat(pt.getAttribute("lat") || "0"),
+          parseFloat(pt.getAttribute("lon") || "0")
+        ]);
+        
+        const updatedExpedition = { ...expedition, gpxRoute };
+        setExpedition(updatedExpedition);
+        
+        const existingTrips = [...savedExpeditions];
+        const tripIndex = existingTrips.findIndex(t => t.id === updatedExpedition.id);
+        if (tripIndex >= 0) {
+          existingTrips[tripIndex] = updatedExpedition;
+          setSavedExpeditions(existingTrips);
+          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+          window.dispatchEvent(new Event('storage'));
+          handleAutoChallengeSync(updatedExpedition);
+        }
+      } else {
+        alert("V GPX souboru nebyly nalezeny žádné body trasy.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // reset input
   };
 
   const deleteExpedition = (id: string, e: React.MouseEvent) => {
@@ -562,18 +644,24 @@ const TripPlanner: React.FC = () => {
     const L = (window as any).L;
     if (!mapRef.current || !L || !expedition) return;
     if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
+    if (gpxPolylineRef.current) mapRef.current.removeLayer(gpxPolylineRef.current);
     markersRef.current.forEach(m => mapRef.current.removeLayer(m));
     markersRef.current = [];
 
-    const currentDay = expedition.days[activeDayIdx];
-    if (currentDay && currentDay.waypoints.length > 0) {
-      const color = getDayColor(currentDay.dayNumber);
-      polylineRef.current = L.polyline(currentDay.waypoints, { color, weight: 3, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
-      const start = currentDay.waypoints[0];
-      const end = currentDay.waypoints[currentDay.waypoints.length - 1];
-      markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
-      markersRef.current.push(L.circleMarker(end, { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
-      mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
+    if (expedition.gpxRoute && expedition.gpxRoute.length > 0) {
+      gpxPolylineRef.current = L.polyline(expedition.gpxRoute, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
+      mapRef.current.fitBounds(gpxPolylineRef.current.getBounds(), { padding: [50, 50] });
+    } else {
+      const currentDay = expedition.days[activeDayIdx];
+      if (currentDay && currentDay.waypoints.length > 0) {
+        const color = getDayColor(currentDay.dayNumber);
+        polylineRef.current = L.polyline(currentDay.waypoints, { color, weight: 3, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
+        const start = currentDay.waypoints[0];
+        const end = currentDay.waypoints[currentDay.waypoints.length - 1];
+        markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
+        markersRef.current.push(L.circleMarker(end, { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
+        mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
+      }
     }
   }, [activeDayIdx, expedition]);
 
@@ -996,6 +1084,16 @@ const TripPlanner: React.FC = () => {
                       >
                         <i className={`fas ${isSharing ? 'fa-sync-alt animate-spin' : 'fa-share-nodes'}`}></i> SDÍLET
                       </button>
+                      {expedition.linkedChallengeId && (
+                        <button 
+                          onClick={handleManualSyncFromCloud}
+                          disabled={isSyncing}
+                          className="bg-slate-900 hover:bg-slate-700 text-teal-400 px-4 py-2 rounded-xl border border-slate-700 text-[9px] font-bold uppercase flex items-center gap-2 transition-all active:scale-95"
+                          title="Načíst aktualizace z cloudu"
+                        >
+                          <i className={`fas ${isSyncing ? 'fa-spinner fa-spin' : 'fa-cloud-download-alt'}`}></i> AKTUALIZOVAT
+                        </button>
+                      )}
                       <div className="relative">
                         <button 
                           onClick={() => setShowNavMenu(!showNavMenu)}
@@ -1387,13 +1485,38 @@ const TripPlanner: React.FC = () => {
                    </p>
                 </div>
                 <div className="absolute top-8 right-8 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-700/50 flex items-center gap-3 shadow-xl max-w-xs">
-                  <i className="fas fa-info-circle text-orange-400 text-lg"></i>
+                  <i className={`fas ${expedition.gpxRoute && expedition.gpxRoute.length > 0 ? 'fa-route text-teal-400' : 'fa-info-circle text-orange-400'} text-lg`}></i>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-1">Schématický náhled</p>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-tight">Nejedná se o přesnou trasu pro navigaci, pouze o orientační orientaci bodů.</p>
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-1">
+                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Přesná GPX trasa" : "Schématický náhled"}
+                    </p>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-tight">
+                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Vykreslena reálná data ze synchronizovaného GPX souboru." : "Nejedná se o přesnou trasu pro navigaci, pouze o orientační orientaci bodů."}
+                    </p>
                   </div>
                 </div>
                 <div className="absolute bottom-8 right-8 z-10 flex flex-col gap-2">
+                   {expedition.gpxRoute && expedition.gpxRoute.length > 0 && (
+                     <button onClick={() => {
+                        const updatedExpedition = { ...expedition, gpxRoute: undefined };
+                        setExpedition(updatedExpedition);
+                        const existingTrips = [...savedExpeditions];
+                        const tripIndex = existingTrips.findIndex(t => t.id === updatedExpedition.id);
+                        if (tripIndex >= 0) {
+                          existingTrips[tripIndex] = updatedExpedition;
+                          setSavedExpeditions(existingTrips);
+                          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+                          window.dispatchEvent(new Event('storage'));
+                          handleAutoChallengeSync(updatedExpedition);
+                        }
+                     }} className="w-12 h-12 bg-red-500/90 hover:bg-red-600 text-white rounded-xl border border-red-700 flex items-center justify-center shadow-xl active:scale-90 transition-all" title="Smazat nahranou GPX trasu">
+                       <i className="fas fa-trash"></i>
+                     </button>
+                   )}
+                   <label className="w-12 h-12 bg-slate-950/90 hover:bg-orange-600 cursor-pointer text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all group-hover:bg-slate-800" title="Nahrát reálnou trasu v GPX (např. z Tech-Air 5 nebo navigace)">
+                     <i className="fas fa-file-upload"></i>
+                     <input type="file" accept=".gpx" className="hidden" onChange={handleGpxUpload} />
+                   </label>
                    <button onClick={() => mapRef.current?.zoomIn()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-plus"></i></button>
                    <button onClick={() => mapRef.current?.zoomOut()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-minus"></i></button>
                 </div>

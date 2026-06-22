@@ -103,6 +103,8 @@ export interface Expedition {
   realDistanceKm?: number;
   discordLink?: string;
   linkedChallengeId?: string;
+  challengeCreatorSyncCode?: string;
+  gpxRoute?: [number, number][];
 }
 
 export interface MaintenanceRecord {
