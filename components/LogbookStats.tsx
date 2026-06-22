@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { FuelRecord, MaintenanceRecord, Motorcycle } from "../types";
 import {
-  BarChart,
+  ComposedChart,
   Bar,
   XAxis,
   YAxis,
@@ -53,21 +53,33 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
     );
   }
 
-  // 1. Monthly costs (last 12 months, or all time, let's group by YYYY-MM)
+  // Calculate distance for each fuel record based on mileage difference
+  const distancePerRecord = useMemo(() => {
+    const map = new Map<string, number>();
+    currentFuel.forEach((f, i) => {
+      const prev = currentFuel[i - 1];
+      const dist = prev && f.mileage > prev.mileage ? f.mileage - prev.mileage : 0;
+      map.set(f.id, dist);
+    });
+    return map;
+  }, [currentFuel]);
+
+  // 1. Monthly costs & distance
   const monthlyData = useMemo(() => {
     const dataMap: Record<
       string,
-      { month: string; fuel: number; service: number }
+      { month: string; fuel: number; service: number; distance: number }
     > = {};
 
     [...currentFuel, ...currentExpenses].forEach((rec) => {
       const d = new Date(rec.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!dataMap[key]) {
-        dataMap[key] = { month: key, fuel: 0, service: 0 };
+        dataMap[key] = { month: key, fuel: 0, service: 0, distance: 0 };
       }
       if ("liters" in rec) {
         dataMap[key].fuel += rec.cost;
+        dataMap[key].distance += distancePerRecord.get(rec.id) || 0;
       } else {
         dataMap[key].service += rec.cost;
       }
@@ -76,29 +88,30 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
     return Object.values(dataMap).sort((a, b) =>
       a.month.localeCompare(b.month),
     );
-  }, [currentFuel, currentExpenses]);
+  }, [currentFuel, currentExpenses, distancePerRecord]);
 
-  // 2. Yearly costs
+  // 2. Yearly costs & distance
   const yearlyData = useMemo(() => {
     const dataMap: Record<
       string,
-      { year: string; fuel: number; service: number }
+      { year: string; fuel: number; service: number; distance: number }
     > = {};
 
     [...currentFuel, ...currentExpenses].forEach((rec) => {
       const key = new Date(rec.date).getFullYear().toString();
       if (!dataMap[key]) {
-        dataMap[key] = { year: key, fuel: 0, service: 0 };
+        dataMap[key] = { year: key, fuel: 0, service: 0, distance: 0 };
       }
       if ("liters" in rec) {
         dataMap[key].fuel += rec.cost;
+        dataMap[key].distance += distancePerRecord.get(rec.id) || 0;
       } else {
         dataMap[key].service += rec.cost;
       }
     });
 
     return Object.values(dataMap).sort((a, b) => a.year.localeCompare(b.year));
-  }, [currentFuel, currentExpenses]);
+  }, [currentFuel, currentExpenses, distancePerRecord]);
 
   // 3. Fuel price timeline
   const fuelPriceData = useMemo(() => {
@@ -125,7 +138,9 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
               style={{ color: p.color }}
             >
               <span>{p.name}:</span>
-              <span>{p.value.toLocaleString()} Kč</span>
+              <span>
+                {p.value.toLocaleString()} {p.name === "Najeto" ? "km" : "Kč"}
+              </span>
             </p>
           ))}
         </div>
@@ -158,7 +173,7 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
+              <ComposedChart
                 data={monthlyData}
                 margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
               >
@@ -174,9 +189,17 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
                   tickMargin={10}
                 />
                 <YAxis
+                  yAxisId="left"
                   stroke="#64748b"
                   fontSize={10}
                   tickFormatter={(val) => `${val / 1000}k`}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#10b981"
+                  fontSize={10}
+                  tickFormatter={(val) => `${val}km`}
                 />
                 <Tooltip
                   content={<CustomTooltip />}
@@ -187,6 +210,7 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
                   wrapperStyle={{ fontSize: "10px", fontWeight: "bold" }}
                 />
                 <Bar
+                  yAxisId="left"
                   dataKey="fuel"
                   name="Benzín"
                   stackId="a"
@@ -194,13 +218,24 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
                   radius={[0, 0, 4, 4]}
                 />
                 <Bar
+                  yAxisId="left"
                   dataKey="service"
                   name="Servis"
                   stackId="a"
                   fill="#3b82f6"
                   radius={[4, 4, 0, 0]}
                 />
-              </BarChart>
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="distance"
+                  name="Najeto"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ fill: "#10b981", r: 4 }}
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -213,7 +248,7 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
+              <ComposedChart
                 data={yearlyData}
                 margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
               >
@@ -229,9 +264,17 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
                   tickMargin={10}
                 />
                 <YAxis
+                  yAxisId="left"
                   stroke="#64748b"
                   fontSize={10}
                   tickFormatter={(val) => `${val / 1000}k`}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#10b981"
+                  fontSize={10}
+                  tickFormatter={(val) => `${val}km`}
                 />
                 <Tooltip
                   content={<CustomTooltip />}
@@ -242,6 +285,7 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
                   wrapperStyle={{ fontSize: "10px", fontWeight: "bold" }}
                 />
                 <Bar
+                  yAxisId="left"
                   dataKey="fuel"
                   name="Benzín"
                   stackId="a"
@@ -249,13 +293,24 @@ export const LogbookStats: React.FC<LogbookStatsProps> = ({
                   radius={[0, 0, 4, 4]}
                 />
                 <Bar
+                  yAxisId="left"
                   dataKey="service"
                   name="Servis"
                   stackId="a"
                   fill="#3b82f6"
                   radius={[4, 4, 0, 0]}
                 />
-              </BarChart>
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="distance"
+                  name="Najeto"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ fill: "#10b981", r: 4 }}
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
