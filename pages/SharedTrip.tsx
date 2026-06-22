@@ -13,6 +13,7 @@ const SharedTrip: React.FC = () => {
 
   const mapRef = useRef<any | null>(null);
   const polylineRef = useRef<any | null>(null);
+  const gpxPolylineRef = useRef<any | null>(null);
   const markersRef = useRef<any[]>([]);
 
   const getDayDateText = (startDate: string | undefined, dayIndex: number) => {
@@ -74,17 +75,23 @@ const SharedTrip: React.FC = () => {
     const L = (window as any).L;
     if (!mapRef.current || !L || !expedition) return;
     if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
+    if (gpxPolylineRef.current) mapRef.current.removeLayer(gpxPolylineRef.current);
     markersRef.current.forEach(m => mapRef.current.removeLayer(m));
     markersRef.current = [];
 
-    const currentDay = expedition.days[activeDayIdx];
-    if (currentDay && currentDay.waypoints.length > 0) {
-      polylineRef.current = L.polyline(currentDay.waypoints, { color: '#f97316', weight: 4, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
-      const start = currentDay.waypoints[0];
-      const end = currentDay.waypoints[currentDay.waypoints.length - 1];
-      markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
-      markersRef.current.push(L.circleMarker(end, { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
-      mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
+    if (expedition.gpxRoute && expedition.gpxRoute.length > 0) {
+      gpxPolylineRef.current = L.polyline(expedition.gpxRoute, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
+      mapRef.current.fitBounds(gpxPolylineRef.current.getBounds(), { padding: [50, 50] });
+    } else {
+      const currentDay = expedition.days[activeDayIdx];
+      if (currentDay && currentDay.waypoints.length > 0) {
+        polylineRef.current = L.polyline(currentDay.waypoints, { color: '#f97316', weight: 4, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
+        const start = currentDay.waypoints[0];
+        const end = currentDay.waypoints[currentDay.waypoints.length - 1];
+        markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
+        markersRef.current.push(L.circleMarker(end, { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
+        mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
+      }
     }
   }, [activeDayIdx, expedition, viewMode]);
 
