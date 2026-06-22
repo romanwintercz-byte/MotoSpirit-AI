@@ -75,6 +75,7 @@ export interface TripDay {
   customAccommodation?: Accommodation;
   waypoints: [number, number][];
   mapyCzUrl?: string;
+  gpxRoute?: [number, number][];
 }
 
 export interface ExpeditionPreferences {

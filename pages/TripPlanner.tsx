@@ -9,9 +9,10 @@ import { getGoogleMapsUrl } from '../utils/navigation';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
-const DayMap: React.FC<{ day: TripDay, color: string }> = ({ day, color }) => {
+const DayMap: React.FC<{ day: TripDay, color: string, onUploadGpx: (e: React.ChangeEvent<HTMLInputElement>) => void, onDeleteGpx: () => void }> = ({ day, color, onUploadGpx, onDeleteGpx }) => {
   const mapRef = useRef<any | null>(null);
   const polylineRef = useRef<any | null>(null);
+  const gpxPolylineRef = useRef<any | null>(null);
   const markersRef = useRef<any[]>([]);
   const containerId = `day-map-${day.dayNumber}`;
 
@@ -29,10 +30,14 @@ const DayMap: React.FC<{ day: TripDay, color: string }> = ({ day, color }) => {
       }
 
       if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
+      if (gpxPolylineRef.current) mapRef.current.removeLayer(gpxPolylineRef.current);
       markersRef.current.forEach(m => mapRef.current.removeLayer(m));
       markersRef.current = [];
 
-      if (day.waypoints && day.waypoints.length > 0) {
+      if (day.gpxRoute && day.gpxRoute.length > 0) {
+        gpxPolylineRef.current = L.polyline(day.gpxRoute, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
+        mapRef.current.fitBounds(gpxPolylineRef.current.getBounds(), { padding: [30, 30] });
+      } else if (day.waypoints && day.waypoints.length > 0) {
         polylineRef.current = L.polyline(day.waypoints, { color, weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
         const start = day.waypoints[0];
         const end = day.waypoints[day.waypoints.length - 1];
@@ -50,8 +55,25 @@ const DayMap: React.FC<{ day: TripDay, color: string }> = ({ day, color }) => {
   }, [day, color, containerId]);
 
   return (
-    <div className="h-64 w-full bg-slate-900 rounded-2xl border border-slate-700/50 mt-6 overflow-hidden relative shadow-lg">
+    <div className="h-64 w-full bg-slate-900 rounded-2xl border border-slate-700/50 mt-6 overflow-hidden relative shadow-lg group">
       <div id={containerId} className="w-full h-full z-0"></div>
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+         {day.gpxRoute && day.gpxRoute.length > 0 && (
+           <button onClick={onDeleteGpx} className="w-8 h-8 bg-red-500/90 hover:bg-red-600 text-white rounded-lg border border-red-700 flex items-center justify-center shadow-xl transition-all" title="Smazat GPX trasu">
+             <i className="fas fa-trash text-xs"></i>
+           </button>
+         )}
+         <label className="w-8 h-8 bg-slate-800/90 hover:bg-orange-600 cursor-pointer text-white rounded-lg border border-slate-600 flex items-center justify-center shadow-xl transition-all" title="Nahrát reálnou trasu v GPX pro tento den">
+           <i className="fas fa-file-upload text-xs"></i>
+           <input type="file" accept=".gpx" className="hidden" onChange={onUploadGpx} />
+         </label>
+      </div>
+      {(day.gpxRoute && day.gpxRoute.length > 0) && (
+        <div className="absolute bottom-4 left-4 z-10 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-teal-500/50 flex items-center gap-2 shadow-xl">
+            <i className="fas fa-route text-teal-400 text-xs"></i>
+            <span className="text-[9px] font-bold text-teal-400 uppercase tracking-widest">GPX Záznam</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -515,7 +537,7 @@ const TripPlanner: React.FC = () => {
     setShowSaveModal(false);
   };
 
-  const handleGpxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGpxUpload = (e: React.ChangeEvent<HTMLInputElement>, dayIdx: number) => {
     const file = e.target.files?.[0];
     if (!file || !expedition) return;
     
@@ -536,7 +558,9 @@ const TripPlanner: React.FC = () => {
           parseFloat(pt.getAttribute("lon") || "0")
         ]);
         
-        const updatedExpedition = { ...expedition, gpxRoute };
+        const updatedDays = [...expedition.days];
+        updatedDays[dayIdx] = { ...updatedDays[dayIdx], gpxRoute };
+        const updatedExpedition = { ...expedition, days: updatedDays };
         setExpedition(updatedExpedition);
         
         const existingTrips = [...savedExpeditions];
@@ -554,6 +578,24 @@ const TripPlanner: React.FC = () => {
     };
     reader.readAsText(file);
     e.target.value = ''; // reset input
+  };
+
+  const handleDeleteGpxRoute = (dayIdx: number) => {
+    if (!expedition) return;
+    const updatedDays = [...expedition.days];
+    updatedDays[dayIdx] = { ...updatedDays[dayIdx], gpxRoute: undefined };
+    const updatedExpedition = { ...expedition, days: updatedDays };
+    setExpedition(updatedExpedition);
+    
+    const existingTrips = [...savedExpeditions];
+    const tripIndex = existingTrips.findIndex(t => t.id === updatedExpedition.id);
+    if (tripIndex >= 0) {
+      existingTrips[tripIndex] = updatedExpedition;
+      setSavedExpeditions(existingTrips);
+      localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+      window.dispatchEvent(new Event('storage'));
+      handleAutoChallengeSync(updatedExpedition);
+    }
   };
 
   const deleteExpedition = (id: string, e: React.MouseEvent) => {
@@ -606,9 +648,10 @@ const TripPlanner: React.FC = () => {
   <metadata><name>${expedition.name}</name></metadata>`;
 
     expedition.days.forEach(day => {
-      if (day.waypoints && day.waypoints.length > 0) {
+      const activePoints = (day.gpxRoute && day.gpxRoute.length > 0) ? day.gpxRoute : day.waypoints;
+      if (activePoints && activePoints.length > 0) {
         gpx += `\n  <trk><name>Den ${day.dayNumber}: ${day.startLocation} - ${day.endLocation}</name><trkseg>`;
-        day.waypoints.forEach(([lat, lon]) => {
+        activePoints.forEach(([lat, lon]) => {
           gpx += `\n      <trkpt lat="${lat}" lon="${lon}"></trkpt>`;
         });
         gpx += `\n    </trkseg></trk>`;
@@ -692,31 +735,37 @@ const TripPlanner: React.FC = () => {
     if (!mapRef.current || !L || !expedition) return;
     polylinesRef.current.forEach(p => mapRef.current.removeLayer(p));
     polylinesRef.current = [];
-    if (gpxPolylineRef.current) mapRef.current.removeLayer(gpxPolylineRef.current);
     markersRef.current.forEach(m => mapRef.current.removeLayer(m));
     markersRef.current = [];
 
-    if (expedition.gpxRoute && expedition.gpxRoute.length > 0) {
-      gpxPolylineRef.current = L.polyline(expedition.gpxRoute, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
-      mapRef.current.fitBounds(gpxPolylineRef.current.getBounds(), { padding: [50, 50] });
-    } else {
-      let allPoints: any[] = [];
-      expedition.days.forEach((day, idx) => {
-        if (day.waypoints && day.waypoints.length > 0) {
-          const color = getDayColor(day.dayNumber);
-          const isActive = idx === activeDayIdx;
-          const poly = L.polyline(day.waypoints, { color, weight: isActive ? 5 : 3, opacity: isActive ? 1 : 0.4, dashArray: isActive ? '' : '10, 15', lineCap: 'round' }).addTo(mapRef.current);
-          polylinesRef.current.push(poly);
-          const start = day.waypoints[0];
-          const end = day.waypoints[day.waypoints.length - 1];
-          markersRef.current.push(L.circleMarker(start, { radius: isActive ? 8 : 4, color: '#fff', weight: isActive ? 3 : 2, fillColor: '#22c55e', fillOpacity: isActive ? 1 : 0.6 }).addTo(mapRef.current));
-          markersRef.current.push(L.circleMarker(end, { radius: isActive ? 8 : 4, color: '#fff', weight: isActive ? 3 : 2, fillColor: '#ef4444', fillOpacity: isActive ? 1 : 0.6 }).addTo(mapRef.current));
-          allPoints.push(...day.waypoints);
-        }
-      });
-      if (allPoints.length > 0) {
-        mapRef.current.fitBounds(L.latLngBounds(allPoints), { padding: [50, 50] });
+    let allPoints: any[] = [];
+    expedition.days.forEach((day, idx) => {
+      const activePoints = (day.gpxRoute && day.gpxRoute.length > 0) ? day.gpxRoute : day.waypoints;
+      if (activePoints && activePoints.length > 0) {
+        const color = getDayColor(day.dayNumber);
+        const isActive = idx === activeDayIdx;
+        const opacity = isActive ? 1 : 0.6;
+        const weight = isActive ? 5 : 3;
+        
+        const poly = L.polyline(activePoints, { 
+          color, 
+          weight, 
+          opacity, 
+          dashArray: (isActive || (day.gpxRoute && day.gpxRoute.length > 0)) ? '' : '10, 15', 
+          lineCap: 'round' 
+        }).addTo(mapRef.current);
+        
+        polylinesRef.current.push(poly);
+        const start = activePoints[0];
+        const end = activePoints[activePoints.length - 1];
+        markersRef.current.push(L.circleMarker(start, { radius: isActive ? 6 : 4, color: '#fff', weight: isActive ? 2 : 1, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
+        markersRef.current.push(L.circleMarker(end, { radius: isActive ? 6 : 4, color: '#fff', weight: isActive ? 2 : 1, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
+        allPoints.push(...activePoints);
       }
+    });
+
+    if (allPoints.length > 0) {
+      mapRef.current.fitBounds(L.latLngBounds(allPoints), { padding: [50, 50] });
     }
   }, [activeDayIdx, expedition]);
 
@@ -1319,38 +1368,17 @@ const TripPlanner: React.FC = () => {
                    </p>
                 </div>
                 <div className="absolute top-8 right-8 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-700/50 flex items-center gap-3 shadow-xl max-w-xs">
-                  <i className={`fas ${expedition.gpxRoute && expedition.gpxRoute.length > 0 ? 'fa-route text-teal-400' : 'fa-info-circle text-orange-400'} text-lg`}></i>
+                  <i className="fas fa-info-circle text-orange-400 text-lg"></i>
                   <div>
                     <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-1">
-                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Přesná GPX trasa" : "Schématický náhled"}
+                      Schématický náhled
                     </p>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-tight">
-                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Vykreslena reálná data ze synchronizovaného GPX souboru." : "Orientační mapa. Jednotlivé dny jsou barevně odděleny."}
+                      Orientační mapa. Jednotlivé dny jsou barevně odděleny, pokud mají nahraná GPX data, vykreslí se reálná trasa.
                     </p>
                   </div>
                 </div>
                 <div className="absolute bottom-8 right-8 z-10 flex flex-col gap-2">
-                   {expedition.gpxRoute && expedition.gpxRoute.length > 0 && (
-                     <button onClick={() => {
-                        const updatedExpedition = { ...expedition, gpxRoute: undefined };
-                        setExpedition(updatedExpedition);
-                        const existingTrips = [...savedExpeditions];
-                        const tripIndex = existingTrips.findIndex(t => t.id === updatedExpedition.id);
-                        if (tripIndex >= 0) {
-                          existingTrips[tripIndex] = updatedExpedition;
-                          setSavedExpeditions(existingTrips);
-                          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
-                          window.dispatchEvent(new Event('storage'));
-                          handleAutoChallengeSync(updatedExpedition);
-                        }
-                     }} className="w-12 h-12 bg-red-500/90 hover:bg-red-600 text-white rounded-xl border border-red-700 flex items-center justify-center shadow-xl active:scale-90 transition-all" title="Smazat nahranou GPX trasu">
-                       <i className="fas fa-trash"></i>
-                     </button>
-                   )}
-                   <label className="w-12 h-12 bg-slate-950/90 hover:bg-orange-600 cursor-pointer text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all group-hover:bg-slate-800" title="Nahrát reálnou trasu v GPX (např. z Tech-Air 5 nebo navigace)">
-                     <i className="fas fa-file-upload"></i>
-                     <input type="file" accept=".gpx" className="hidden" onChange={handleGpxUpload} />
-                   </label>
                    <button onClick={() => mapRef.current?.zoomIn()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-plus"></i></button>
                    <button onClick={() => mapRef.current?.zoomOut()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-minus"></i></button>
                 </div>
@@ -1572,7 +1600,12 @@ const TripPlanner: React.FC = () => {
                           </div>
                           
                           <div className="lg:col-span-3">
-                            <DayMap day={day} color={getDayColor(day.dayNumber)} />
+                            <DayMap 
+                              day={day} 
+                              color={getDayColor(day.dayNumber)} 
+                              onUploadGpx={(e) => handleGpxUpload(e, idx)}
+                              onDeleteGpx={() => handleDeleteGpxRoute(idx)}
+                            />
                           </div>
                         </div>
                       )}

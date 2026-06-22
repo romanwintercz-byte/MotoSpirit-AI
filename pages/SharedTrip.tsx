@@ -79,15 +79,19 @@ const SharedTrip: React.FC = () => {
     markersRef.current.forEach(m => mapRef.current.removeLayer(m));
     markersRef.current = [];
 
-    if (expedition.gpxRoute && expedition.gpxRoute.length > 0) {
-      gpxPolylineRef.current = L.polyline(expedition.gpxRoute, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
-      mapRef.current.fitBounds(gpxPolylineRef.current.getBounds(), { padding: [50, 50] });
-    } else {
-      const currentDay = expedition.days[activeDayIdx];
-      if (currentDay && currentDay.waypoints.length > 0) {
-        polylineRef.current = L.polyline(currentDay.waypoints, { color: '#f97316', weight: 4, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
-        const start = currentDay.waypoints[0];
-        const end = currentDay.waypoints[currentDay.waypoints.length - 1];
+    const currentDay = expedition.days[activeDayIdx];
+    if (currentDay) {
+      const points = (currentDay.gpxRoute && currentDay.gpxRoute.length > 0) ? currentDay.gpxRoute : currentDay.waypoints;
+      if (points && points.length > 0) {
+        polylineRef.current = L.polyline(points, { 
+          color: (currentDay.gpxRoute && currentDay.gpxRoute.length > 0) ? '#0ea5e9' : '#f97316', 
+          weight: 4, 
+          opacity: 0.8, 
+          dashArray: (currentDay.gpxRoute && currentDay.gpxRoute.length > 0) ? '' : '10, 15',
+          lineCap: 'round' 
+        }).addTo(mapRef.current);
+        const start = points[0];
+        const end = points[points.length - 1];
         markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
         markersRef.current.push(L.circleMarker(end, { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
         mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
@@ -197,10 +201,14 @@ const SharedTrip: React.FC = () => {
             <div className="h-[500px] bg-slate-800 rounded-[3rem] border border-slate-700 overflow-hidden relative shadow-2xl relative">
               <div id="shared-map" className="w-full h-full z-0"></div>
               <div className="absolute top-4 right-4 z-10 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/50 flex items-center gap-2 shadow-xl max-w-[200px] sm:max-w-xs">
-                <i className="fas fa-info-circle text-orange-400 text-sm"></i>
+                <i className={`fas ${(expedition.days[activeDayIdx]?.gpxRoute && expedition.days[activeDayIdx].gpxRoute.length > 0) ? 'fa-route text-teal-400' : 'fa-info-circle text-orange-400'} text-sm`}></i>
                 <div className="text-left">
-                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-0.5">Schématický náhled</p>
-                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider leading-tight">Nejedná se o přesnou trasu pro navigaci, pouze orientační.</p>
+                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-0.5">
+                    {expedition.days[activeDayIdx]?.gpxRoute && expedition.days[activeDayIdx].gpxRoute.length > 0 ? "Přesná GPX trasa" : "Schématický náhled"}
+                  </p>
+                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider leading-tight">
+                    {expedition.days[activeDayIdx]?.gpxRoute && expedition.days[activeDayIdx].gpxRoute.length > 0 ? "Vykreslena reálná data ze synchronizovaného GPX souboru." : "Nejedná se o přesnou trasu pro navigaci, pouze orientační."}
+                  </p>
                 </div>
               </div>
             </div>
