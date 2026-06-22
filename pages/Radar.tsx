@@ -660,7 +660,21 @@ const Radar: React.FC = () => {
       ) : activeTab === 'challenges' ? (
         <div className="space-y-6">
           <div className="flex justify-between items-center px-2">
-            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Aktivní výzvy</h2>
+            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              Aktivní výzvy
+              <button 
+                onClick={async () => {
+                  setLoadingChallenges(true);
+                  const data = await fetchRideChallenges();
+                  setChallenges(data);
+                  setLoadingChallenges(false);
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-teal-400 p-1.5 rounded-lg border border-slate-700 text-[10px] transition-all ml-2"
+                title="Aktualizovat seznam výzev z cloudu"
+              >
+                <i className="fas fa-sync-alt"></i>
+              </button>
+            </h2>
             <button 
               onClick={() => setShowCreateChallenge(true)}
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-orange-900/20"
