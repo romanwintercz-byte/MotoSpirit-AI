@@ -9,6 +9,53 @@ import { getGoogleMapsUrl } from '../utils/navigation';
 import { Expedition, TransportMode, TripDay, ExpeditionPreferences, UserProfile } from '../types';
 import { useActiveExpedition } from '../hooks/useActiveExpedition';
 
+const DayMap: React.FC<{ day: TripDay, color: string }> = ({ day, color }) => {
+  const mapRef = useRef<any | null>(null);
+  const polylineRef = useRef<any | null>(null);
+  const markersRef = useRef<any[]>([]);
+  const containerId = `day-map-${day.dayNumber}`;
+
+  useEffect(() => {
+    const L = (window as any).L;
+    if (!L) return;
+
+    let timeoutId: any;
+
+    const init = () => {
+      if (!document.getElementById(containerId)) return;
+      if (!mapRef.current) {
+        mapRef.current = L.map(containerId, { zoomControl: false, attributionControl: false }).setView([50, 15], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapRef.current);
+      }
+
+      if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
+      markersRef.current.forEach(m => mapRef.current.removeLayer(m));
+      markersRef.current = [];
+
+      if (day.waypoints && day.waypoints.length > 0) {
+        polylineRef.current = L.polyline(day.waypoints, { color, weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
+        const start = day.waypoints[0];
+        const end = day.waypoints[day.waypoints.length - 1];
+        markersRef.current.push(L.circleMarker(start, { radius: 6, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
+        markersRef.current.push(L.circleMarker(end, { radius: 6, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
+        mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [30, 30] });
+      }
+    };
+
+    timeoutId = setTimeout(init, 150);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [day, color, containerId]);
+
+  return (
+    <div className="h-64 w-full bg-slate-900 rounded-2xl border border-slate-700/50 mt-6 overflow-hidden relative shadow-lg">
+      <div id={containerId} className="w-full h-full z-0"></div>
+    </div>
+  );
+};
+
 const TripPlanner: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -143,7 +190,7 @@ const TripPlanner: React.FC = () => {
 
   // --- REFS ---
   const mapRef = useRef<any | null>(null);
-  const polylineRef = useRef<any | null>(null);
+  const polylinesRef = useRef<any[]>([]);
   const gpxPolylineRef = useRef<any | null>(null);
   const markersRef = useRef<any[]>([]);
 
@@ -643,7 +690,8 @@ const TripPlanner: React.FC = () => {
   useEffect(() => {
     const L = (window as any).L;
     if (!mapRef.current || !L || !expedition) return;
-    if (polylineRef.current) mapRef.current.removeLayer(polylineRef.current);
+    polylinesRef.current.forEach(p => mapRef.current.removeLayer(p));
+    polylinesRef.current = [];
     if (gpxPolylineRef.current) mapRef.current.removeLayer(gpxPolylineRef.current);
     markersRef.current.forEach(m => mapRef.current.removeLayer(m));
     markersRef.current = [];
@@ -652,15 +700,22 @@ const TripPlanner: React.FC = () => {
       gpxPolylineRef.current = L.polyline(expedition.gpxRoute, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
       mapRef.current.fitBounds(gpxPolylineRef.current.getBounds(), { padding: [50, 50] });
     } else {
-      const currentDay = expedition.days[activeDayIdx];
-      if (currentDay && currentDay.waypoints.length > 0) {
-        const color = getDayColor(currentDay.dayNumber);
-        polylineRef.current = L.polyline(currentDay.waypoints, { color, weight: 3, opacity: 0.6, dashArray: '10, 15', lineCap: 'round' }).addTo(mapRef.current);
-        const start = currentDay.waypoints[0];
-        const end = currentDay.waypoints[currentDay.waypoints.length - 1];
-        markersRef.current.push(L.circleMarker(start, { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
-        markersRef.current.push(L.circleMarker(end, { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
-        mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
+      let allPoints: any[] = [];
+      expedition.days.forEach((day, idx) => {
+        if (day.waypoints && day.waypoints.length > 0) {
+          const color = getDayColor(day.dayNumber);
+          const isActive = idx === activeDayIdx;
+          const poly = L.polyline(day.waypoints, { color, weight: isActive ? 5 : 3, opacity: isActive ? 1 : 0.4, dashArray: isActive ? '' : '10, 15', lineCap: 'round' }).addTo(mapRef.current);
+          polylinesRef.current.push(poly);
+          const start = day.waypoints[0];
+          const end = day.waypoints[day.waypoints.length - 1];
+          markersRef.current.push(L.circleMarker(start, { radius: isActive ? 8 : 4, color: '#fff', weight: isActive ? 3 : 2, fillColor: '#22c55e', fillOpacity: isActive ? 1 : 0.6 }).addTo(mapRef.current));
+          markersRef.current.push(L.circleMarker(end, { radius: isActive ? 8 : 4, color: '#fff', weight: isActive ? 3 : 2, fillColor: '#ef4444', fillOpacity: isActive ? 1 : 0.6 }).addTo(mapRef.current));
+          allPoints.push(...day.waypoints);
+        }
+      });
+      if (allPoints.length > 0) {
+        mapRef.current.fitBounds(L.latLngBounds(allPoints), { padding: [50, 50] });
       }
     }
   }, [activeDayIdx, expedition]);
@@ -1255,6 +1310,52 @@ const TripPlanner: React.FC = () => {
                   </div>
                 </div>
 
+              {/* Map Section (Whole Expedition) */}
+              <div className="h-[500px] mb-8 bg-slate-800 rounded-[3.5rem] border border-slate-700 overflow-hidden relative shadow-2xl group">
+                <div id="exp-map" className="w-full h-full z-0"></div>
+                <div className="absolute top-8 left-8 z-10 bg-slate-950/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-700 shadow-2xl">
+                   <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">
+                     Trasa celé expedice
+                   </p>
+                </div>
+                <div className="absolute top-8 right-8 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-700/50 flex items-center gap-3 shadow-xl max-w-xs">
+                  <i className={`fas ${expedition.gpxRoute && expedition.gpxRoute.length > 0 ? 'fa-route text-teal-400' : 'fa-info-circle text-orange-400'} text-lg`}></i>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-1">
+                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Přesná GPX trasa" : "Schématický náhled"}
+                    </p>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-tight">
+                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Vykreslena reálná data ze synchronizovaného GPX souboru." : "Orientační mapa. Jednotlivé dny jsou barevně odděleny."}
+                    </p>
+                  </div>
+                </div>
+                <div className="absolute bottom-8 right-8 z-10 flex flex-col gap-2">
+                   {expedition.gpxRoute && expedition.gpxRoute.length > 0 && (
+                     <button onClick={() => {
+                        const updatedExpedition = { ...expedition, gpxRoute: undefined };
+                        setExpedition(updatedExpedition);
+                        const existingTrips = [...savedExpeditions];
+                        const tripIndex = existingTrips.findIndex(t => t.id === updatedExpedition.id);
+                        if (tripIndex >= 0) {
+                          existingTrips[tripIndex] = updatedExpedition;
+                          setSavedExpeditions(existingTrips);
+                          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+                          window.dispatchEvent(new Event('storage'));
+                          handleAutoChallengeSync(updatedExpedition);
+                        }
+                     }} className="w-12 h-12 bg-red-500/90 hover:bg-red-600 text-white rounded-xl border border-red-700 flex items-center justify-center shadow-xl active:scale-90 transition-all" title="Smazat nahranou GPX trasu">
+                       <i className="fas fa-trash"></i>
+                     </button>
+                   )}
+                   <label className="w-12 h-12 bg-slate-950/90 hover:bg-orange-600 cursor-pointer text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all group-hover:bg-slate-800" title="Nahrát reálnou trasu v GPX (např. z Tech-Air 5 nebo navigace)">
+                     <i className="fas fa-file-upload"></i>
+                     <input type="file" accept=".gpx" className="hidden" onChange={handleGpxUpload} />
+                   </label>
+                   <button onClick={() => mapRef.current?.zoomIn()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-plus"></i></button>
+                   <button onClick={() => mapRef.current?.zoomOut()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-minus"></i></button>
+                </div>
+              </div>
+
                 {/* Timeline */}
                 <div className="relative border-l-2 border-slate-700 ml-4 md:ml-8 space-y-8 py-4">
                   {expedition.days.map((day, idx) => (
@@ -1469,56 +1570,14 @@ const TripPlanner: React.FC = () => {
                               )}
                             </div>
                           </div>
+                          
+                          <div className="lg:col-span-3">
+                            <DayMap day={day} color={getDayColor(day.dayNumber)} />
+                          </div>
                         </div>
                       )}
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Map Section */}
-              <div className="h-[600px] bg-slate-800 rounded-[3.5rem] border border-slate-700 overflow-hidden relative shadow-2xl group">
-                <div id="exp-map" className="w-full h-full z-0"></div>
-                <div className="absolute top-8 left-8 z-10 bg-slate-950/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-700 shadow-2xl">
-                   <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">
-                     Trasa dne {expedition.days[activeDayIdx].dayNumber} {expedition.startDate ? ` | ${getDayDateText(expedition.startDate, activeDayIdx)}` : ''}
-                   </p>
-                </div>
-                <div className="absolute top-8 right-8 z-10 bg-slate-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-700/50 flex items-center gap-3 shadow-xl max-w-xs">
-                  <i className={`fas ${expedition.gpxRoute && expedition.gpxRoute.length > 0 ? 'fa-route text-teal-400' : 'fa-info-circle text-orange-400'} text-lg`}></i>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none mb-1">
-                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Přesná GPX trasa" : "Schématický náhled"}
-                    </p>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-tight">
-                      {expedition.gpxRoute && expedition.gpxRoute.length > 0 ? "Vykreslena reálná data ze synchronizovaného GPX souboru." : "Nejedná se o přesnou trasu pro navigaci, pouze o orientační orientaci bodů."}
-                    </p>
-                  </div>
-                </div>
-                <div className="absolute bottom-8 right-8 z-10 flex flex-col gap-2">
-                   {expedition.gpxRoute && expedition.gpxRoute.length > 0 && (
-                     <button onClick={() => {
-                        const updatedExpedition = { ...expedition, gpxRoute: undefined };
-                        setExpedition(updatedExpedition);
-                        const existingTrips = [...savedExpeditions];
-                        const tripIndex = existingTrips.findIndex(t => t.id === updatedExpedition.id);
-                        if (tripIndex >= 0) {
-                          existingTrips[tripIndex] = updatedExpedition;
-                          setSavedExpeditions(existingTrips);
-                          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
-                          window.dispatchEvent(new Event('storage'));
-                          handleAutoChallengeSync(updatedExpedition);
-                        }
-                     }} className="w-12 h-12 bg-red-500/90 hover:bg-red-600 text-white rounded-xl border border-red-700 flex items-center justify-center shadow-xl active:scale-90 transition-all" title="Smazat nahranou GPX trasu">
-                       <i className="fas fa-trash"></i>
-                     </button>
-                   )}
-                   <label className="w-12 h-12 bg-slate-950/90 hover:bg-orange-600 cursor-pointer text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all group-hover:bg-slate-800" title="Nahrát reálnou trasu v GPX (např. z Tech-Air 5 nebo navigace)">
-                     <i className="fas fa-file-upload"></i>
-                     <input type="file" accept=".gpx" className="hidden" onChange={handleGpxUpload} />
-                   </label>
-                   <button onClick={() => mapRef.current?.zoomIn()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-plus"></i></button>
-                   <button onClick={() => mapRef.current?.zoomOut()} className="w-12 h-12 bg-slate-950/90 text-white rounded-xl border border-slate-700 flex items-center justify-center shadow-xl active:scale-90 transition-all"><i className="fas fa-minus"></i></button>
                 </div>
               </div>
 
