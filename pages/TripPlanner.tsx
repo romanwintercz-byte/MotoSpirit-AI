@@ -541,6 +541,17 @@ const TripPlanner: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !expedition) return;
     
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const gpxText = event.target?.result as string;
@@ -553,14 +564,57 @@ const TripPlanner: React.FC = () => {
       }
       
       if (points.length > 0) {
-        const gpxRoute: [number, number][] = points.map(pt => [
-          parseFloat(pt.getAttribute("lat") || "0"),
-          parseFloat(pt.getAttribute("lon") || "0")
-        ]);
+        let totalDistance = 0;
+        const gpxRoute: [number, number][] = [];
+        
+        for (let i = 0; i < points.length; i++) {
+          const pt = points[i];
+          const lat = parseFloat(pt.getAttribute("lat") || "0");
+          const lon = parseFloat(pt.getAttribute("lon") || "0");
+          gpxRoute.push([lat, lon]);
+          
+          if (i > 0) {
+            const prevPt = gpxRoute[i - 1];
+            totalDistance += calculateDistance(prevPt[0], prevPt[1], lat, lon);
+          }
+        }
+        
+        const distKm = Math.round(totalDistance);
+        
+        let durationMins = 0;
+        const startTimeStr = points[0].getElementsByTagName("time")?.[0]?.textContent;
+        const endTimeStr = points[points.length - 1].getElementsByTagName("time")?.[0]?.textContent;
+        if (startTimeStr && endTimeStr) {
+           const start = new Date(startTimeStr).getTime();
+           const end = new Date(endTimeStr).getTime();
+           if (!isNaN(start) && !isNaN(end) && end > start) {
+              durationMins = Math.round((end - start) / 60000);
+           }
+        }
+        if (durationMins === 0) {
+           durationMins = Math.round(distKm / 60 * 60); // estimate 60km/h average speed
+        }
+        
+        const fuelLiters = parseFloat((distKm * 0.055).toFixed(1)); // estimate 5.5l/100km
         
         const updatedDays = [...expedition.days];
-        updatedDays[dayIdx] = { ...updatedDays[dayIdx], gpxRoute };
-        const updatedExpedition = { ...expedition, days: updatedDays };
+        updatedDays[dayIdx] = { 
+          ...updatedDays[dayIdx], 
+          gpxRoute,
+          distanceKm: distKm,
+          distance: `${distKm} km`,
+          estimatedTimeMins: durationMins,
+          fuelLiters
+        };
+        
+        const newTotalKm = updatedDays.reduce((acc, day) => acc + (day.distanceKm || parseInt(day.distance.replace(/\D/g, '')) || 0), 0);
+        
+        const updatedExpedition = { 
+          ...expedition, 
+          days: updatedDays,
+          totalDistanceKm: newTotalKm,
+          totalDistance: `${newTotalKm} km`
+        };
         setExpedition(updatedExpedition);
         
         const existingTrips = [...savedExpeditions];
