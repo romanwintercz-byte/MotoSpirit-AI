@@ -740,7 +740,18 @@ const TripPlanner: React.FC = () => {
       customCost: editingCustomAcc.cost ? parseInt(editingCustomAcc.cost.replace(/\\D/g, '')) || 0 : undefined
     } : undefined;
     
+    const baseEndLoc = newExpedition.days[editingCustomAcc.dayIndex].endLocation;
     newExpedition.days[editingCustomAcc.dayIndex].customAccommodation = acc;
+    
+    // Auto-propagate to subsequent days with the same end location (e.g. loop rides)
+    for (let i = editingCustomAcc.dayIndex + 1; i < newExpedition.days.length; i++) {
+      if (newExpedition.days[i].endLocation === baseEndLoc) {
+        newExpedition.days[i].customAccommodation = acc ? { ...acc } : undefined;
+      } else {
+        break; // Stop when destination changes
+      }
+    }
+
     setExpedition(newExpedition);
     setEditingCustomAcc({ dayIndex: null, name: '', url: '', cost: '' });
     
