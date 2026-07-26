@@ -1377,8 +1377,8 @@ const TripPlanner: React.FC = () => {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-700/50">
                     <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
-                      <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Cestující</p>
-                      <p className="text-xl font-brand font-bold text-white">{expedition.travelersCount}</p>
+                      <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Lidé / Vozidla</p>
+                      <p className="text-xl font-brand font-bold text-white">{expedition.travelersCount} / {expedition.vehiclesCount || expedition.travelersCount}</p>
                     </div>
                     <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 text-center">
                       <p className="text-[8px] text-slate-600 font-bold uppercase mb-1 tracking-widest">Doprava</p>
@@ -1697,21 +1697,52 @@ const TripPlanner: React.FC = () => {
                 const finalFood = expedition.budget.plannedFood;
                 const finalTotal = finalFuel + finalTolls + finalAcc + finalFood;
 
+                const handleUpdateCounts = (newTCount: number, newVCount: number) => {
+                  const updatedExpedition = { ...expedition, travelersCount: newTCount, vehiclesCount: newVCount };
+                  setExpedition(updatedExpedition);
+                  
+                  const existingTrips = [...savedExpeditions];
+                  const tripIndex = existingTrips.findIndex(t => t.id === updatedExpedition.id);
+                  if (tripIndex >= 0) {
+                    existingTrips[tripIndex] = updatedExpedition;
+                    setSavedExpeditions(existingTrips);
+                    localStorage.setItem('spirit_wanderer_trips', JSON.stringify(existingTrips));
+                    window.dispatchEvent(new Event('storage'));
+                  }
+                  if (expedition.linkedChallengeId) {
+                    handleAutoChallengeSync(updatedExpedition);
+                  }
+                };
+
                 return (
                 <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl animate-fadeIn">
                   <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-2">Rozpočet a statistiky</h3>
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
                     <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">
                       Odhadované náklady na 1 osobu
                     </p>
-                    {tCount > 1 && (
-                      <div className="bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
-                        <i className="fas fa-users text-slate-400 text-xs"></i>
-                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">
-                          Rozpočítáno pro {tCount} osob{tCount > 4 ? ' a' : (tCount >= 2 && tCount <= 4 ? 'y' : 'u')} a {vCount} vozidel
-                        </span>
+                    
+                    <div className="bg-slate-900/50 p-2 rounded-2xl border border-slate-700 flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-2">Lidé:</span>
+                        <div className="flex items-center bg-slate-800 rounded-xl px-1">
+                          <button onClick={() => {
+                            const nt = Math.max(1, tCount - 1);
+                            handleUpdateCounts(nt, Math.min(vCount, nt));
+                          }} className="text-orange-500 p-1.5 hover:bg-slate-700 rounded-lg transition-colors"><i className="fas fa-minus text-[10px]"></i></button>
+                          <span className="w-6 text-center font-bold text-sm text-white">{tCount}</span>
+                          <button onClick={() => handleUpdateCounts(Math.min(20, tCount + 1), vCount)} className="text-orange-500 p-1.5 hover:bg-slate-700 rounded-lg transition-colors"><i className="fas fa-plus text-[10px]"></i></button>
+                        </div>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-2">Vozidla:</span>
+                        <div className="flex items-center bg-slate-800 rounded-xl px-1">
+                          <button onClick={() => handleUpdateCounts(tCount, Math.max(1, vCount - 1))} className="text-orange-500 p-1.5 hover:bg-slate-700 rounded-lg transition-colors"><i className="fas fa-minus text-[10px]"></i></button>
+                          <span className="w-6 text-center font-bold text-sm text-white">{vCount}</span>
+                          <button onClick={() => handleUpdateCounts(tCount, Math.min(tCount, vCount + 1))} className="text-orange-500 p-1.5 hover:bg-slate-700 rounded-lg transition-colors"><i className="fas fa-plus text-[10px]"></i></button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
