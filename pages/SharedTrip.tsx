@@ -11,6 +11,7 @@ const SharedTrip: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [viewMode, setViewMode] = useState<'info' | 'map' | 'checklist'>('info');
+  const [mapReady, setMapReady] = useState(0);
   const [checklist, setChecklist] = useState<any[]>([]);
 
   useEffect(() => {
@@ -110,7 +111,7 @@ const SharedTrip: React.FC = () => {
         mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] });
       }
     }
-  }, [activeDayIdx, expedition, viewMode]);
+  }, [activeDayIdx, expedition, viewMode, mapReady]);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">

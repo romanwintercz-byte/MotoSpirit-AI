@@ -852,13 +852,31 @@ const TripPlanner: React.FC = () => {
   useEffect(() => {
     const L = (window as any).L;
     if (!L || !expedition) return;
+    
+    // Always clean up old map instance when expedition changes
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+    polylinesRef.current = [];
+    markersRef.current = [];
+
     const initMap = () => {
       const mapEl = document.getElementById('exp-map');
-      if (!mapEl || mapRef.current) return;
+      if (!mapEl) {
+        // If not in DOM yet, try again slightly later
+        setTimeout(initMap, 50);
+        return;
+      }
+      if (mapRef.current) return; 
+      
       mapRef.current = L.map('exp-map', { zoomControl: false, attributionControl: false }).setView([50, 15], 6);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapRef.current);
+      
+      // Trigger a re-render so the drawing effect can run
+      setMapReady(Date.now());
     };
-    setTimeout(initMap, 100);
+    initMap();
   }, [expedition]);
 
   useEffect(() => {
@@ -898,7 +916,7 @@ const TripPlanner: React.FC = () => {
     if (allPoints.length > 0) {
       mapRef.current.fitBounds(L.latLngBounds(allPoints), { padding: [50, 50] });
     }
-  }, [activeDayIdx, expedition]);
+  }, [activeDayIdx, expedition, mapReady]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-32 px-4">
