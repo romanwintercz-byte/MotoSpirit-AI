@@ -9,7 +9,19 @@ const SharedTrip: React.FC = () => {
   const [expedition, setExpedition] = useState<Expedition | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
-  const [viewMode, setViewMode] = useState<'info' | 'map'>('info');
+  const [viewMode, setViewMode] = useState<'info' | 'map' | 'checklist'>('info');
+  const [checklist, setChecklist] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (expedition && expedition.checklist) {
+      setChecklist(expedition.checklist);
+    }
+  }, [expedition]);
+
+  const toggleChecklistItem = (id: string) => {
+    setChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+    // In a real app, you would also save this to local storage or backend
+  };
 
   const mapRef = useRef<any | null>(null);
   const polylineRef = useRef<any | null>(null);
@@ -150,6 +162,7 @@ const SharedTrip: React.FC = () => {
       <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 w-fit mx-auto">
         <button onClick={() => setViewMode('info')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'info' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>ITINERÁŘ</button>
         <button onClick={() => setViewMode('map')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>MAPA</button>
+        <button onClick={() => setViewMode('checklist')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === 'checklist' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>CHECKLIST</button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -208,7 +221,7 @@ const SharedTrip: React.FC = () => {
                 </div>
               ) : null}
             </div>
-          ) : (
+          ) : viewMode === 'map' ? (
             <div className="h-[500px] bg-slate-800 rounded-[3rem] border border-slate-700 overflow-hidden relative shadow-2xl relative">
               <div id="shared-map" className="w-full h-full z-0"></div>
               <div className="absolute top-4 right-4 z-10 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/50 flex items-center gap-2 shadow-xl max-w-[200px] sm:max-w-xs">
@@ -223,7 +236,43 @@ const SharedTrip: React.FC = () => {
                 </div>
               </div>
             </div>
-          )}
+          ) : viewMode === 'checklist' ? (
+            <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl space-y-8 animate-fadeIn">
+              <div>
+                <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic">Vybavení na cestu</h3>
+                <p className="text-slate-400 text-sm mt-2">Personalizovaný seznam věcí vygenerovaný na základě destinace, trasy a preferencí tvé výpravy.</p>
+              </div>
+              
+              {checklist && checklist.length > 0 ? (
+                <div className="space-y-6">
+                  {Array.from(new Set(checklist.map(item => item.category))).map(category => (
+                    <div key={category} className="space-y-3">
+                      <h4 className="text-[10px] font-bold text-orange-500 uppercase tracking-widest pl-1">{category}</h4>
+                      <div className="space-y-2">
+                        {checklist.filter(i => i.category === category).map(item => (
+                          <div 
+                            key={item.id} 
+                            onClick={() => toggleChecklistItem(item.id)}
+                            className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${item.checked ? 'bg-slate-900/50 border-slate-800 text-slate-500' : 'bg-slate-700/30 border-slate-600 hover:border-slate-500 text-slate-200'}`}
+                          >
+                            <div className={`w-6 h-6 rounded border flex items-center justify-center shrink-0 transition-all ${item.checked ? 'bg-orange-500 border-orange-500' : 'border-slate-500'}`}>
+                              {item.checked && <i className="fas fa-check text-white text-xs"></i>}
+                            </div>
+                            <span className={`font-bold text-sm ${item.checked ? 'line-through opacity-50' : ''}`}>{item.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-slate-900/50 rounded-2xl p-6 text-center border border-slate-700/50">
+                  <i className="fas fa-box-open text-3xl text-slate-600 mb-3"></i>
+                  <p className="text-slate-400 text-sm font-bold">Pro tuto expedici nebyl checklist vygenerován.</p>
+                </div>
+              )}
+            </div>
+          ) : null}
           
           <div className="text-center">
             <Link to="/" className="text-orange-500 text-[10px] font-bold uppercase tracking-widest hover:underline">Vytvoř si vlastní expedici v MotoSpirit AI</Link>

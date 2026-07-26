@@ -47,6 +47,9 @@ export const planExpedition = async (
     - Rozpočet: ${preferences.budget}
     - Poznámka: ${preferences.customNote}
     
+    Dynamický Checklist výbavy:
+    Vygeneruj v poli "checklist" seznam vybavení šitý na míru této expedici. Pokud je v preferencích kempování nebo spaní nadivoko, přidej stan, spacák, vařič atd. Pokud se jede přes země s určitou povinnou výbavou (Rakousko -> lékárnička, reflexní vesta), zohledni to. Každá položka musí mít 'id', 'category', 'name' a 'checked' nastaveno na false.
+
     DŮLEŽITÉ K ROZPOČTU:
     Rozpočet (v objektu "budget" a "fuelCost" u každého dne) MUSÍ BÝT VYPOČÍTÁN STRICTNĚ PRO 1 OSOBU (1 motocykl, 1 jezdec), i když se expedice účastní ${travelers} lidí! Nikdy nenásob náklady počtem osob. Ceny jsou per capita.
     
@@ -68,6 +71,11 @@ export const planExpedition = async (
         "plannedFood": 3000,
         "plannedTolls": 500
       },
+      "checklist": [
+        { "id": "uuid-1", "category": "Kempování", "name": "Stan", "checked": false },
+        { "id": "uuid-2", "category": "Oblečení", "name": "Nepromokavá kombinéza", "checked": false },
+        { "id": "uuid-3", "category": "Povinná výbava", "name": "Reflexní vesta (Rakousko)", "checked": false }
+      ],
       "countriesInfo": [
         {
           "name": "Rakousko",
@@ -150,6 +158,7 @@ export const planExpedition = async (
       totalDistance: `${parsedData.totalDistanceKm || 0} km`,
       totalDistanceKm: parsedData.totalDistanceKm,
       budget: parsedData.budget,
+      checklist: parsedData.checklist || [],
       countriesInfo: parsedData.countriesInfo || [],
       preferences,
       travelersCount: travelers,
