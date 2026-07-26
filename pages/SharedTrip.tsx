@@ -242,7 +242,7 @@ const SharedTrip: React.FC = () => {
                             contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.5rem', fontSize: '12px' }}
                             labelStyle={{ color: '#94a3b8' }}
                             itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
-                            formatter={(value: number) => [`${value} m`, 'Výška']}
+                            formatter={(value: any) => [`${value} m`, 'Výška']}
                             labelFormatter={(label) => `${label} km`}
                           />
                           <Area type="monotone" dataKey="ele" stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#colorElevationShared)" />
@@ -339,3 +339,4 @@ const SharedTrip: React.FC = () => {
 };
 
 export default SharedTrip;
+

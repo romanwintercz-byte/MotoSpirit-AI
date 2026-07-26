@@ -326,12 +326,12 @@ const Radar: React.FC = () => {
       
       if (challenge.route) {
         const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
-        const originalIndex = existingTrips.findIndex((e: Expedition) => e.id === challenge.route.id);
+        const originalIndex = existingTrips.findIndex((e: Expedition) => e.id === challenge.route?.id);
         
         if (originalIndex >= 0) {
           existingTrips[originalIndex] = { ...existingTrips[originalIndex], linkedChallengeId: challenge.id };
         } else {
-          const expeditionToSave: Expedition = { ...challenge.route, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
+          const expeditionToSave: Expedition = { ...challenge.route!, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
           existingTrips.unshift(expeditionToSave);
         }
         
@@ -358,7 +358,7 @@ const Radar: React.FC = () => {
       if (challenge.route) {
         const existingTrips = JSON.parse(localStorage.getItem('spirit_wanderer_trips') || '[]');
         if (isJoining) {
-          const expeditionToSave: Expedition = { ...challenge.route, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
+          const expeditionToSave: Expedition = { ...challenge.route!, id: `challenge-${challenge.id}-route`, linkedChallengeId: challenge.id };
           const tripIndex = existingTrips.findIndex((e: Expedition) => e.id === `challenge-${challenge.id}-route`);
           if (tripIndex >= 0) {
             existingTrips[tripIndex] = expeditionToSave;

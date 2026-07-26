@@ -36,7 +36,6 @@ export const planExpedition = async (
       ? `Jedná se o jednodenní vyjížďku (ride) na cca ${days} hodin. Zaměř se na scénický okruh se startem i cílem v místě startu. Hledej nejlepší asfalt a 'Coffee & Cake' zastávky. Vrať PŘESNĚ 1 den v poli "days". Název (name) musí odrážet, že jde o vyjížďku (např. "Odpolední okruh Kokořínskem"), NEPOUŽÍVEJ slovo "Expedice".`
       : `Jedná se o vícedenní expedici na ${days} dní. Naplánuj denní etapy, přesuny a logistiku ubytování. Vrať PŘESNĚ ${days} dní v poli "days".`;
 
-    const strippedExpedition = { ...currentExpedition, days: currentExpedition.days.map(day => { const { gpxRoute, elevationProfile, ...rest } = day; return rest; }) };
     const prompt = `Jsi expert na plánování motorkářských tras a expedic. Naplánuj detailní ${durationText} z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
     ${typeContext}
