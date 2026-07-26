@@ -189,13 +189,24 @@ const SharedTrip: React.FC = () => {
                 </div>
               </div>
               
-              {expedition.days[activeDayIdx].accommodation && (
+              {expedition.days[activeDayIdx].customAccommodation ? (
+                <div className="bg-slate-900 p-6 rounded-3xl border border-blue-500/30 border-l-4 border-l-blue-500">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">Ubytování <span className="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded text-[8px]">MOJE</span></h4>
+                  <p className="text-sm font-bold text-white">{expedition.days[activeDayIdx].customAccommodation?.name}</p>
+                  <p className="text-[9px] text-slate-600 uppercase font-bold mt-1">{expedition.days[activeDayIdx].customAccommodation?.type}</p>
+                  {expedition.days[activeDayIdx].customAccommodation?.url && (
+                    <a href={expedition.days[activeDayIdx].customAccommodation.url} target="_blank" rel="noreferrer" className="inline-block mt-3 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg border border-slate-700 text-[10px] font-bold uppercase transition-all">
+                      ODKAZ <i className="fas fa-external-link-alt opacity-50 ml-1"></i>
+                    </a>
+                  )}
+                </div>
+              ) : expedition.days[activeDayIdx].accommodation ? (
                 <div className="bg-slate-900 p-6 rounded-3xl border border-slate-700">
-                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Ubytování</h4>
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Plánované Ubytování</h4>
                   <p className="text-sm font-bold text-white">{expedition.days[activeDayIdx].accommodation?.name}</p>
                   <p className="text-[9px] text-slate-600 uppercase font-bold mt-1">{expedition.days[activeDayIdx].accommodation?.type}</p>
                 </div>
-              )}
+              ) : null}
             </div>
           ) : (
             <div className="h-[500px] bg-slate-800 rounded-[3rem] border border-slate-700 overflow-hidden relative shadow-2xl relative">

@@ -36,6 +36,7 @@ export interface Accommodation {
   rating: string;
   url: string;
   priceEstimate?: string;
+  customCost?: number;
 }
 
 export interface CountryInfo {

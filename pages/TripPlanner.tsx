@@ -198,7 +198,7 @@ const TripPlanner: React.FC = () => {
   const [showChallengeAudience, setShowChallengeAudience] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [editingCustomAcc, setEditingCustomAcc] = useState<{dayIndex: number | null, name: string, url: string}>({ dayIndex: null, name: '', url: '' });
+  const [editingCustomAcc, setEditingCustomAcc] = useState<{dayIndex: number | null, name: string, url: string, cost: string}>({ dayIndex: null, name: '', url: '', cost: '' });
 
   const currentUserSyncCode = localStorage.getItem('motospirit_sync_code');
 
@@ -736,12 +736,13 @@ const TripPlanner: React.FC = () => {
       name: editingCustomAcc.name,
       url: editingCustomAcc.url,
       type: 'vlastní ubytování',
-      rating: ''
+      rating: '',
+      customCost: editingCustomAcc.cost ? parseInt(editingCustomAcc.cost.replace(/\\D/g, '')) || 0 : undefined
     } : undefined;
     
     newExpedition.days[editingCustomAcc.dayIndex].customAccommodation = acc;
     setExpedition(newExpedition);
-    setEditingCustomAcc({ dayIndex: null, name: '', url: '' });
+    setEditingCustomAcc({ dayIndex: null, name: '', url: '', cost: '' });
     
     // Auto-save logic
     const existingTrips = [...savedExpeditions];
@@ -1558,7 +1559,7 @@ const TripPlanner: React.FC = () => {
                                 {expedition.tripType === 'ride' ? 'Tip na zastávku' : 'Ubytování na noc'}
                               </h3>
                               
-                              {day.accommodation && (
+                              {day.accommodation && !day.customAccommodation && (
                                 <div className="bg-slate-950 p-5 rounded-2xl border border-slate-700 border-l-4 border-l-orange-500 mb-4 opacity-80">
                                   <div className="flex justify-between items-start mb-1">
                                     <p className="text-sm font-bold text-white leading-tight">{day.accommodation?.name}</p>
@@ -1582,6 +1583,9 @@ const TripPlanner: React.FC = () => {
                                     <p className="text-sm font-bold text-white leading-tight">{day.customAccommodation.name}</p>
                                     <span className="text-[8px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded uppercase tracking-widest border border-blue-500/20">MOJE</span>
                                   </div>
+                                  {day.customAccommodation.customCost !== undefined && (
+                                    <p className="text-xs font-bold text-slate-400 mt-1">Cena: <span className="text-blue-400">{day.customAccommodation.customCost} Kč / os.</span></p>
+                                  )}
                                   <div className="flex gap-2 mt-4">
                                     {day.customAccommodation.url ? (
                                       <a 
@@ -1641,6 +1645,13 @@ const TripPlanner: React.FC = () => {
                                     onChange={e => setEditingCustomAcc({...editingCustomAcc, url: e.target.value})}
                                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:border-orange-500 outline-none"
                                   />
+                                  <input
+                                    type="number"
+                                    placeholder="Cena za osobu (Kč) (volitelné)"
+                                    value={editingCustomAcc.cost}
+                                    onChange={e => setEditingCustomAcc({...editingCustomAcc, cost: e.target.value})}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:border-orange-500 outline-none"
+                                  />
                                   <div className="flex gap-2 pt-2">
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); handleSaveCustomAcc() }}
@@ -1649,7 +1660,7 @@ const TripPlanner: React.FC = () => {
                                       ULOŽIT
                                     </button>
                                     <button 
-                                      onClick={(e) => { e.stopPropagation(); setEditingCustomAcc({ dayIndex: null, name: '', url: '' }) }}
+                                      onClick={(e) => { e.stopPropagation(); setEditingCustomAcc({ dayIndex: null, name: '', url: '', cost: '' }) }}
                                       className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] uppercase tracking-widest py-2 rounded-xl transition-all border border-slate-700"
                                     >
                                       ZRUŠIT
@@ -1660,7 +1671,7 @@ const TripPlanner: React.FC = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setEditingCustomAcc({ dayIndex: idx, name: day.customAccommodation?.name || '', url: day.customAccommodation?.url || '' });
+                                    setEditingCustomAcc({ dayIndex: idx, name: day.customAccommodation?.name || '', url: day.customAccommodation?.url || '', cost: day.customAccommodation?.customCost ? day.customAccommodation.customCost.toString() : '' });
                                   }}
                                   className="w-full py-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 border-dashed rounded-2xl text-[10px] text-slate-400 font-bold uppercase tracking-widest transition-all hover:text-white flex items-center justify-center gap-2"
                                 >
@@ -1693,7 +1704,18 @@ const TripPlanner: React.FC = () => {
 
                 const finalFuel = Math.round(expedition.budget.plannedFuel * vehicleMultiplier);
                 const finalTolls = Math.round(expedition.budget.plannedTolls * vehicleMultiplier);
-                const finalAcc = expedition.budget.plannedAccommodation;
+                
+                let finalAcc = 0;
+                const aiDailyAcc = Math.round(expedition.budget.plannedAccommodation / Math.max(1, expedition.days.length));
+                
+                expedition.days.forEach(day => {
+                  if (day.customAccommodation && day.customAccommodation.customCost !== undefined) {
+                    finalAcc += day.customAccommodation.customCost;
+                  } else {
+                    finalAcc += aiDailyAcc;
+                  }
+                });
+                
                 const finalFood = expedition.budget.plannedFood;
                 const finalTotal = finalFuel + finalTolls + finalAcc + finalFood;
 
