@@ -175,7 +175,31 @@ const TripPlanner: React.FC = () => {
     recognition.start();
   };
 
-  const addWaypoint = () => {
+  
+  const saveDayEdit = () => {
+    if (editingDayIdx !== null && editDayData && expedition) {
+      const updatedDays = [...expedition.days];
+      updatedDays[editingDayIdx] = { ...updatedDays[editingDayIdx], ...editDayData };
+      
+      const newTotalKm = updatedDays.reduce((acc, day) => acc + (day.distanceKm || parseInt((day.distance || "").replace(/\D/g, '')) || 0), 0);
+      
+      setExpedition({ ...expedition, days: updatedDays, totalDistanceKm: newTotalKm, totalDistance: newTotalKm + ' km' });
+      
+      const existingStr = localStorage.getItem('spirit_wanderer_trips');
+      if (existingStr) {
+        try {
+          const trips = JSON.parse(existingStr);
+          const updatedTrips = trips.map((t: any) => t.id === expedition.id ? { ...expedition, days: updatedDays, totalDistanceKm: newTotalKm, totalDistance: newTotalKm + ' km' } : t);
+          localStorage.setItem('spirit_wanderer_trips', JSON.stringify(updatedTrips));
+        } catch(e) {}
+      }
+      setEditingDayIdx(null);
+      setEditDayData(null);
+    }
+  };
+
+  
+const addWaypoint = () => {
     if (newWaypoint.trim()) {
       setWaypoints([...waypoints, newWaypoint.trim()]);
       setNewWaypoint('');
@@ -227,6 +251,8 @@ const TripPlanner: React.FC = () => {
   });
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [expandedDayIdx, setExpandedDayIdx] = useState(0);
+  const [editingDayIdx, setEditingDayIdx] = useState<number | null>(null);
+  const [editDayData, setEditDayData] = useState<any>(null);
   const [mapReady, setMapReady] = useState(0);
   const [refinePrompt, setRefinePrompt] = useState('');
   const [showRefine, setShowRefine] = useState(false);
@@ -1592,7 +1618,73 @@ const TripPlanner: React.FC = () => {
                     const diffInfo = day.estimatedTimeMins ? getDifficultyInfo(dKm, day.estimatedTimeMins) : null;
                     
                     return (
+                    editingDayIdx === idx ? (
+                      <div className="relative pl-8 md:pl-12 z-20">
+                        <div className="bg-slate-800 border border-slate-600 rounded-[2rem] p-6 shadow-2xl mb-8">
+                          <h4 className="text-xl font-brand font-bold text-white mb-6 uppercase">Upravit Den {day.dayNumber}</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Odkud</label>
+                              <input 
+                                type="text"
+                                value={editDayData?.startLocation || ''}
+                                onChange={(e) => setEditDayData({...editDayData, startLocation: e.target.value})}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Kam</label>
+                              <input 
+                                type="text"
+                                value={editDayData?.endLocation || ''}
+                                onChange={(e) => setEditDayData({...editDayData, endLocation: e.target.value})}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="mb-4">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Popis (volitelně)</label>
+                            <input 
+                                type="text"
+                                value={editDayData?.description || ''}
+                                onChange={(e) => setEditDayData({...editDayData, description: e.target.value})}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none"
+                            />
+                          </div>
+                          
+                          <div className="mb-6 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Trasa (.GPX)</label>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-slate-300">
+                                {editDayData?.gpxRoute ? `GPX Nahráno: ${editDayData.distanceKm} km` : (day.gpxRoute ? `Původní GPX uloženo` : `Žádné GPX - Trasa z bodu do bodu`)}
+                              </span>
+                              <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                Nahrát nový soubor
+                                <input type="file" accept=".gpx" className="hidden" onChange={(e) => handleGpxUpload(e, idx)} />
+                              </label>
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-end gap-3">
+                            <button 
+                              onClick={() => { setEditingDayIdx(null); setEditDayData(null); }}
+                              className="px-6 py-3 rounded-xl border border-slate-600 hover:bg-slate-700 text-white font-bold text-sm uppercase tracking-widest transition-colors"
+                            >
+                              Zrušit
+                            </button>
+                            <button 
+                              onClick={saveDayEdit}
+                              className="px-6 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-900/20 font-bold text-sm uppercase tracking-widest transition-colors"
+                            >
+                              Uložit změny
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
                     <div key={idx} className="relative pl-8 md:pl-12">
+
                       {/* Timeline Dot */}
                       <div className={`absolute -left-[11px] top-6 w-5 h-5 rounded-full border-4 transition-all ${expandedDayIdx === idx ? 'bg-orange-500 border-slate-900 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'bg-slate-700 border-slate-900'}`}></div>
                       
@@ -1606,7 +1698,8 @@ const TripPlanner: React.FC = () => {
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
-                            <div className="flex items-center gap-3 mb-1">
+                            <div className="flex items-center justify-between w-full mb-1">
+                            <div className="flex items-center gap-3">
                               <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">
                                 Den {day.dayNumber} {expedition.startDate ? ` | ${getDayDateText(expedition.startDate, idx)}` : ''}
                               </p>
@@ -1616,6 +1709,21 @@ const TripPlanner: React.FC = () => {
                                 </span>
                               )}
                             </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingDayIdx(idx);
+                                setEditDayData({
+                                  startLocation: day.startLocation,
+                                  endLocation: day.endLocation,
+                                  description: day.description || '',
+                                });
+                              }}
+                              className="text-slate-400 hover:text-white px-3 py-1 rounded bg-slate-800/50 hover:bg-slate-700 transition-colors text-xs flex items-center gap-2"
+                            >
+                              <i className="fas fa-edit"></i> Upravit den
+                            </button>
+                          </div>
                             <h4 className="text-xl font-brand font-bold text-white uppercase tracking-tight">{day.startLocation} <i className="fas fa-arrow-right text-slate-600 text-sm mx-2"></i> {day.endLocation}</h4>
                           </div>
                           <div className="flex gap-6">
@@ -1895,7 +2003,9 @@ const TripPlanner: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  )})}
+                    )
+                  )
+                })}
                 </div>
               </div>
 
