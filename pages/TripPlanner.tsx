@@ -596,8 +596,8 @@ const TripPlanner: React.FC = () => {
       
       if (points.length > 0) {
         let totalDistance = 0;
-        let totalEleGain = 0;
-        let totalEleLoss = 0;
+        let maxEle = -Infinity;
+        let minEle = Infinity;
         const gpxRoute: [number, number][] = [];
         
         for (let i = 0; i < points.length; i++) {
@@ -606,20 +606,17 @@ const TripPlanner: React.FC = () => {
           const lon = parseFloat(pt.getAttribute("lon") || "0");
           gpxRoute.push([lat, lon]);
           
+          const eleNode = pt.getElementsByTagName("ele")[0];
+          if (eleNode) {
+            const ele = parseFloat(eleNode.textContent || "0");
+            if (ele > maxEle) maxEle = ele;
+            if (ele < minEle) minEle = ele;
+          }
+          
           if (i > 0) {
             const prevPtLat = gpxRoute[i - 1][0];
             const prevPtLon = gpxRoute[i - 1][1];
             totalDistance += calculateDistance(prevPtLat, prevPtLon, lat, lon);
-            
-            const eleNode = pt.getElementsByTagName("ele")[0];
-            const prevEleNode = points[i - 1].getElementsByTagName("ele")[0];
-            if (eleNode && prevEleNode) {
-              const ele = parseFloat(eleNode.textContent || "0");
-              const prevEle = parseFloat(prevEleNode.textContent || "0");
-              const diff = ele - prevEle;
-              if (diff > 0) totalEleGain += diff;
-              else if (diff < 0) totalEleLoss += Math.abs(diff);
-            }
           }
         }
         
@@ -649,8 +646,8 @@ const TripPlanner: React.FC = () => {
           distance: `${distKm} km`,
           estimatedTimeMins: durationMins,
           fuelLiters,
-          elevationGain: Math.round(totalEleGain),
-          elevationLoss: Math.round(totalEleLoss)
+          maxElevation: maxEle !== -Infinity ? Math.round(maxEle) : undefined,
+          minElevation: minEle !== Infinity ? Math.round(minEle) : undefined
         };
         
         const newTotalKm = updatedDays.reduce((acc, day) => acc + (day.distanceKm || parseInt(day.distance.replace(/\D/g, '')) || 0), 0);
@@ -1567,7 +1564,7 @@ const TripPlanner: React.FC = () => {
                       {expandedDayIdx === idx && (
                         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slideDown">
                           <div className="lg:col-span-2 bg-slate-950/50 p-6 rounded-[2rem] border border-slate-700/50">
-                            <div className={`grid ${day.elevationGain !== undefined ? 'grid-cols-4' : 'grid-cols-2'} gap-4 mb-6 pb-6 border-b border-slate-700/50`}>
+                            <div className={`grid ${day.maxElevation !== undefined ? 'grid-cols-4' : 'grid-cols-2'} gap-4 mb-6 pb-6 border-b border-slate-700/50`}>
                               <div>
                                 <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Palivo</p>
                                 <p className="text-lg font-brand font-bold text-white">{day.fuelLiters ? `${day.fuelLiters} l` : '-'}</p>
@@ -1576,18 +1573,18 @@ const TripPlanner: React.FC = () => {
                                 <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Cena paliva</p>
                                 <p className="text-lg font-brand font-bold text-white">{day.fuelCost ? `${day.fuelCost} Kč` : '-'}</p>
                               </div>
-                              {day.elevationGain !== undefined && (
+                              {day.maxElevation !== undefined && (
                                 <>
                                   <div>
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Nastoupáno</p>
-                                    <p className="text-lg font-brand font-bold text-green-500 flex items-center gap-1">
-                                      <i className="fas fa-arrow-up text-xs"></i> {day.elevationGain} m
+                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Nejvyšší bod</p>
+                                    <p className="text-lg font-brand font-bold text-sky-400 flex items-center gap-1">
+                                      <i className="fas fa-mountain text-xs"></i> {day.maxElevation} m
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Sklesáno</p>
-                                    <p className="text-lg font-brand font-bold text-red-500 flex items-center gap-1">
-                                      <i className="fas fa-arrow-down text-xs"></i> {day.elevationLoss} m
+                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Nejnižší bod</p>
+                                    <p className="text-lg font-brand font-bold text-emerald-400 flex items-center gap-1">
+                                      <i className="fas fa-water text-xs"></i> {day.minElevation} m
                                     </p>
                                   </div>
                                 </>
