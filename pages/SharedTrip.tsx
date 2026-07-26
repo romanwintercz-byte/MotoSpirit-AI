@@ -53,7 +53,13 @@ const SharedTrip: React.FC = () => {
 
         if (error) throw error;
         if (data && data.expedition_data) {
-           const expData = data.expedition_data;
+           const raw = data.expedition_data;
+           const expData = {
+             ...raw,
+             days: Array.isArray(raw.days) ? raw.days : [],
+             budget: raw.budget || { plannedAccommodation: 0, plannedFuel: 0, plannedFood: 0, total: 0 },
+             tags: Array.isArray(raw.tags) ? raw.tags : []
+           };
            if (slug.startsWith('challenge-') && expData.route) {
              setExpedition(expData.route);
            } else {
@@ -339,4 +345,3 @@ const SharedTrip: React.FC = () => {
 };
 
 export default SharedTrip;
-

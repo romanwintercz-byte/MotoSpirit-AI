@@ -34,13 +34,16 @@ const DayMap: React.FC<{ day: TripDay, color: string, onUploadGpx: (e: React.Cha
       markersRef.current.forEach(m => mapRef.current.removeLayer(m));
       markersRef.current = [];
 
-      if (day.gpxRoute && day.gpxRoute.length > 0) {
-        gpxPolylineRef.current = L.polyline(day.gpxRoute, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
+      const validGpx = Array.isArray(day.gpxRoute) ? day.gpxRoute.filter((p: any) => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number') : [];
+      const validWaypoints = Array.isArray(day.waypoints) ? day.waypoints.filter((p: any) => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number') : [];
+      
+      if (validGpx.length > 0) {
+        gpxPolylineRef.current = L.polyline(validGpx, { color: '#0ea5e9', weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
         mapRef.current.fitBounds(gpxPolylineRef.current.getBounds(), { padding: [30, 30] });
-      } else if (day.waypoints && day.waypoints.length > 0) {
-        polylineRef.current = L.polyline(day.waypoints, { color, weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
-        const start = day.waypoints[0];
-        const end = day.waypoints[day.waypoints.length - 1];
+      } else if (validWaypoints.length > 0) {
+        polylineRef.current = L.polyline(validWaypoints, { color, weight: 4, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
+        const start = validWaypoints[0];
+        const end = validWaypoints[validWaypoints.length - 1];
         markersRef.current.push(L.circleMarker(start, { radius: 6, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
         markersRef.current.push(L.circleMarker(end, { radius: 6, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
         mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [30, 30] });
@@ -210,13 +213,21 @@ const TripPlanner: React.FC = () => {
     const saved = localStorage.getItem('spirit_wanderer_trips');
     if (!saved) return [];
     try {
-      return JSON.parse(saved);
+      let parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) parsed = [];
+      return parsed.filter((ex: any) => ex && typeof ex === 'object').map((ex: any) => ({
+        ...ex,
+        days: Array.isArray(ex.days) ? ex.days : [],
+        budget: ex.budget || { plannedAccommodation: 0, plannedFuel: 0, plannedFood: 0, total: 0 },
+        tags: Array.isArray(ex.tags) ? ex.tags : []
+      }));
     } catch (e) {
       return [];
     }
   });
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [expandedDayIdx, setExpandedDayIdx] = useState(0);
+  const [mapReady, setMapReady] = useState(0);
   const [refinePrompt, setRefinePrompt] = useState('');
   const [showRefine, setShowRefine] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -405,7 +416,12 @@ const TripPlanner: React.FC = () => {
     try {
       const result = await planExpedition(origin, days, mode, prefs, travelers, tripType, startDate);
       result.vehiclesCount = vehicles;
-      setExpedition(result);
+      setExpedition({
+        ...result,
+        days: Array.isArray(result.days) ? result.days : [],
+        budget: result.budget || { plannedAccommodation: 0, plannedFuel: 0, plannedFood: 0, total: 0 },
+        tags: Array.isArray(result.tags) ? result.tags : []
+      });
       setActiveDayIdx(0);
       setExpandedDayIdx(0);
       if (window.innerWidth < 1024) {
@@ -423,7 +439,12 @@ const TripPlanner: React.FC = () => {
     setLoading(true);
     try {
       const result = await refineExpedition(expedition, refinePrompt);
-      setExpedition(result);
+      setExpedition({
+        ...result,
+        days: Array.isArray(result.days) ? result.days : [],
+        budget: result.budget || { plannedAccommodation: 0, plannedFuel: 0, plannedFood: 0, total: 0 },
+        tags: Array.isArray(result.tags) ? result.tags : []
+      });
       setRefinePrompt('');
       setShowRefine(false);
       setActiveDayIdx(0);
@@ -672,7 +693,7 @@ const TripPlanner: React.FC = () => {
           elevationProfile: elevationProfile.length > 0 ? elevationProfile : undefined
         };
         
-        const newTotalKm = updatedDays.reduce((acc, day) => acc + (day.distanceKm || parseInt(day.distance.replace(/\D/g, '')) || 0), 0);
+        const newTotalKm = updatedDays.reduce((acc, day) => acc + (day.distanceKm || parseInt((day.distance || "").replace(/\D/g, '')) || 0), 0);
         
         const updatedExpedition = { 
           ...expedition, 
@@ -768,7 +789,8 @@ const TripPlanner: React.FC = () => {
 
     expedition.days.forEach(day => {
       const activePoints = (day.gpxRoute && day.gpxRoute.length > 0) ? day.gpxRoute : day.waypoints;
-      if (activePoints && activePoints.length > 0) {
+      const validPoints = Array.isArray(activePoints) ? activePoints.filter((p: any) => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number' && typeof p[1] === 'number') : [];
+      if (validPoints && validPoints.length > 0) {
         gpx += `\n  <trk><name>Den ${day.dayNumber}: ${day.startLocation} - ${day.endLocation}</name><trkseg>`;
         activePoints.forEach(([lat, lon]) => {
           gpx += `\n      <trkpt lat="${lat}" lon="${lon}"></trkpt>`;
@@ -783,7 +805,7 @@ const TripPlanner: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${expedition.name.replace(/\s+/g, '_')}.gpx`;
+    a.download = `${(expedition.name || "expedice").replace(/\s+/g, '_')}.gpx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -800,7 +822,7 @@ const TripPlanner: React.FC = () => {
       url: editingCustomAcc.url,
       type: 'vlastní ubytování',
       rating: '',
-      customCost: editingCustomAcc.cost ? parseInt(editingCustomAcc.cost.replace(/\\D/g, '')) || 0 : undefined
+      customCost: editingCustomAcc.cost ? parseInt((editingCustomAcc.cost || "").replace(/\\D/g, '')) || 0 : undefined
     } : undefined;
     
     const baseEndLoc = newExpedition.days[editingCustomAcc.dayIndex].endLocation;
@@ -864,19 +886,33 @@ const TripPlanner: React.FC = () => {
     const initMap = () => {
       const mapEl = document.getElementById('exp-map');
       if (!mapEl) {
-        // If not in DOM yet, try again slightly later
         setTimeout(initMap, 50);
         return;
       }
-      if (mapRef.current) return; 
+      if (mapRef.current) return;
       
-      mapRef.current = L.map('exp-map', { zoomControl: false, attributionControl: false }).setView([50, 15], 6);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapRef.current);
-      
-      // Trigger a re-render so the drawing effect can run
-      setMapReady(Date.now());
+      try {
+        mapRef.current = L.map('exp-map', { zoomControl: false, attributionControl: false }).setView([50, 15], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapRef.current);
+        
+        setTimeout(() => {
+          if (mapRef.current) mapRef.current.invalidateSize();
+        }, 200);
+        
+        setMapReady(Date.now());
+      } catch (e) {
+        console.error("Leaflet init error:", e);
+      }
     };
     initMap();
+    return () => {
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch(e) {}
+        mapRef.current = null;
+      }
+    };
   }, [expedition]);
 
   useEffect(() => {
@@ -890,13 +926,14 @@ const TripPlanner: React.FC = () => {
     let allPoints: any[] = [];
     expedition.days.forEach((day, idx) => {
       const activePoints = (day.gpxRoute && day.gpxRoute.length > 0) ? day.gpxRoute : day.waypoints;
-      if (activePoints && activePoints.length > 0) {
+      const validPoints = Array.isArray(activePoints) ? activePoints.filter((p: any) => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number' && typeof p[1] === 'number') : [];
+      if (validPoints && validPoints.length > 0) {
         const color = getDayColor(day.dayNumber);
         const isActive = idx === activeDayIdx;
         const opacity = isActive ? 1 : 0.6;
         const weight = isActive ? 5 : 3;
         
-        const poly = L.polyline(activePoints, { 
+        const poly = L.polyline(validPoints, { 
           color, 
           weight, 
           opacity, 
@@ -905,11 +942,11 @@ const TripPlanner: React.FC = () => {
         }).addTo(mapRef.current);
         
         polylinesRef.current.push(poly);
-        const start = activePoints[0];
-        const end = activePoints[activePoints.length - 1];
+        const start = validPoints[0];
+        const end = validPoints[validPoints.length - 1];
         markersRef.current.push(L.circleMarker(start, { radius: isActive ? 6 : 4, color: '#fff', weight: isActive ? 2 : 1, fillColor: '#22c55e', fillOpacity: 1 }).addTo(mapRef.current));
         markersRef.current.push(L.circleMarker(end, { radius: isActive ? 6 : 4, color: '#fff', weight: isActive ? 2 : 1, fillColor: '#ef4444', fillOpacity: 1 }).addTo(mapRef.current));
-        allPoints.push(...activePoints);
+        allPoints.push(...validPoints);
       }
     });
 
@@ -1551,7 +1588,7 @@ const TripPlanner: React.FC = () => {
                 {/* Timeline */}
                 <div className="relative border-l-2 border-slate-700 ml-4 md:ml-8 space-y-8 py-4">
                   {expedition.days.map((day, idx) => {
-                    const dKm = day.distanceKm || parseInt(day.distance.replace(/\\D/g, '')) || 0;
+                    const dKm = day.distanceKm || parseInt((day.distance || "").replace(/\\D/g, '')) || 0;
                     const diffInfo = day.estimatedTimeMins ? getDifficultyInfo(dKm, day.estimatedTimeMins) : null;
                     
                     return (
@@ -1662,7 +1699,7 @@ const TripPlanner: React.FC = () => {
                                         contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.5rem', fontSize: '12px' }}
                                         labelStyle={{ color: '#94a3b8' }}
                                         itemStyle={{ color: '#38bdf8', fontWeight: 'bold' }}
-                                        formatter={(value: number) => [`${value} m`, 'Výška']}
+                                        formatter={(value: any) => [`${value} m`, 'Výška']}
                                         labelFormatter={(label) => `${label} km`}
                                       />
                                       <Area type="monotone" dataKey="ele" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#colorElevation)" />
@@ -1985,7 +2022,7 @@ const TripPlanner: React.FC = () => {
                             <div key={i} className="flex justify-between items-center">
                               <div className="flex items-center gap-2">
                                 <div className={`w-3 h-3 rounded-full ${item.bg} flex items-center justify-center`}>
-                                  <div className={`w-1.5 h-1.5 rounded-full ${item.color.replace('text-', 'bg-')}`}></div>
+                                  <div className={`w-1.5 h-1.5 rounded-full ${(item.color || "").replace('text-', 'bg-')}`}></div>
                                 </div>
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{item.label}</span>
                               </div>
@@ -2012,7 +2049,7 @@ const TripPlanner: React.FC = () => {
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={expedition.days.map(d => ({
                             name: `D${d.dayNumber}`,
-                            km: d.distanceKm || parseInt(d.distance.replace(/\D/g, '')) || 0
+                            km: d.distanceKm || parseInt((d.distance || "").replace(/\D/g, '')) || 0
                           }))}>
                             <XAxis 
                               dataKey="name" 
@@ -2045,7 +2082,7 @@ const TripPlanner: React.FC = () => {
                         <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700 text-center">
                           <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Průměrně denně</p>
                           <p className="text-xl font-brand font-bold text-white">
-                            {Math.round((expedition.totalDistanceKm || parseInt(expedition.totalDistance.replace(/\D/g, '')) || 0) / expedition.days.length)} km
+                            {Math.round((expedition.totalDistanceKm || parseInt((expedition.totalDistance || "").replace(/\D/g, '')) || 0) / Math.max(1, expedition.days.length))} km
                           </p>
                         </div>
                       </div>
