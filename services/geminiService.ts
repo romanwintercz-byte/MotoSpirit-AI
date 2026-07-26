@@ -36,6 +36,7 @@ export const planExpedition = async (
       ? `Jedná se o jednodenní vyjížďku (ride) na cca ${days} hodin. Zaměř se na scénický okruh se startem i cílem v místě startu. Hledej nejlepší asfalt a 'Coffee & Cake' zastávky. Vrať PŘESNĚ 1 den v poli "days". Název (name) musí odrážet, že jde o vyjížďku (např. "Odpolední okruh Kokořínskem"), NEPOUŽÍVEJ slovo "Expedice".`
       : `Jedná se o vícedenní expedici na ${days} dní. Naplánuj denní etapy, přesuny a logistiku ubytování. Vrať PŘESNĚ ${days} dní v poli "days".`;
 
+    const strippedExpedition = { ...currentExpedition, days: currentExpedition.days.map(day => { const { gpxRoute, elevationProfile, ...rest } = day; return rest; }) };
     const prompt = `Jsi expert na plánování motorkářských tras a expedic. Naplánuj detailní ${durationText} z ${origin} pro ${travelers} osoby/osob. 
     Dopravní prostředek: ${mode}. 
     ${typeContext}
@@ -117,7 +118,7 @@ export const planExpedition = async (
       model: MODEL_2_5,
       contents: prompt,
       config: {
-        tools: [{ googleSearch: {} }, { googleMaps: {} }],
+        tools: [{ googleSearch: {} }],
         temperature: 0.7,
       },
     });
@@ -176,10 +177,11 @@ export const refineExpedition = async (
   try {
     const ai = getAI();
     
+    const strippedExpedition = { ...currentExpedition, days: currentExpedition.days.map(day => { const { gpxRoute, elevationProfile, ...rest } = day; return rest; }) };
     const prompt = `Jsi expert na plánování motocyklových expedic. Máš stávající itinerář (ve formátu JSON) a uživatel ho chce upravit.
     
     STÁVAJÍCÍ EXPEDICE:
-    ${JSON.stringify(currentExpedition, null, 2)}
+    ${JSON.stringify(strippedExpedition, null, 2)}
     
     POŽADAVEK NA ÚPRAVU:
     "${refinementPrompt}"
@@ -203,7 +205,7 @@ export const refineExpedition = async (
       model: MODEL_2_5,
       contents: prompt,
       config: {
-        tools: [{ googleSearch: {} }, { googleMaps: {} }],
+        tools: [{ googleSearch: {} }],
         temperature: 0.7,
       },
     });
@@ -222,12 +224,21 @@ export const refineExpedition = async (
       ...currentExpedition,
       ...parsedData,
       id: currentExpedition.id, // keep original ID
-      days: parsedData.days.map((d: any) => ({
-        ...d,
-        mode: currentExpedition.transportMode,
-        distance: `${d.distanceKm || 0} km`,
-        description: d.description && !d.description.startsWith('###') ? `### ${d.dayTitle || `Den ${d.dayNumber}`}\n\n${d.description}` : d.description
-      }))
+      days: parsedData.days.map((d: any) => {
+        const existingDay = currentExpedition.days.find(cd => cd.dayNumber === d.dayNumber);
+        return {
+          ...d,
+          gpxRoute: d.gpxRoute || (existingDay ? existingDay.gpxRoute : undefined),
+          elevationProfile: d.elevationProfile || (existingDay ? existingDay.elevationProfile : undefined),
+          maxElevation: d.maxElevation !== undefined ? d.maxElevation : (existingDay ? existingDay.maxElevation : undefined),
+          minElevation: d.minElevation !== undefined ? d.minElevation : (existingDay ? existingDay.minElevation : undefined),
+          startElevation: d.startElevation !== undefined ? d.startElevation : (existingDay ? existingDay.startElevation : undefined),
+          endElevation: d.endElevation !== undefined ? d.endElevation : (existingDay ? existingDay.endElevation : undefined),
+          mode: currentExpedition.transportMode,
+          distance: `${d.distanceKm || (existingDay ? existingDay.distanceKm : 0)} km`,
+          description: d.description && !d.description.startsWith('###') ? `### ${d.dayTitle || `Den ${d.dayNumber}`}\n\n${d.description}` : d.description
+        };
+      })
     };
   } catch (error) {
     throw new Error(handleApiError(error));
@@ -245,7 +256,7 @@ export const searchNearbyPOI = async (category: string, lat?: number, lon?: numb
     const response = await ai.models.generateContent({
       model: MODEL_2_5,
       contents: prompt,
-      config: { tools: [{ googleMaps: {} }] }
+      config: { tools: [{ googleSearch: {} }] }
     });
     const jsonStr = (response.text?.match(/\[[\s\S]*\]/) || ["[]"])[0];
     return JSON.parse(jsonStr);
