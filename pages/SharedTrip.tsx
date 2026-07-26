@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Markdown from 'react-markdown';
-import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 import { supabase } from '../services/supabaseClient';
 import { Expedition } from '../types';
 
@@ -236,6 +236,7 @@ const SharedTrip: React.FC = () => {
                               <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
                             </linearGradient>
                           </defs>
+                          <XAxis dataKey="dist" hide />
                           <Tooltip 
                             contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.5rem', fontSize: '12px' }}
                             labelStyle={{ color: '#94a3b8' }}

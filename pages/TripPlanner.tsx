@@ -1639,6 +1639,7 @@ const TripPlanner: React.FC = () => {
                                           <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
                                         </linearGradient>
                                       </defs>
+                                      <XAxis dataKey="dist" hide />
                                       <Tooltip 
                                         contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.5rem', fontSize: '12px' }}
                                         labelStyle={{ color: '#94a3b8' }}
