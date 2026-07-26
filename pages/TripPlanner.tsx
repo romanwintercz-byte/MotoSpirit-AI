@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { planExpedition, refineExpedition } from '../services/geminiService';
 import { shareExpeditionPublicly, syncDataToCloud, getAllPublicProfiles, fetchRideChallenges, updateRideChallenge } from '../services/syncService';
 import { getGoogleMapsUrl } from '../utils/navigation';
@@ -598,7 +598,10 @@ const TripPlanner: React.FC = () => {
         let totalDistance = 0;
         let maxEle = -Infinity;
         let minEle = Infinity;
+        let startEle: number | undefined;
+        let endEle: number | undefined;
         const gpxRoute: [number, number][] = [];
+        const rawProfile: { dist: number, ele: number }[] = [];
         
         for (let i = 0; i < points.length; i++) {
           const pt = points[i];
@@ -606,17 +609,33 @@ const TripPlanner: React.FC = () => {
           const lon = parseFloat(pt.getAttribute("lon") || "0");
           gpxRoute.push([lat, lon]);
           
+          if (i > 0) {
+            const prevPtLat = gpxRoute[i - 1][0];
+            const prevPtLon = gpxRoute[i - 1][1];
+            totalDistance += calculateDistance(prevPtLat, prevPtLon, lat, lon);
+          }
+          
           const eleNode = pt.getElementsByTagName("ele")[0];
           if (eleNode) {
             const ele = parseFloat(eleNode.textContent || "0");
             if (ele > maxEle) maxEle = ele;
             if (ele < minEle) minEle = ele;
+            if (i === 0) startEle = ele;
+            endEle = ele;
+            rawProfile.push({ dist: Math.round(totalDistance * 10) / 10, ele: Math.round(ele) });
           }
-          
-          if (i > 0) {
-            const prevPtLat = gpxRoute[i - 1][0];
-            const prevPtLon = gpxRoute[i - 1][1];
-            totalDistance += calculateDistance(prevPtLat, prevPtLon, lat, lon);
+        }
+        
+        // Downsample profile for chart (max 100 points)
+        const elevationProfile = [];
+        if (rawProfile.length > 0) {
+          const step = Math.max(1, Math.floor(rawProfile.length / 100));
+          for (let i = 0; i < rawProfile.length; i += step) {
+            elevationProfile.push(rawProfile[i]);
+          }
+          // ensure last point is included
+          if (elevationProfile[elevationProfile.length - 1] !== rawProfile[rawProfile.length - 1]) {
+            elevationProfile.push(rawProfile[rawProfile.length - 1]);
           }
         }
         
@@ -647,7 +666,10 @@ const TripPlanner: React.FC = () => {
           estimatedTimeMins: durationMins,
           fuelLiters,
           maxElevation: maxEle !== -Infinity ? Math.round(maxEle) : undefined,
-          minElevation: minEle !== Infinity ? Math.round(minEle) : undefined
+          minElevation: minEle !== Infinity ? Math.round(minEle) : undefined,
+          startElevation: startEle !== undefined ? Math.round(startEle) : undefined,
+          endElevation: endEle !== undefined ? Math.round(endEle) : undefined,
+          elevationProfile: elevationProfile.length > 0 ? elevationProfile : undefined
         };
         
         const newTotalKm = updatedDays.reduce((acc, day) => acc + (day.distanceKm || parseInt(day.distance.replace(/\D/g, '')) || 0), 0);
@@ -1590,6 +1612,46 @@ const TripPlanner: React.FC = () => {
                                 </>
                               )}
                             </div>
+                            
+                            {/* Elevation Chart Section */}
+                            {day.elevationProfile && day.elevationProfile.length > 0 && (
+                              <div className="mb-6 p-6 bg-slate-900/50 border border-slate-700/50 rounded-2xl">
+                                <div className="flex flex-wrap gap-6 mb-4">
+                                  {day.startElevation !== undefined && (
+                                    <div>
+                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Start</p>
+                                      <p className="text-sm font-bold text-slate-300">{day.startElevation} m</p>
+                                    </div>
+                                  )}
+                                  {day.endElevation !== undefined && (
+                                    <div>
+                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Cíl</p>
+                                      <p className="text-sm font-bold text-slate-300">{day.endElevation} m</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="h-32 w-full mt-2">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={day.elevationProfile} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                      <defs>
+                                        <linearGradient id="colorElevation" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3}/>
+                                          <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
+                                        </linearGradient>
+                                      </defs>
+                                      <Tooltip 
+                                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.5rem', fontSize: '12px' }}
+                                        labelStyle={{ color: '#94a3b8' }}
+                                        itemStyle={{ color: '#38bdf8', fontWeight: 'bold' }}
+                                        formatter={(value: number) => [`${value} m`, 'Výška']}
+                                        labelFormatter={(label) => `${label} km`}
+                                      />
+                                      <Area type="monotone" dataKey="ele" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#colorElevation)" />
+                                    </AreaChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              </div>
+                            )}
                             
                             {/* Mapy.cz Integration */}
                             <div className="mb-6 p-4 bg-[#cc0000]/10 border border-[#cc0000]/30 rounded-2xl flex flex-col md:flex-row gap-4 items-center">

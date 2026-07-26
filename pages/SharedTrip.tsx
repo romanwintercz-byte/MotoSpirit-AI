@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Markdown from 'react-markdown';
+import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 import { supabase } from '../services/supabaseClient';
 import { Expedition } from '../types';
 
@@ -197,6 +198,58 @@ const SharedTrip: React.FC = () => {
                     </a>
                   </div>
                 )}
+                
+                {expedition.days[activeDayIdx].elevationProfile && expedition.days[activeDayIdx].elevationProfile!.length > 0 && (
+                  <div className="mb-6 pb-6 border-b border-slate-700/50">
+                    <div className="flex flex-wrap justify-between gap-4 mb-4">
+                      {expedition.days[activeDayIdx].startElevation !== undefined && (
+                        <div>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Start</p>
+                          <p className="text-sm font-bold text-slate-300">{expedition.days[activeDayIdx].startElevation} m</p>
+                        </div>
+                      )}
+                      {expedition.days[activeDayIdx].maxElevation !== undefined && (
+                        <div>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1 text-center">Nejvyšší bod</p>
+                          <p className="text-sm font-bold text-sky-400 text-center"><i className="fas fa-mountain text-xs"></i> {expedition.days[activeDayIdx].maxElevation} m</p>
+                        </div>
+                      )}
+                      {expedition.days[activeDayIdx].minElevation !== undefined && (
+                        <div>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1 text-center">Nejnižší bod</p>
+                          <p className="text-sm font-bold text-emerald-400 text-center"><i className="fas fa-water text-xs"></i> {expedition.days[activeDayIdx].minElevation} m</p>
+                        </div>
+                      )}
+                      {expedition.days[activeDayIdx].endElevation !== undefined && (
+                        <div className="text-right">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Cíl</p>
+                          <p className="text-sm font-bold text-slate-300">{expedition.days[activeDayIdx].endElevation} m</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="h-40 w-full mt-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={expedition.days[activeDayIdx].elevationProfile} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorElevationShared" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.5rem', fontSize: '12px' }}
+                            labelStyle={{ color: '#94a3b8' }}
+                            itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
+                            formatter={(value: number) => [`${value} m`, 'Výška']}
+                            labelFormatter={(label) => `${label} km`}
+                          />
+                          <Area type="monotone" dataKey="ele" stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#colorElevationShared)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="markdown-body prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed">
                   <Markdown>{expedition.days[activeDayIdx].description}</Markdown>
                 </div>
