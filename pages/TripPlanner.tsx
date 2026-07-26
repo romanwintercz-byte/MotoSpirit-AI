@@ -78,6 +78,35 @@ const DayMap: React.FC<{ day: TripDay, color: string, onUploadGpx: (e: React.Cha
   );
 };
 
+const getDifficultyInfo = (distanceKm: number, timeMins: number) => {
+  const speed = distanceKm / (timeMins / 60);
+  const totalMins = Math.round(timeMins * 1.35); // 35% more for breaks/fuel/lunch
+  
+  let difficulty = 'Pohoda';
+  let color = 'text-green-500';
+  let bgColor = 'bg-green-500/20';
+  let borderColor = 'border-green-500/30';
+  let icon = 'fa-smile';
+  
+  // Real time > 8h or (Real time > 6h and speed < 55km/h)
+  if (totalMins > 480 || (totalMins > 360 && speed < 55)) { 
+    difficulty = 'Záhul';
+    color = 'text-red-500';
+    bgColor = 'bg-red-500/20';
+    borderColor = 'border-red-500/30';
+    icon = 'fa-skull';
+  } else if (totalMins > 360 || (totalMins > 240 && speed < 60)) { 
+    // Real time > 6h or (Real time > 4h and speed < 60km/h)
+    difficulty = 'Střední';
+    color = 'text-yellow-500';
+    bgColor = 'bg-yellow-500/20';
+    borderColor = 'border-yellow-500/30';
+    icon = 'fa-route';
+  }
+
+  return { difficulty, color, bgColor, borderColor, icon, totalMins };
+};
+
 const TripPlanner: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1469,7 +1498,11 @@ const TripPlanner: React.FC = () => {
 
                 {/* Timeline */}
                 <div className="relative border-l-2 border-slate-700 ml-4 md:ml-8 space-y-8 py-4">
-                  {expedition.days.map((day, idx) => (
+                  {expedition.days.map((day, idx) => {
+                    const dKm = day.distanceKm || parseInt(day.distance.replace(/\\D/g, '')) || 0;
+                    const diffInfo = day.estimatedTimeMins ? getDifficultyInfo(dKm, day.estimatedTimeMins) : null;
+                    
+                    return (
                     <div key={idx} className="relative pl-8 md:pl-12">
                       {/* Timeline Dot */}
                       <div className={`absolute -left-[11px] top-6 w-5 h-5 rounded-full border-4 transition-all ${expandedDayIdx === idx ? 'bg-orange-500 border-slate-900 shadow-[0_0_15px_rgba(249,115,22,0.5)]' : 'bg-slate-700 border-slate-900'}`}></div>
@@ -1484,20 +1517,33 @@ const TripPlanner: React.FC = () => {
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
-                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em] mb-1">
-                              Den {day.dayNumber} {expedition.startDate ? ` | ${getDayDateText(expedition.startDate, idx)}` : ''}
-                            </p>
+                            <div className="flex items-center gap-3 mb-1">
+                              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">
+                                Den {day.dayNumber} {expedition.startDate ? ` | ${getDayDateText(expedition.startDate, idx)}` : ''}
+                              </p>
+                              {diffInfo && (
+                                <span className={`text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-widest ${diffInfo.bgColor} ${diffInfo.color} border ${diffInfo.borderColor} flex items-center gap-1`}>
+                                  <i className={`fas ${diffInfo.icon}`}></i> {diffInfo.difficulty}
+                                </span>
+                              )}
+                            </div>
                             <h4 className="text-xl font-brand font-bold text-white uppercase tracking-tight">{day.startLocation} <i className="fas fa-arrow-right text-slate-600 text-sm mx-2"></i> {day.endLocation}</h4>
                           </div>
                           <div className="flex gap-6">
                             <div className="text-left md:text-right">
                               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Vzdálenost</p>
-                              <p className="text-sm font-bold text-white">{day.distanceKm || day.distance} {day.distanceKm ? 'km' : ''}</p>
+                              <p className="text-sm font-bold text-white">{dKm} km</p>
                             </div>
                             <div className="text-left md:text-right">
-                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Čas</p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest" title="Čistý čas jízdy">Čas jízdy</p>
                               <p className="text-sm font-bold text-white">{day.estimatedTimeMins ? `${Math.floor(day.estimatedTimeMins / 60)}h ${day.estimatedTimeMins % 60}m` : '-'}</p>
                             </div>
+                            {diffInfo && (
+                              <div className="text-left md:text-right">
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest" title="Odhadovaný celkový čas vč. pauz">Celkově</p>
+                                <p className="text-sm font-bold text-slate-300">{`${Math.floor(diffInfo.totalMins / 60)}h ${diffInfo.totalMins % 60}m`}</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </button>
@@ -1703,7 +1749,7 @@ const TripPlanner: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
 
