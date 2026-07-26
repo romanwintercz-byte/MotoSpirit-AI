@@ -87,6 +87,7 @@ const TripPlanner: React.FC = () => {
   const [origin, setOrigin] = useState('Praha');
   const [days, setDays] = useState(3);
   const [travelers, setTravelers] = useState(2);
+  const [vehicles, setVehicles] = useState(2);
   const [mode, setMode] = useState<TransportMode>('moto');
   const [tripType, setTripType] = useState<'ride' | 'expedition'>('expedition');
   const [startDate, setStartDate] = useState('');
@@ -374,6 +375,7 @@ const TripPlanner: React.FC = () => {
     };
     try {
       const result = await planExpedition(origin, days, mode, prefs, travelers, tripType, startDate);
+      result.vehiclesCount = vehicles;
       setExpedition(result);
       setActiveDayIdx(0);
       setExpandedDayIdx(0);
@@ -958,12 +960,27 @@ const TripPlanner: React.FC = () => {
                         <button onClick={() => setDays(Math.min(21, days + 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-plus text-[10px]"></i></button>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Lidé</label>
                       <div className="flex items-center bg-slate-900/50 border border-slate-700 rounded-xl px-1">
-                        <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-minus text-[10px]"></i></button>
+                        <button onClick={() => {
+                          const newTravelers = Math.max(1, travelers - 1);
+                          setTravelers(newTravelers);
+                          if (vehicles > newTravelers) setVehicles(newTravelers);
+                        }} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-minus text-[10px]"></i></button>
                         <span className="flex-grow text-center font-bold text-sm text-white">{travelers}</span>
                         <button onClick={() => setTravelers(Math.min(10, travelers + 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-plus text-[10px]"></i></button>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Vozidla</label>
+                      <div className="flex items-center bg-slate-900/50 border border-slate-700 rounded-xl px-1">
+                        <button onClick={() => setVehicles(Math.max(1, vehicles - 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-minus text-[10px]"></i></button>
+                        <span className="flex-grow text-center font-bold text-sm text-white">{vehicles}</span>
+                        <button onClick={() => setVehicles(Math.min(travelers, vehicles + 1))} className="text-orange-500 p-2 hover:bg-slate-800 rounded-lg transition-colors"><i className="fas fa-plus text-[10px]"></i></button>
                       </div>
                     </div>
                   </div>
@@ -1669,10 +1686,33 @@ const TripPlanner: React.FC = () => {
               </div>
 
               {/* Stats Section */}
-              {expedition.budget && (
+              {expedition.budget && (() => {
+                const vCount = expedition.vehiclesCount || expedition.travelersCount || 1;
+                const tCount = expedition.travelersCount || 1;
+                const vehicleMultiplier = vCount / tCount;
+
+                const finalFuel = Math.round(expedition.budget.plannedFuel * vehicleMultiplier);
+                const finalTolls = Math.round(expedition.budget.plannedTolls * vehicleMultiplier);
+                const finalAcc = expedition.budget.plannedAccommodation;
+                const finalFood = expedition.budget.plannedFood;
+                const finalTotal = finalFuel + finalTolls + finalAcc + finalFood;
+
+                return (
                 <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl animate-fadeIn">
                   <h3 className="text-2xl font-brand font-bold text-white uppercase tracking-tighter italic mb-2">Rozpočet a statistiky</h3>
-                  <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-8">Odhadované náklady na 1 osobu</p>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                    <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">
+                      Odhadované náklady na 1 osobu
+                    </p>
+                    {tCount > 1 && (
+                      <div className="bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
+                        <i className="fas fa-users text-slate-400 text-xs"></i>
+                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">
+                          Rozpočítáno pro {tCount} osob{tCount > 4 ? ' a' : (tCount >= 2 && tCount <= 4 ? 'y' : 'u')} a {vCount} vozidel
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Budget Section */}
@@ -1687,10 +1727,10 @@ const TripPlanner: React.FC = () => {
                             <PieChart>
                               <Pie
                                 data={[
-                                  { name: 'Palivo', value: expedition.budget.plannedFuel, color: '#f97316' },
-                                  { name: 'Ubytování', value: expedition.budget.plannedAccommodation, color: '#3b82f6' },
-                                  { name: 'Jídlo', value: expedition.budget.plannedFood, color: '#22c55e' },
-                                  { name: 'Mýtné', value: expedition.budget.plannedTolls, color: '#a855f7' }
+                                  { name: 'Palivo', value: finalFuel, color: '#f97316' },
+                                  { name: 'Ubytování', value: finalAcc, color: '#3b82f6' },
+                                  { name: 'Jídlo', value: finalFood, color: '#22c55e' },
+                                  { name: 'Mýtné', value: finalTolls, color: '#a855f7' }
                                 ]}
                                 innerRadius={60}
                                 outerRadius={80}
@@ -1718,10 +1758,10 @@ const TripPlanner: React.FC = () => {
                         
                         <div className="flex-grow space-y-3 w-full">
                           {[
-                            { label: 'Palivo', value: expedition.budget.plannedFuel, color: 'text-orange-500', bg: 'bg-orange-500/20' },
-                            { label: 'Ubytování', value: expedition.budget.plannedAccommodation, color: 'text-blue-500', bg: 'bg-blue-500/20' },
-                            { label: 'Jídlo', value: expedition.budget.plannedFood, color: 'text-green-500', bg: 'bg-green-500/20' },
-                            { label: 'Mýtné', value: expedition.budget.plannedTolls, color: 'text-purple-500', bg: 'bg-purple-500/20' }
+                            { label: 'Palivo', value: finalFuel, color: 'text-orange-500', bg: 'bg-orange-500/20' },
+                            { label: 'Ubytování', value: finalAcc, color: 'text-blue-500', bg: 'bg-blue-500/20' },
+                            { label: 'Jídlo', value: finalFood, color: 'text-green-500', bg: 'bg-green-500/20' },
+                            { label: 'Mýtné', value: finalTolls, color: 'text-purple-500', bg: 'bg-purple-500/20' }
                           ].map((item, i) => (
                             <div key={i} className="flex justify-between items-center">
                               <div className="flex items-center gap-2">
@@ -1734,9 +1774,9 @@ const TripPlanner: React.FC = () => {
                             </div>
                           ))}
                           <div className="pt-3 mt-3 border-t border-slate-700 flex justify-between items-center">
-                            <span className="text-xs font-bold text-white uppercase tracking-widest">Celkem</span>
+                            <span className="text-xs font-bold text-white uppercase tracking-widest">Celkem na osobu</span>
                             <span className="font-brand font-bold text-xl text-orange-500">
-                              {(expedition.budget.plannedFuel + expedition.budget.plannedAccommodation + expedition.budget.plannedFood + expedition.budget.plannedTolls).toLocaleString()} Kč
+                              {finalTotal.toLocaleString()} Kč
                             </span>
                           </div>
                         </div>
@@ -1793,7 +1833,8 @@ const TripPlanner: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Countries Section */}
               {expedition.countriesInfo && (

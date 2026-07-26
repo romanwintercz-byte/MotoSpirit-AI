@@ -98,6 +98,7 @@ export interface Expedition {
   countriesInfo?: CountryInfo[];
   preferences: ExpeditionPreferences;
   travelersCount: number;
+  vehiclesCount?: number;
   tripType?: 'ride' | 'expedition';
   sharedBy?: string;
   status?: 'planned' | 'active' | 'completed';
