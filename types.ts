@@ -77,6 +77,11 @@ export interface TripDay {
   waypoints: [number, number][];
   mapyCzUrl?: string;
   gpxRoute?: [number, number][];
+  maxElevation?: number;
+  minElevation?: number;
+  startElevation?: number;
+  endElevation?: number;
+  elevationProfile?: { dist: number, ele: number }[];
 }
 
 export interface ExpeditionPreferences {
@@ -98,6 +103,7 @@ export interface Expedition {
   budget?: ExpeditionBudget;
   countriesInfo?: CountryInfo[];
   preferences: ExpeditionPreferences;
+  checklist?: ChecklistItem[];
   travelersCount: number;
   vehiclesCount?: number;
   tripType?: 'ride' | 'expedition';
@@ -108,6 +114,11 @@ export interface Expedition {
   linkedChallengeId?: string;
   challengeCreatorSyncCode?: string;
   gpxRoute?: [number, number][];
+  maxElevation?: number;
+  minElevation?: number;
+  startElevation?: number;
+  endElevation?: number;
+  elevationProfile?: { dist: number, ele: number }[];
 }
 
 export interface MaintenanceRecord {
@@ -188,4 +199,11 @@ export interface POI {
   bikerTip?: string;
   url?: string;
   distance?: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  category: string;
+  name: string;
+  checked: boolean;
 }

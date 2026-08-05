@@ -319,8 +319,8 @@ export const subscribeToNewChallenges = (callback: (challenge: any) => void) => 
       'postgres_changes',
       { event: '*', schema: 'public', table: 'moto_shared_trips' },
       (payload) => {
-        if (payload.new && payload.new.expedition_data && payload.new.slug && payload.new.slug.startsWith('challenge-')) {
-          callback(payload.new.expedition_data);
+        if (payload.new && (payload.new as any).expedition_data && (payload.new as any).slug && (payload.new as any).slug.startsWith('challenge-')) {
+          callback((payload.new as any).expedition_data);
         }
       }
     )

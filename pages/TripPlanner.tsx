@@ -176,6 +176,60 @@ const TripPlanner: React.FC = () => {
   };
 
   
+  
+  const deleteDay = (idx: number) => {
+    if (!expedition || !window.confirm("Opravdu chcete tento den smazat?")) return;
+    const updatedDays = expedition.days.filter((_, i) => i !== idx);
+    updatedDays.forEach((day, i) => day.dayNumber = i + 1);
+    
+    const newTotalKm = updatedDays.reduce((acc, day) => acc + (day.distanceKm || parseInt((day.distance || "").replace(/\D/g, '')) || 0), 0);
+    
+    const newExpedition = { ...expedition, days: updatedDays, totalDistanceKm: newTotalKm, totalDistance: newTotalKm + ' km' };
+    setExpedition(newExpedition);
+    
+    const existingStr = localStorage.getItem('spirit_wanderer_trips');
+    if (existingStr) {
+      try {
+        const trips = JSON.parse(existingStr);
+        const updatedTrips = trips.map((t: any) => t.id === expedition.id ? newExpedition : t);
+        localStorage.setItem('spirit_wanderer_trips', JSON.stringify(updatedTrips));
+      } catch(e) {}
+    }
+    setEditingDayIdx(null);
+    setEditDayData(null);
+  };
+
+  const addNewDay = () => {
+    if (!expedition) return;
+    const newDayNum = expedition.days.length + 1;
+    const newDay = {
+      dayNumber: newDayNum,
+      startLocation: expedition.days.length > 0 ? expedition.days[expedition.days.length - 1].endLocation : 'Nový start',
+      endLocation: 'Nový cíl',
+      distance: '0 km',
+      distanceKm: 0,
+      description: '',
+      waypoints: [],
+      estimatedTimeMins: 0,
+    };
+    
+    const updatedDays = [...expedition.days, newDay];
+    const newExpedition = { ...expedition, days: updatedDays };
+    setExpedition(newExpedition);
+    
+    const existingStr = localStorage.getItem('spirit_wanderer_trips');
+    if (existingStr) {
+      try {
+        const trips = JSON.parse(existingStr);
+        const updatedTrips = trips.map((t: any) => t.id === expedition.id ? newExpedition : t);
+        localStorage.setItem('spirit_wanderer_trips', JSON.stringify(updatedTrips));
+      } catch(e) {}
+    }
+    
+    setEditingDayIdx(newDayNum - 1);
+    setEditDayData(newDay);
+  };
+
   const saveDayEdit = () => {
     if (editingDayIdx !== null && editDayData && expedition) {
       const updatedDays = [...expedition.days];
@@ -1666,19 +1720,27 @@ const addWaypoint = () => {
                             </div>
                           </div>
                           
-                          <div className="flex justify-end gap-3">
+                          <div className="flex justify-between items-center">
                             <button 
-                              onClick={() => { setEditingDayIdx(null); setEditDayData(null); }}
-                              className="px-6 py-3 rounded-xl border border-slate-600 hover:bg-slate-700 text-white font-bold text-sm uppercase tracking-widest transition-colors"
+                              onClick={() => deleteDay(idx)}
+                              className="px-6 py-3 rounded-xl border border-red-900/50 hover:bg-red-900/30 text-red-500 font-bold text-sm uppercase tracking-widest transition-colors flex items-center gap-2"
                             >
-                              Zrušit
+                              <i className="fas fa-trash"></i> Smazat den
                             </button>
-                            <button 
-                              onClick={saveDayEdit}
-                              className="px-6 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-900/20 font-bold text-sm uppercase tracking-widest transition-colors"
-                            >
-                              Uložit změny
-                            </button>
+                            <div className="flex gap-3">
+                              <button 
+                                onClick={() => { setEditingDayIdx(null); setEditDayData(null); }}
+                                className="px-6 py-3 rounded-xl border border-slate-600 hover:bg-slate-700 text-white font-bold text-sm uppercase tracking-widest transition-colors"
+                              >
+                                Zrušit
+                              </button>
+                              <button 
+                                onClick={saveDayEdit}
+                                className="px-6 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-900/20 font-bold text-sm uppercase tracking-widest transition-colors"
+                              >
+                                Uložit změny
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2006,6 +2068,12 @@ const addWaypoint = () => {
                     )
                   )
                 })}
+                </div>
+                {/* Add new day button */}
+                <div className="mt-8 flex justify-center">
+                  <button onClick={addNewDay} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-white font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-colors">
+                    <i className="fas fa-plus"></i> Přidat další den
+                  </button>
                 </div>
               </div>
 
